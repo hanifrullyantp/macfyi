@@ -1,0 +1,110 @@
+      return `<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Monefyi Report</title>
+<style>
+  @page { size: A4; margin: 14mm; }
+  body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji"; color:#0f172a; background:#fff; min-height: 100%; margin: 0; padding: 12px; }
+  .muted{ color:#475569; }
+  .h1{ font-size: 18px; font-weight: 800; margin:0; }
+  .h2{ font-size: 13px; font-weight: 800; margin: 18px 0 8px; }
+  .grid{ display:grid; gap:10px; }
+  .grid-4{ grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .grid-2{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+  @media (max-width: 640px) {
+    .grid-4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid-2 { grid-template-columns: 1fr; }
+  }
+  .card{ border:1px solid rgba(15,23,42,.12); border-radius: 14px; padding: 10px; }
+  .kpiLabel{ font-size: 11px; color:#475569; }
+  .kpiVal{ font-size: 16px; font-weight: 800; margin-top:4px; }
+  .kpiSub{ font-size: 11px; color:#64748b; margin-top:4px; }
+  table{ width:100%; border-collapse: collapse; }
+  th, td{ border-bottom:1px solid rgba(15,23,42,.10); padding: 7px 6px; font-size: 11px; vertical-align: top; }
+  th{ text-align:left; color:#475569; font-weight:700; }
+  .img{ width:100%; max-width:100%; border:1px solid rgba(15,23,42,.10); border-radius: 14px; }
+  .small{ font-size: 11px; }
+</style>
+</head>
+<body>
+  <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px;">
+    <div>
+      <div class="h1">Monefyi — ${escapeHtml(t('print.title'))}</div>
+      <div class="small muted">${escapeHtml(STATE.user.name || '')} • ${escapeHtml(STATE.user.email || '')}</div>
+      <div class="small muted">${escapeHtml(STATE.period.label)}</div>
+      <div class="small muted">${escapeHtml(t('print.generated'))}: ${escapeHtml(genAt)}</div>
+      <div class="small muted">${escapeHtml(t('print.filters'))}: ${escapeHtml(filterSum)}</div>
+    </div>
+    <div class="card" style="min-width: 180px;">
+      <div class="kpiLabel">${escapeHtml(t('common.net'))}</div>
+      <div class="kpiVal">${escapeHtml(fmt(kpi.net))}</div>
+      <div class="kpiSub">${escapeHtml(t('common.currency_idr'))}</div>
+    </div>
+  </div>
+
+  <div class="h2">${escapeHtml(t('print.section.kpi'))}</div>
+  <div class="grid grid-4">
+    <div class="card"><div class="kpiLabel">${escapeHtml(t('kpi.income'))}</div><div class="kpiVal">${escapeHtml(fmt(kpi.income))}</div><div class="kpiSub">${escapeHtml(t('kpi.period_sub', {label: STATE.period.label}))}</div></div>
+    <div class="card"><div class="kpiLabel">${escapeHtml(t('kpi.expense'))}</div><div class="kpiVal">${escapeHtml(fmt(kpi.expense))}</div><div class="kpiSub">${escapeHtml(t('kpi.period_sub', {label: STATE.period.label}))}</div></div>
+    <div class="card"><div class="kpiLabel">${escapeHtml(t('kpi.net'))}</div><div class="kpiVal">${escapeHtml(fmt(kpi.net))}</div><div class="kpiSub">${escapeHtml(t('kpi.net_sub', {net: formatCompactIDR(kpi.net)}))}</div></div>
+    <div class="card"><div class="kpiLabel">${escapeHtml(t('kpi.saving'))}</div><div class="kpiVal">${escapeHtml(savingStr)}</div><div class="kpiSub">${escapeHtml(t('common.currency_idr'))}</div></div>
+  </div>
+
+  <div class="h2">${escapeHtml(t('print.section.accounts'))}</div>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="kpiLabel">${escapeHtml(t('accounts.sheet_title'))}</div>
+      <div class="kpiSub">${escapeHtml(t('accounts.balance_upto', {date: STATE.period.end}))}</div>
+      <table style="margin-top:8px;">
+        <thead><tr><th>${escapeHtml(t('accounts.title'))}</th><th style="text-align:right">${escapeHtml(t('saldo.title'))}</th></tr></thead>
+        <tbody>${accountsRows || ''}</tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="kpiLabel">${escapeHtml(t('print.section.budget'))}</div>
+      <div class="kpiSub">${escapeHtml(STATE.period.label)}</div>
+      <div style="margin-top:10px; display:grid; grid-template-columns: repeat(3,1fr); gap:10px;">
+        <div class="card"><div class="kpiLabel">${escapeHtml(t('budget.planned'))}</div><div class="kpiVal">${escapeHtml(fmt(budget.planned))}</div></div>
+        <div class="card"><div class="kpiLabel">${escapeHtml(t('budget.actual'))}</div><div class="kpiVal">${escapeHtml(fmt(budget.actual))}</div></div>
+        <div class="card"><div class="kpiLabel">${escapeHtml(t('budget.diff'))}</div><div class="kpiVal">${escapeHtml(fmt(budget.diff))}</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="h2">${escapeHtml(t('print.section.charts'))}</div>
+  <div class="card">
+    <div class="kpiLabel">${escapeHtml(t('chart.trend.title'))}</div>
+    ${charts.trendImg ? `<img class="img" src="${charts.trendImg}" alt="trend" />` : `<div class="small muted">—</div>`}
+  </div>
+  <div class="grid grid-2" style="margin-top:10px;">
+    <div class="card">
+      <div class="kpiLabel">${escapeHtml(t('chart.category.title'))}</div>
+      ${charts.catImg ? `<img class="img" src="${charts.catImg}" alt="category" />` : `<div class="small muted">—</div>`}
+    </div>
+    <div class="card">
+      <div class="kpiLabel">${escapeHtml(t('chart.week.title'))}</div>
+      <div class="small muted">${escapeHtml(charts.weekRange || '')}</div>
+      ${charts.weekImg ? `<img class="img" src="${charts.weekImg}" alt="week" />` : `<div class="small muted">—</div>`}
+    </div>
+  </div>
+
+  <div class="h2">${escapeHtml(t('print.section.txs'))}</div>
+  <div class="card">
+    <div class="small muted">${escapeHtml(t('tx.count', {n: txs.length}))}</div>
+    <table style="margin-top:8px;">
+      <thead>
+        <tr>
+          <th>Date</th><th>Type</th><th>Category</th><th>Merchant</th><th>Account</th><th style="text-align:right">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${txRows || ''}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="small muted" style="margin-top:10px;">Monefyi</div>
+</body>
+</html>`;

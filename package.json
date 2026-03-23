@@ -1,0 +1,14 @@
+{
+  "name": "monefyi",
+  "private": true,
+  "description": "Monefyi PWA — static HTML/CSS/JS + Supabase",
+  "devDependencies": {
+    "vite": "^7.1.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "refactor": "node scripts/refactor.cjs"
+  }
+}

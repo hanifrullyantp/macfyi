@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+*.log
+# Jangan commit salinan config produksi berisi secret tambahan
+# js/config.local.js
