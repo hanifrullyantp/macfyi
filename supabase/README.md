@@ -43,6 +43,14 @@ supabase functions deploy ai-proxy
 2. **Snap API:** server key / client key match the secrets above.
 3. Set **Settings → URL Configuration** allowed callback/finish URLs for your landing domain if Midtrans requires it.
 
+### Konten landing (database)
+
+Tabel `landing_site_content` menyimpan JSON konten yang disunting di admin landing (tombol **Publikasikan**). **Baca:** anon key (publik). **Tulis:** pengguna Supabase Auth dengan `app_metadata.role = "admin"`.
+
+1. Jalankan migrasi (`supabase db push`) agar tabel + RLS ada.
+2. Di **Authentication → Users**, buat atau pilih user admin → **App metadata** (raw JSON): `{ "role": "admin" }`.
+3. Di landing, masuk dengan email/password user itu; **Publikasikan** menyimpan ke baris `id = default`.
+
 ### Landing page (Vite)
 
 In `macfyi-landing-page/.env`:

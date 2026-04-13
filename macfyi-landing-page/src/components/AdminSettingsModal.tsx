@@ -57,11 +57,12 @@ export function AdminSettingsModal({
     return m;
   }, [s.waTemplates]);
 
+  // Isi textarea saat tab Konten JSON dibuka; setelah itu pakai "Muat ulang dari halaman" agar selaras dengan suntingan terbaru.
   useEffect(() => {
     if (open && tab === "content") {
       setJsonText(JSON.stringify(data, null, 2));
     }
-  }, [open, tab, data]);
+  }, [open, tab]);
 
   if (!open) return null;
 
@@ -363,6 +364,160 @@ export function AdminSettingsModal({
             </>
           )}
 
+          {tab === "checkout" && (
+            <>
+              <p className="text-white/45 text-xs">
+                Teks modal checkout (label, placeholder, tombol). Subjudul produk kosongkan untuk memakai nama produk dari halaman.
+              </p>
+              <Field label="Judul modal">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  value={s.checkoutModalTitle}
+                  onChange={(e) => patchSettings({ checkoutModalTitle: e.target.value })}
+                />
+              </Field>
+              <Field label="Subjudul produk (opsional)">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="Kosong = otomatis dari halaman"
+                  value={s.checkoutProductSubtitle}
+                  onChange={(e) => patchSettings({ checkoutProductSubtitle: e.target.value })}
+                />
+              </Field>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label total">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutTotalLabel}
+                    onChange={(e) => patchSettings({ checkoutTotalLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Catatan lisensi (bawah total)">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutLicenseNote}
+                    onChange={(e) => patchSettings({ checkoutLicenseNote: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label nama">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutNameLabel}
+                    onChange={(e) => patchSettings({ checkoutNameLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Placeholder nama">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutNamePlaceholder}
+                    onChange={(e) => patchSettings({ checkoutNamePlaceholder: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label email">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutEmailLabel}
+                    onChange={(e) => patchSettings({ checkoutEmailLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Placeholder email">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutEmailPlaceholder}
+                    onChange={(e) => patchSettings({ checkoutEmailPlaceholder: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label telepon">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutPhoneLabel}
+                    onChange={(e) => patchSettings({ checkoutPhoneLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Placeholder telepon">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutPhonePlaceholder}
+                    onChange={(e) => patchSettings({ checkoutPhonePlaceholder: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <Field label="Teks sebelum tautan syarat (mis. Saya setuju dengan)">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  value={s.checkoutAgreePrefix}
+                  onChange={(e) => patchSettings({ checkoutAgreePrefix: e.target.value })}
+                />
+              </Field>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label tautan syarat">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutTermsLinkLabel}
+                    onChange={(e) => patchSettings({ checkoutTermsLinkLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Label tautan privasi">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutPrivacyLinkLabel}
+                    onChange={(e) => patchSettings({ checkoutPrivacyLinkLabel: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-3 gap-4">
+                <Field label="Tombol (Midtrans)">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutCtaMidtrans}
+                    onChange={(e) => patchSettings({ checkoutCtaMidtrans: e.target.value })}
+                  />
+                </Field>
+                <Field label="Tombol (URL eksternal)">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutCtaExternal}
+                    onChange={(e) => patchSettings({ checkoutCtaExternal: e.target.value })}
+                  />
+                </Field>
+                <Field label="Tombol (konfirmasi)">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutCtaConfirm}
+                    onChange={(e) => patchSettings({ checkoutCtaConfirm: e.target.value })}
+                  />
+                </Field>
+              </div>
+              <Field label="Teks saat memproses">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  value={s.checkoutSubmitLoading}
+                  onChange={(e) => patchSettings({ checkoutSubmitLoading: e.target.value })}
+                />
+              </Field>
+              <Field label="Catatan kaki (Midtrans aktif)">
+                <textarea
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[56px] text-xs"
+                  value={s.checkoutFooterSnap}
+                  onChange={(e) => patchSettings({ checkoutFooterSnap: e.target.value })}
+                />
+              </Field>
+              <Field label="Catatan kaki (tanpa gateway)">
+                <textarea
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[56px] text-xs"
+                  value={s.checkoutFooterNoGateway}
+                  onChange={(e) => patchSettings({ checkoutFooterNoGateway: e.target.value })}
+                />
+              </Field>
+            </>
+          )}
+
           {tab === "legal" && (
             <>
               <Field label="URL Syarat & Ketentuan">
@@ -385,7 +540,7 @@ export function AdminSettingsModal({
           {tab === "content" && (
             <>
               <p className="text-white/45 text-xs">
-                Ekspor / impor seluruh konten landing (WordPress-style: salin JSON hasil migrasi; unggah file .json).
+                JSON mencerminkan konten saat ini (termasuk perubahan di halaman). Gunakan ekspor/impor untuk cadangan atau migrasi.
               </p>
               <div className="flex flex-wrap gap-2">
                 <button type="button" onClick={exportJson} className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 px-4 py-2 rounded-xl text-xs font-bold">
@@ -397,6 +552,16 @@ export function AdminSettingsModal({
                   className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 px-4 py-2 rounded-xl text-xs"
                 >
                   <Upload size={14} /> Unggah JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setJsonText(JSON.stringify(data, null, 2));
+                    toast("JSON diselaraskan dengan tampilan saat ini.", "success");
+                  }}
+                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 px-4 py-2 rounded-xl text-xs"
+                >
+                  Muat ulang dari halaman
                 </button>
                 <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={onJsonFile} />
               </div>
