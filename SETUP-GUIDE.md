@@ -71,9 +71,24 @@ NODE_ENV=development node scripts/reset-demo.mjs
 
 Tanpa `NODE_ENV=development`, gunakan `ALLOW_DEMO_SEED=true` secara eksplisit.
 
-## 7. Cron terjadwal
+## 7. Cron terjadwal (GitHub Actions)
 
-Gunakan GitHub Actions, Vercel Cron, atau layanan eksternal untuk `POST` ke `scheduled-ops` sekali per jam (atau sesuai kebutuhan), dengan secret yang sama seperti `CRON_SECRET`.
+Sudah ada workflow [`.github/workflows/macfyi-scheduled-ops.yml`](.github/workflows/macfyi-scheduled-ops.yml). Setelah **push ke GitHub**, buka repo → **Settings → Secrets and variables → Actions**:
+
+1. **New repository secret** → nama `MACFYI_CRON_SECRET`, nilai = baris `CRON_SECRET` di `macfyi-local.env` (file lokal Anda, jangan di-commit).
+2. **Variables** tab → **New repository variable** → nama `MACFYI_SCHEDULED_OPS_URL`, nilai =  
+   `https://<PROJECT_REF>.supabase.co/functions/v1/scheduled-ops`  
+   (ganti `<PROJECT_REF>` dengan ref proyek Anda, sama seperti di URL Supabase.)
+
+Tanpa kedua nilai itu, workflow akan gagal sampai Anda mengisinya. Alternatif: Vercel Cron atau cron server lain yang `POST` ke URL yang sama dengan header `Authorization: Bearer <CRON_SECRET>`.
+
+### Email alert penarikan (`OPS_ALERT_EMAIL`)
+
+Setelah punya alamat email admin yang dipakai:
+
+1. Isi `export OPS_ALERT_EMAIL="admin@domain.com"` di `macfyi-local.env`.
+2. Jalankan: `source macfyi-local.env && supabase secrets set OPS_ALERT_EMAIL="$OPS_ALERT_EMAIL"`  
+   atau ulangi `./scripts/integrasi-stack.sh ./macfyi-local.env`.
 
 ## 8. Catatan produksi
 

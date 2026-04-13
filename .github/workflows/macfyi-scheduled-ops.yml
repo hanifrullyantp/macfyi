@@ -1,0 +1,30 @@
+# Panggil Edge Function scheduled-ops (komisi jatuh tempo, tier, event).
+# Setelah push: GitHub → Settings → Secrets and variables → Actions
+#   - Repository secret: MACFYI_CRON_SECRET = nilai export CRON_SECRET di macfyi-local.env
+#   - Repository variable: MACFYI_SCHEDULED_OPS_URL = https://<PROJECT_REF>.supabase.co/functions/v1/scheduled-ops
+
+name: Macfyi scheduled-ops
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  invoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST scheduled-ops
+        env:
+          URL: ${{ vars.MACFYI_SCHEDULED_OPS_URL }}
+          CRON: ${{ secrets.MACFYI_CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$CRON" ]; then
+            echo "Wajib: Variable MACFYI_SCHEDULED_OPS_URL + Secret MACFYI_CRON_SECRET (lihat komentar di file workflow)."
+            exit 1
+          fi
+          curl -sfS -X POST "$URL" \
+            -H "Authorization: Bearer $CRON" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+          echo "OK"

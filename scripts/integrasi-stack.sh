@@ -147,10 +147,28 @@ supabase secrets set MIDTRANS_SERVER_KEY="$MIDTRANS_SERVER_KEY"
 supabase secrets set MIDTRANS_CLIENT_KEY="$MIDTRANS_CLIENT_KEY"
 supabase secrets set MIDTRANS_IS_PRODUCTION="$MIDTRANS_PROD_FLAG"
 
+if [[ -n "${OPS_ALERT_EMAIL:-}" ]]; then
+  echo "==> secrets: OPS_ALERT_EMAIL"
+  supabase secrets set OPS_ALERT_EMAIL="$OPS_ALERT_EMAIL"
+else
+  echo "==> Lewati OPS_ALERT_EMAIL (kosong) — email alert penarikan tidak dikirim sampai diisi."
+fi
+
+if [[ -n "${CRON_SECRET:-}" ]]; then
+  echo "==> secrets: CRON_SECRET"
+  supabase secrets set CRON_SECRET="$CRON_SECRET"
+else
+  echo "==> Lewati CRON_SECRET (kosong) — scheduled-ops tidak bisa dipanggil aman sampai Anda set secret ini."
+fi
+
 echo "==> supabase functions deploy"
 supabase functions deploy create-midtrans-snap --no-verify-jwt
 supabase functions deploy payment-webhook --no-verify-jwt
 supabase functions deploy activate-license --no-verify-jwt
+supabase functions deploy track-event --no-verify-jwt
+supabase functions deploy submit-withdrawal --no-verify-jwt
+supabase functions deploy admin-withdrawal --no-verify-jwt
+supabase functions deploy scheduled-ops --no-verify-jwt
 
 echo "==> Uji create-midtrans-snap (curl)"
 SNAP_OUT="$(mktemp)"
