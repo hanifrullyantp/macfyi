@@ -1,0 +1,135 @@
+/* Macfyi — Indonesian (default) */
+"about.macfyi" = "Tentang Macfyi";
+"common.ok" = "Oke";
+"common.cancel" = "Batal";
+
+"shell.smartCare" = "Smart Care";
+"shell.cleanup" = "Pembersihan";
+"shell.clutter" = "Berantakan";
+"shell.uninstaller" = "Uninstaller";
+"shell.userTrash" = "Tong Sampah";
+"shell.performance" = "Performa";
+"shell.monitor" = "Monitor";
+"shell.history" = "Riwayat";
+"shell.settings" = "Pengaturan";
+"shell.section.maintenance" = "Perawatan";
+"shell.section.insights" = "Wawasan";
+"shell.section.system" = "Sistem";
+
+"module.smartCare.title" = "Smart Care";
+"module.smartCare.subtitle" = "Pindai dan bersihkan Mac dengan aman — modul ini akan terhubung ke alur pindai lengkap.";
+"module.cleanup.title" = "Pembersihan";
+"module.cleanup.subtitle" = "Bersihkan cache, log, dan sampah sistem.";
+"module.clutter.title" = "Berantakan";
+"module.clutter.subtitle" = "Temukan file besar dan duplikat.";
+"module.uninstall.title" = "Uninstaller";
+"module.uninstall.subtitle" = "Hapus aplikasi dan sisa file.";
+"module.trash.title" = "Tong Sampah";
+"module.trash.subtitle" = "Kelola isi Tong Sampah.";
+"module.monitor.title" = "Monitor";
+"module.monitor.subtitle" = "Ikuti tren penyimpanan dan ruang kosong.";
+"module.history.title" = "Riwayat";
+"module.history.subtitle" = "Aktivitas pindai dan pembersihan.";
+
+"orb.label.scan" = "Pindai";
+"orb.label.perfAnalyze" = "Analisa Performa";
+"orb.label.rescan" = "Pindai Ulang";
+"orb.label.cleaning" = "Membersihkan...";
+"orb.tooltip.tapScan" = "Ketuk untuk memulai pemindaian";
+
+"onboard.welcome.title" = "Selamat Datang di Macfyi";
+"onboard.welcome.subtitle" = "Asisten AI untuk merawat Mac kamu.\nLebih bersih, lebih cepat, lebih aman.";
+"onboard.welcome.cta" = "Mulai Tur";
+"onboard.next" = "Lanjut →";
+
+"onboard.clean.title" = "Bersihkan Sampah dengan Aman";
+"onboard.clean.body" = "Macfyi menemukan cache, duplikat, dan file yang sudah tidak terpakai. AI kami memastikan hanya file yang benar-benar aman yang dihapus.";
+"onboard.clean.p1" = "🟢 Cache Sistem";
+"onboard.clean.p2" = "🟢 File Duplikat";
+"onboard.clean.p3" = "🟢 Unduhan Lama";
+
+"onboard.perf.title" = "Percepat Mac Kamu";
+"onboard.perf.body" = "Kurangi aplikasi yang berjalan saat startup. Bebaskan RAM yang tidak terpakai. Mac kamu akan terasa seperti baru.";
+"onboard.perf.p1" = "⚡ Aplikasi Startup";
+"onboard.perf.p2" = "💾 Bebaskan RAM";
+"onboard.perf.p3" = "🔧 Pemeliharaan";
+
+"onboard.uninstall.title" = "Hapus Aplikasi Sampai Bersih";
+"onboard.uninstall.body" = "Menghapus app biasa sering meninggalkan file tersembunyi. Macfyi membersihkan semua sisa cache dan data aplikasi yang sudah dihapus.";
+"onboard.uninstall.p1" = "🗑 Uninstall Bersih";
+"onboard.uninstall.p2" = "📦 Hapus Sisa File";
+"onboard.uninstall.p3" = "💰 Tampilkan Penghematan";
+
+"onboard.ai.title" = "Tanya AI, Dapatkan Jawaban Jelas";
+"onboard.ai.body" = "Tidak tahu apakah file ini aman dihapus? Tanya Asisten AI Macfyi. Penjelasan dalam bahasa yang mudah dipahami, bukan bahasa teknis.";
+"onboard.ai.p1" = "🤖 Analisa Risiko";
+"onboard.ai.p2" = "💬 Konsultasi File";
+"onboard.ai.p3" = "✅ Rekomendasi Aman";
+
+"onboard.perm.title" = "Satu Langkah Terakhir";
+"onboard.perm.body" = "Macfyi perlu akses ke folder kamu untuk memindai file. Kami TIDAK membaca isi file kamu, hanya nama dan ukurannya saja.";
+"onboard.perm.allow" = "Izinkan";
+"onboard.perm.choose" = "Pilih Folder";
+"onboard.perm.cta" = "Mulai Scan Pertama →";
+"onboard.perm.privacy" = "Privasi kamu terjaga 🔒";
+"onboard.permission.documents" = "Folder Dokumen";
+"onboard.permission.downloads" = "Folder Unduhan";
+"onboard.permission.desktop" = "Folder Desktop";
+
+"onboard.demo.login" = "Login Items 5";
+"onboard.demo.bg" = "Background 12";
+"onboard.demo.save" = "Hemat 4.2 GB";
+"onboard.demo.q" = "Apa itu node_modules?";
+"onboard.demo.a" = "Folder dependensi proyek — bisa besar, hapus hanya jika proyek tidak dipakai.";
+
+"notif.scanComplete.title" = "Pemindaian Selesai";
+"notif.scanComplete.body" = "Ditemukan %lld item • %@ bisa dibebaskan";
+"notif.cleanComplete.title" = "Pembersihan Selesai! 🎉";
+"notif.cleanComplete.body" = "Berhasil membebaskan %@ ruang penyimpanan";
+
+"settings.sound" = "Efek Suara";
+"settings.sound.hint" = "Putar suara saat pemindaian atau pembersihan selesai";
+
+"perf.title" = "Performa";
+"perf.subtitle" = "Jaga Mac kamu tetap cepat dan responsif";
+"perf.section.login" = "⚡ Aplikasi Startup";
+"perf.section.login.subtitle" = "Aplikasi yang berjalan otomatis saat Mac menyala";
+"perf.section.agents" = "Item Latar Belakang";
+"perf.section.agents.subtitle" = "Agen launchd di folder LaunchAgents";
+"perf.section.ram" = "💾 Penggunaan RAM";
+"perf.section.maint" = "Tugas Pemeliharaan";
+"perf.empty.login" = "Tidak ada item login yang terbaca (atau kosong).";
+"perf.empty.agents" = "Tidak ada plist yang terbaca — cek izin sandbox / Full Disk Access.";
+"perf.openSystemLoginItems" = "Buka Pengaturan Item Login";
+"perf.agent.runAtLoad" = "Jalankan saat login";
+"perf.agent.onDemand" = "Sesuai kebutuhan";
+"perf.ram.total" = "Total RAM: %@";
+"perf.ram.usedPct" = "%.0f%% terpakai (%@)";
+"perf.ram.active" = "Aktif";
+"perf.ram.wired" = "Wired";
+"perf.ram.compressed" = "Terompres";
+"perf.ram.free" = "Bebas";
+"perf.topRam.title" = "🏆 Aplikasi pemakai RAM terbesar";
+"perf.ram.purge.button" = "🚀 Bebaskan RAM Tidak Terpakai";
+"perf.ram.purge.title" = "Membebaskan RAM";
+"perf.ram.purge.message" = "Perintah `purge` biasanya membutuhkan sandi administrator dan tidak selalu disarankan. Tutup aplikasi berat (mis. browser) untuk membebaskan RAM dengan aman.";
+"perf.ai.login.none" = "Tidak ada item login yang terdeteksi.";
+"perf.ai.login.some" = "Meninjau %d item startup dapat mempercepat boot.";
+"perf.ai.ram" = "RAM kamu %.0f%% terpakai. Tutup aplikasi yang tidak dipakai untuk mengurangi tekanan memori.";
+"perf.phase.login" = "Memeriksa item login…";
+"perf.phase.background" = "Memeriksa agen latar belakang…";
+"perf.phase.ram" = "Mengukur RAM…";
+"perf.phase.cpu" = "Sampling CPU…";
+"perf.phase.summary" = "Menyusun ringkasan…";
+"perf.phase.done" = "Analisa selesai";
+"perf.maint.run" = "Jalankan";
+"perf.maint.periodic.title" = "Bersihkan skrip periodik";
+"perf.maint.periodic.desc" = "Menjalankan skrip harian/mingguan/bulanan — sering memerlukan hak admin.";
+"perf.maint.disk.title" = "Verifikasi volume (First Aid)";
+"perf.maint.disk.desc" = "Menjalankan diskutil verifyVolume pada volume boot — aman untuk pengecekan.";
+"perf.maint.dns.title" = "Flush DNS";
+"perf.maint.dns.desc" = "Membersihkan cache DNS untuk koneksi lebih stabil.";
+"perf.maint.spotlight.title" = "Rebuild indeks Spotlight";
+"perf.maint.spotlight.desc" = "Membangun ulang indeks pencarian — dapat memerlukan izin admin untuk volume sistem.";
+"perf.maintenance.ok" = "Selesai.";
+"perf.maintenance.dns.done" = "Cache DNS dibersihkan.";

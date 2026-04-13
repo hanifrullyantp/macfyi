@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Macfyi — Bersihkan Mac Anda</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <div class="wrap">
+        <p class="eyebrow">Storage AI untuk macOS</p>
+        <h1>Macfyi</h1>
+        <p class="lead">
+          Pindaian pintar, ringkasan ruang, dan bantuan AI — lisensi seumur hidup untuk satu perangkat.
+        </p>
+        <a class="cta" href="#checkout">Beli sekarang</a>
+      </div>
+    </header>
+
+    <main class="wrap sections">
+      <section>
+        <h2>Mengapa Macfyi</h2>
+        <ul class="bullets">
+          <li>Dashboard penyimpanan yang jelas tanpa membuka Finder berkali-kali</li>
+          <li>Pembersihan aman dengan rekomendasi yang dapat ditinjau</li>
+          <li>Lisensi lifetime — aktivasi satu perangkat, terikat akun Anda</li>
+        </ul>
+      </section>
+
+      <section id="checkout" class="checkout">
+        <h2>Checkout</h2>
+        <p class="muted">
+          Hubungkan formulir ini ke gateway pembayaran (Midtrans / Xendit). Setelah pembayaran terverifikasi, webhook Supabase
+          menerbitkan lisensi dan mengirim email berisi tautan DMG + kode aktivasi.
+        </p>
+        <form class="form" onsubmit="event.preventDefault(); alert('Sambungkan action formulir ke URL checkout gateway Anda.');">
+          <label>
+            Email
+            <input type="email" name="email" required autocomplete="email" placeholder="nama@email.com" />
+          </label>
+          <label>
+            Nama
+            <input type="text" name="name" autocomplete="name" />
+          </label>
+          <button type="submit">Lanjut ke pembayaran</button>
+        </form>
+        <p class="price">Rp 173.000 — lifetime / 1 perangkat</p>
+      </section>
+
+      <section>
+        <h2>Setelah membeli</h2>
+        <ol class="steps">
+          <li>Unduh DMG dari email konfirmasi.</li>
+          <li>Buka Macfyi — layar aktivasi meminta email pembelian dan kode lisensi.</li>
+          <li>Selesai aktivasi, onboarding akan memandu izin folder jika diperlukan.</li>
+        </ol>
+        <p class="muted small">
+          Deep link opsional (setelah dikonfigurasi di app): <code>macfyi://activate</code> dapat membuka layar aktivasi.
+        </p>
+      </section>
+    </main>
+
+    <footer class="wrap footer">
+      <p>Syarat &amp; ketentuan dan privasi — tautkan URL dari admin Supabase <code>app_settings</code>.</p>
+    </footer>
+  </body>
+</html>

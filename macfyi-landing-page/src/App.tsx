@@ -1,0 +1,1365 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Monitor, 
+  ShieldCheck, 
+  Trash2, 
+  Layers, 
+  Zap, 
+  Cpu, 
+  ChevronDown, 
+  ChevronUp, 
+  Check, 
+  X, 
+  AlertTriangle, 
+  Settings, 
+  Save, 
+  Send, 
+  Eye, 
+  Cloud,
+  Mail,
+  Info
+} from 'lucide-react';
+import { EditableText, EditableImage, EditableVideo } from './components/Editable';
+import type { ContentData } from './types/content';
+import { DEFAULT_SITE_SETTINGS } from './types/content';
+import { deepMerge } from './lib/mergeData';
+import { isValidAdminSession, clearAdminSession } from './config/adminAuth';
+import { injectFacebookPixel, injectGoogleAnalytics } from './lib/injectTracking';
+import { ToastProvider, useToast } from './components/ToastProvider';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { AdminSettingsModal } from './components/AdminSettingsModal';
+import { NotificationBanner } from './components/NotificationBanner';
+import { LeadCaptureForm } from './components/LeadCaptureForm';
+import { CheckoutModal } from './components/CheckoutModal';
+
+const INITIAL_DATA: ContentData = {
+  hero: {
+    title: "Macfyi",
+    headline: "Storage Macbook Mentok, bingung apa lagi yang mau dihapus?",
+    subheadline: "Storage lega, tanpa takut salah hapus. Macfyi membantu Anda tahu apa yang bikin penuh—lalu bersihkan dengan aman",
+    features: [
+      "Analisis storage",
+      "Cleanup aman",
+      "Uninstaller",
+      "My Clutter",
+      "Monitor & performa",
+      "Asisten AI (privasi)",
+    ],
+    primaryCTA: "Saya Mau!",
+    secondaryCTA: "Login"
+  },
+  problem: {
+    heading: "Bayangkan…",
+    p1: "Penyimpanan Mac Anda tinggal sedikit. Kerja mulai terganggu: update gagal, aplikasi berat, file baru susah disimpan.",
+    p2: "Anda ingin bersih-bersih… tapi “Bingung”",
+    highlight: "“Apa Lagi Yang Mau Di Hapus?”",
+    p3: "Akhirnya Macbook Anda makin berat. Tapi beli aplikasi cleaner… kemahalan atau malah bikin ragu karena terlalu agresif."
+  },
+  solution: {
+    preHeading: "Semua ini terjadi karena…",
+    heading: "Masalahnya bukan cuma “storage penuh”. Masalahnya: Anda tidak punya peta.",
+    p1: "Tanpa panduan, bersih-bersih Mac terasa seperti tebak-tebakan. Anda tidak tahu mana yang aman dibuang atau mana yang diam-diam membengkak.",
+    p2: "Macfyi dibuat untuk membantu Anda melihat penyebab storage penuh dan memberi rekomendasi yang lebih aman."
+  },
+  featuresList: [
+    { id: 1, title: "Peta storage", desc: "Anda langsung tahu apa yang paling makan ruang, tanpa bongkar folder satu-satu.", icon: "Monitor" },
+    { id: 2, title: "Cleanup aman", desc: "Ada penanda “lebih aman dibersihkan” dan “perlu dicek dulu” sebelum Anda hapus.", icon: "ShieldCheck" },
+    { id: 3, title: "Uninstaller", desc: "Hapus aplikasi sampai rapi, termasuk sisa file yang sering tertinggal.", icon: "Trash2" },
+    { id: 4, title: "My Clutter", desc: "Bereskan sisa file yang sering tidak terasa, tapi lama-lama bikin penuh.", icon: "Layers" },
+    { id: 5, title: "Asisten AI (privasi)", desc: "Tanya “ini file apa?” tanpa membagikan lokasi detail file Anda.", icon: "Zap" }
+  ],
+  details: [
+    {
+      id: 1,
+      title: "Detail 01 — Ketemu “Biang Kerok” Storage Penuh",
+      p1: "Macfyi menampilkan ringkasan yang mudah dipahami: Anda tahu bagian mana yang paling besar.",
+      bullets: ["Fokus ke yang paling berdampak", "Tidak perlu nebak-nebak", "Lebih cepat ambil keputusan"],
+      image: "https://images.unsplash.com/photo-1542744095-2ad4870f72dd?auto=format&fit=crop&q=80&w=1200"
+    },
+    {
+      id: 2,
+      title: "Detail 02 — Bersih-bersih Tanpa Deg-degan",
+      p1: "Macfyi membantu membedakan mana yang biasanya aman dibersihkan, dan mana yang perlu Anda cek dulu.",
+      bullets: ["Ada penanda kehati-hatian", "Anda tetap review sebelum hapus", "Kontrol tetap di tangan Anda"],
+      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=1200"
+    },
+    {
+      id: 3,
+      title: "Detail 03 — Uninstall yang Tidak Meninggalkan “Sisa”",
+      p1: "Macfyi membantu merapikan sisa file aplikasi yang sering tertinggal.",
+      bullets: ["Uninstall lebih rapi", "Mengurangi penumpukan sisa file"],
+      image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=1200"
+    },
+    {
+      id: 4,
+      title: "Detail 04 — Bereskan User Junk yang Menumpuk Diam-diam",
+      p1: "Cache/log/leftovers sering kecil, tapi menumpuk jadi besar.",
+      bullets: ["Lihat total yang menumpuk", "Pilih yang ingin dibersihkan", "Storage lebih terasa lega"],
+      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200"
+    },
+    {
+      id: 5,
+      title: "Detail 05 — Mac Terasa Berat? Tinjau Penyebabnya",
+      p1: "Macfyi membantu melihat hal yang bisa membebani penggunaan sehari-hari.",
+      bullets: ["Ringkasan RAM", "Tinjau startup items seperlunya", "Rapikan dengan keputusan Anda"],
+      image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200"
+    },
+    {
+      id: 6,
+      title: "Detail 06 — Tanya AI, Privasi Tetap Dijaga",
+      p1: "Butuh penjelasan cepat? Macfyi membantu tanpa membagikan lokasi file Anda secara detail.",
+      bullets: ["Penjelasan lebih mudah dipahami", "Privacy-first (tanpa path file penuh)"],
+      image: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&q=80&w=1200"
+    }
+  ],
+  steps: {
+    title: "Caranya Mudah",
+    subtitle: "Ikuti 3 Step Ini:",
+    items: [
+      { step: "01", label: "Scan", desc: "Macfyi merangkum penyebab storage penuh.", color: "bg-orange-500" },
+      { step: "02", label: "Review", desc: "Anda lihat rekomendasi dan memilih yang ingin dibersihkan.", color: "bg-yellow-500" },
+      { step: "03", label: "Clean", desc: "Bersihkan yang Anda setujui, storage pun lega.", color: "bg-green-500" }
+    ]
+  },
+  pricing: {
+    title: "Harga Lifetime (1 Perangkat)",
+    price: "Rp 173.000",
+    label: "Lifetime 1 Mac",
+    bullets: ["Sekali bayar", "Tanpa langganan", "Dipakai kapan saja saat storage penuh lagi"],
+    cta: "Checkout Rp 173.000"
+  },
+  valueStack: {
+    title: "Yang Anda dapatkan setelah pakai Macfyi",
+    items: [
+      "Lebih tenang karena tidak menebak-nebak",
+      "Lebih rapi karena sisa aplikasi ikut beres",
+      "Lebih cepat ambil keputusan karena terlihat jelas penyebabnya",
+      "Lebih siap jangka panjang karena saat penuh lagi, Anda sudah punya alatnya"
+    ],
+    cta: "Saya Mau!"
+  },
+  urgency: {
+    title: "Semakin ditunda, semakin banyak yang menumpuk tanpa terasa",
+    p1: "Kalau dibiarkan:",
+    bullets: [
+      "storage makin sering “mentok” saat butuh mendadak",
+      "file sisa makin sulit dipilah",
+      "waktu Anda habis untuk cari-cari manual"
+    ],
+    cta: "Checkout Rp 173.000"
+  },
+  trust: {
+    title: "Dibuat untuk pengguna Mac yang ingin jelas dan aman",
+    bullets: [
+      "Anda bisa review dulu sebelum bersih-bersih",
+      "Macfyi membantu Anda memahami, bukan memaksa menghapus",
+      "Privasi dijaga: AI tidak membagikan lokasi detail file Anda"
+    ]
+  },
+  comparison: {
+    title: "Kenapa Macfyi lebih nyaman dibanding cara lain?",
+    headers: ["", "Bersih-bersih Manual", "Cleaner Berlangganan", "Macfyi"],
+    rows: [
+      { label: "Tahu penyebab storage penuh", values: [false, true, true] },
+      { label: "Ada panduan “aman / cek dulu”", values: ["⚠️", "⚠️", true] },
+      { label: "Uninstall sampai rapi", values: [false, true, true] },
+      { label: "Biaya", values: ["“gratis” tapi makan waktu", "mahal tiap bulan", "sekali bayar"] },
+      { label: "Privasi AI", values: ["-", "tidak selalu jelas", true] }
+    ],
+    conclusion: "Kesimpulan: Macfyi = jelas, lebih aman, sekali bayar"
+  },
+  faq: [
+    { q: "Apakah Macfyi otomatis menghapus file saya?", a: "Tidak. Macfyi hanya memberi rekomendasi. Keputusan akhir untuk menghapus tetap ada di tangan Anda." },
+    { q: "Bagaimana Macfyi menjaga privasi AI?", a: "Sesuai prinsip privacy-first, AI hanya menganalisis pola umum data lokal. Path file lengkap tidak dikirim ke server eksternal kami." },
+    { q: "Kenapa perlu izin akses folder / Full Disk Access?", a: "Karena banyak file sampah tersimpan di area sistem yang terkunci default. Izin ini diperlukan agar Macfyi bisa memindai area tersebut secara menyeluruh." },
+    { q: "Lisensi untuk berapa perangkat?", a: "Lisensi ini berlaku untuk 1 perangkat Mac selamanya (Lifetime)." },
+    { q: "Apakah Macfyi bisa memulihkan file yang terhapus?", a: "Tidak. Fokus utama Macfyi adalah pembersihan storage dan optimasi sistem, bukan pemulihan file (data recovery)." }
+  ],
+  footer: {
+    address: "Jakarta, Indonesia",
+    contact: "support@macfyi.com",
+    hours: "Senin - Jumat, 09:00 - 18:00 WIB",
+    links: [
+      { label: "Syarat & Ketentuan", url: "#" },
+      { label: "Kebijakan Privasi", url: "#" }
+    ],
+    copyright: "© 2026 Macfyi. Dibuat untuk Produktivitas & Keamanan Data Anda."
+  },
+  settings: {
+    ...DEFAULT_SITE_SETTINGS,
+  }
+};
+
+function mergeSavedContent(raw: string | null): ContentData {
+  if (!raw) return INITIAL_DATA;
+  try {
+    const parsed = JSON.parse(raw) as Partial<ContentData>;
+    const base = JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData;
+    return deepMerge(base, parsed);
+  } catch {
+    return INITIAL_DATA;
+  }
+}
+
+// --- Components ---
+
+const IconComponent = ({ name, className }: { name: string; className?: string }) => {
+  switch (name) {
+    case 'Monitor': return <Monitor className={className} />;
+    case 'ShieldCheck': return <ShieldCheck className={className} />;
+    case 'Trash2': return <Trash2 className={className} />;
+    case 'Layers': return <Layers className={className} />;
+    case 'Zap': return <Zap className={className} />;
+    case 'Cpu': return <Cpu className={className} />;
+    default: return <Info className={className} />;
+  }
+};
+
+function LandingApp() {
+  const toast = useToast();
+  const [data, setData] = useState<ContentData>(() =>
+    typeof localStorage !== 'undefined' ? mergeSavedContent(localStorage.getItem('macfyi_data')) : INITIAL_DATA
+  );
+  const [sessionOk, setSessionOk] = useState(() => isValidAdminSession());
+  const [adminPreview, setAdminPreview] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [openFaqs, setOpenFaqs] = useState<Set<number>>(() => new Set([0]));
+  const [bannerDismissed, setBannerDismissed] = useState(() =>
+    typeof sessionStorage !== 'undefined' && sessionStorage.getItem('macfyi_banner_dismissed') === '1'
+  );
+
+  const canEdit = sessionOk && !adminPreview;
+
+  const leadWebhookUrl = import.meta.env.VITE_LEAD_WEBHOOK_URL as string | undefined;
+  const leadWebhookActive = Boolean(leadWebhookUrl?.trim());
+
+  useEffect(() => {
+    const t = window.setInterval(() => {
+      if (!isValidAdminSession() && sessionOk) setSessionOk(false);
+    }, 20000);
+    return () => window.clearInterval(t);
+  }, [sessionOk]);
+
+  useEffect(() => {
+    document.title = data.settings.seoTitle;
+    let meta = document.querySelector('meta[name="description"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'description');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', data.settings.seoDescription);
+  }, [data.settings.seoTitle, data.settings.seoDescription]);
+
+  useEffect(() => {
+    if (data.settings.facebookPixelId?.trim()) injectFacebookPixel(data.settings.facebookPixelId);
+  }, [data.settings.facebookPixelId]);
+
+  useEffect(() => {
+    if (data.settings.googleAnalyticsId?.trim()) injectGoogleAnalytics(data.settings.googleAnalyticsId);
+  }, [data.settings.googleAnalyticsId]);
+
+  const updateData = useCallback((path: string, value: unknown) => {
+    setData((prev) => {
+      const newData = structuredClone(prev) as ContentData;
+      const keys = path.split('.');
+      let current: Record<string, unknown> = newData as unknown as Record<string, unknown>;
+      for (let i = 0; i < keys.length - 1; i++) {
+        current = current[keys[i]] as Record<string, unknown>;
+      }
+      current[keys[keys.length - 1]] = value;
+      return newData;
+    });
+    setHasChanges(true);
+  }, []);
+
+  const patchSettings = useCallback((partial: Partial<ContentData['settings']>) => {
+    setData((prev) => ({ ...prev, settings: { ...prev.settings, ...partial } }));
+    setHasChanges(true);
+  }, []);
+
+  const replaceData = useCallback((next: ContentData) => {
+    setData(next);
+    setHasChanges(true);
+  }, []);
+
+  const toggleFaq = useCallback(
+    (i: number) => {
+      setOpenFaqs((prev) => {
+        const next = new Set(prev);
+        if (data.settings.faqSingleOpen) {
+          if (next.has(i)) return new Set<number>();
+          return new Set([i]);
+        }
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        return next;
+      });
+    },
+    [data.settings.faqSingleOpen]
+  );
+
+  const saveToDraft = () => {
+    localStorage.setItem('macfyi_data', JSON.stringify(data));
+    setHasChanges(false);
+    setLastSaved(new Date().toLocaleTimeString());
+    toast('Draft disimpan ke localStorage.', 'success');
+  };
+
+  const publish = () => {
+    saveToDraft();
+    toast('Dipublikasikan (lokal). Deploy build statis untuk produksi.', 'success');
+  };
+
+  const onGearClick = () => {
+    if (sessionOk) setIsSettingsOpen(true);
+    else setIsLoginOpen(true);
+  };
+
+  const openCheckout = useCallback(() => setCheckoutOpen(true), []);
+
+  const openLoginModal = useCallback(() => setIsLoginOpen(true), []);
+
+  const dismissBanner = () => {
+    sessionStorage.setItem('macfyi_banner_dismissed', '1');
+    setBannerDismissed(true);
+  };
+
+  const bannerVisible = useMemo(
+    () => data.settings.notificationBannerEnabled && !bannerDismissed,
+    [data.settings.notificationBannerEnabled, bannerDismissed]
+  );
+
+  return (
+    <div className="min-h-screen bg-[#070B14] text-white selection:bg-red-500/30 font-sans">
+      <NotificationBanner
+        visible={bannerVisible}
+        text={data.settings.notificationBannerText}
+        soundOnShow={data.settings.notificationSoundEnabled}
+        soundOnDismiss={data.settings.notificationSoundEnabled}
+        onDismiss={dismissBanner}
+        accentColor={data.settings.primaryColor}
+      />
+
+      {/* Admin Toolbar */}
+      <AnimatePresence>
+        {sessionOk && !adminPreview && (
+          <motion.div 
+            initial={{ y: -100 }}
+            animate={{ y: 0 }}
+            exit={{ y: -100 }}
+            className="fixed top-0 inset-x-0 z-[60] bg-black/90 border-b border-white/10 p-2 px-4 flex items-center justify-between backdrop-blur-md"
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-2 h-2 rounded-full bg-amber-500/90" />
+                <span className="text-white/60">Mode admin (penyimpanan lokal)</span>
+              </div>
+              {leadWebhookActive && (
+                <>
+                  <div className="h-4 w-px bg-white/10" />
+                  <div className="flex items-center gap-2 text-xs">
+                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-white/60">Webhook lead: aktif</span>
+                  </div>
+                </>
+              )}
+              <div className="h-4 w-px bg-white/10" />
+              <div className="text-xs text-white/40">
+                {hasChanges ? (
+                  <span className="text-yellow-500">Unsaved changes</span>
+                ) : (
+                  <span>Last saved: {lastSaved || 'No changes yet'}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
+              >
+                <Settings size={14} /> Settings
+              </button>
+              <button 
+                onClick={saveToDraft}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
+              >
+                <Save size={14} /> Save Draft
+              </button>
+              <button 
+                onClick={publish}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-bold transition shadow-lg shadow-red-600/20"
+              >
+                <Send size={14} /> Publish
+              </button>
+              <button 
+                onClick={() => setAdminPreview(true)}
+                className="ml-2 text-white/40 hover:text-white"
+                title="Pratinjau pengunjung"
+              >
+                <Eye size={18} />
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  clearAdminSession();
+                  setSessionOk(false);
+                  setAdminPreview(false);
+                  toast('Anda keluar dari mode admin.', 'info');
+                }}
+                className="ml-2 text-xs text-white/50 hover:text-white px-2 py-1 rounded border border-white/15"
+              >
+                Keluar
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header */}
+      <header className={`sticky top-0 z-50 bg-[#070B14]/80 backdrop-blur-md border-b border-white/10 transition-all ${sessionOk && !adminPreview ? 'mt-[49px]' : ''}`}>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {data.settings.brandLogoUrl ? (
+              <img src={data.settings.brandLogoUrl} alt="" className="w-8 h-8 rounded-lg object-contain bg-white/5" />
+            ) : (
+              <div
+                className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-lg italic text-white"
+                style={{ backgroundColor: data.settings.primaryColor }}
+              >
+                {(data.settings.siteName || 'M').slice(0, 1)}
+              </div>
+            )}
+            <EditableText 
+              value={data.hero.title} 
+              onSave={(v) => updateData('hero.title', v)} 
+              isAdmin={canEdit} 
+              className="font-bold text-xl tracking-tight" 
+            />
+          </div>
+          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-white/70">
+            <a href="#features" className="hover:text-red-500 transition">Features</a>
+            <a href="#pricing" className="hover:text-red-500 transition">Pricing</a>
+            <a href="#lead" className="hover:text-red-500 transition">Kontak</a>
+            <a href="#faq" className="hover:text-red-500 transition">FAQ</a>
+          </nav>
+          <div className="flex items-center gap-4">
+            <button 
+              type="button"
+              onClick={openLoginModal}
+              className="hidden sm:block text-sm font-medium text-white/70 hover:text-white"
+            >
+              <EditableText value={data.hero.secondaryCTA} onSave={(v) => updateData('hero.secondaryCTA', v)} isAdmin={canEdit} />
+            </button>
+            <button 
+              type="button"
+              onClick={openCheckout}
+              className="text-white px-5 py-2 rounded-full text-sm font-bold transition shadow-lg"
+              style={{ backgroundColor: data.settings.primaryColor, boxShadow: `0 10px 40px ${data.settings.primaryColor}33` }}
+            >
+              <EditableText value={data.hero.primaryCTA} onSave={(v) => updateData('hero.primaryCTA', v)} isAdmin={canEdit} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative pt-20 pb-32 overflow-hidden">
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-full bg-gradient-radial from-red-600/10 to-transparent pointer-events-none" />
+        
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <EditableText 
+              as="h1"
+              value={data.hero.headline} 
+              onSave={(v) => updateData('hero.headline', v)} 
+              isAdmin={canEdit} 
+              multiline
+              className="text-4xl md:text-6xl font-black mb-6 max-w-4xl mx-auto leading-tight" 
+            />
+            <EditableText 
+              as="p"
+              value={data.hero.subheadline} 
+              onSave={(v) => updateData('hero.subheadline', v)} 
+              isAdmin={canEdit} 
+              multiline
+              className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10" 
+            />
+
+            <div className="max-w-xl mx-auto mb-16 p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="flex justify-between items-end mb-4">
+                <div className="text-left">
+                  <div className="text-sm text-white/40 mb-1 font-medium">Macintosh HD</div>
+                  <div className="text-lg font-bold">Storage Status</div>
+                </div>
+                <div className="text-right">
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 2 }}
+                    className="text-xs text-green-500 font-bold bg-green-500/10 px-2 py-0.5 rounded"
+                  >
+                    Optimized by Macfyi
+                  </motion.div>
+                </div>
+              </div>
+              
+              <div className="h-6 w-full bg-white/10 rounded-full overflow-hidden flex">
+                <motion.div 
+                  initial={{ width: '98%' }}
+                  animate={{ width: '30%' }}
+                  transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
+                  className="h-full bg-red-600"
+                />
+                <motion.div 
+                  initial={{ width: '2%' }}
+                  animate={{ width: '70%' }}
+                  transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
+                  className="h-full bg-white/10"
+                />
+              </div>
+              
+              <div className="flex justify-between mt-3 text-[10px] font-bold tracking-wider uppercase text-white/40">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-600" />
+                  <span>Used Space</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-white/20" />
+                  <span>Free Space</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3 text-xs md:text-sm font-bold text-white/40">
+              {data.hero.features.map((feat, i) => (
+                <React.Fragment key={i}>
+                  <EditableText value={feat} onSave={(v) => {
+                    const newFeats = [...data.hero.features];
+                    newFeats[i] = v;
+                    updateData('hero.features', newFeats);
+                  }} isAdmin={canEdit} />
+                  {i < data.hero.features.length - 1 && <span>|</span>}
+                </React.Fragment>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Problem Section */}
+      <section className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <EditableText 
+            as="h2"
+            value={data.problem.heading} 
+            onSave={(v) => updateData('problem.heading', v)} 
+            isAdmin={canEdit} 
+            className="text-red-500 font-bold mb-8 text-xl tracking-widest uppercase" 
+          />
+          <EditableText 
+            as="p"
+            value={data.problem.p1} 
+            onSave={(v) => updateData('problem.p1', v)} 
+            isAdmin={canEdit} 
+            multiline
+            className="text-2xl md:text-3xl font-medium mb-12 text-white/80" 
+          />
+          
+          <div className="relative py-12 px-8 mb-12 border-y border-white/10">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#070B14] px-4 text-white/20">
+              <Zap size={32} />
+            </div>
+            <EditableText 
+              as="h3"
+              value={data.problem.highlight} 
+              onSave={(v) => updateData('problem.highlight', v)} 
+              isAdmin={canEdit} 
+              className="text-4xl md:text-5xl font-black italic text-white" 
+            />
+          </div>
+
+          <EditableText 
+            as="p"
+            value={data.problem.p3} 
+            onSave={(v) => updateData('problem.p3', v)} 
+            isAdmin={canEdit} 
+            multiline
+            className="text-xl text-white/50" 
+          />
+        </div>
+      </section>
+
+      {/* Solution Section */}
+      <section className="py-24">
+        <div className="container mx-auto px-4 text-center">
+          <EditableText 
+            as="p"
+            value={data.solution.preHeading} 
+            onSave={(v) => updateData('solution.preHeading', v)} 
+            isAdmin={canEdit} 
+            className="text-white/40 mb-4" 
+          />
+          <EditableText 
+            as="h2"
+            value={data.solution.heading} 
+            onSave={(v) => updateData('solution.heading', v)} 
+            isAdmin={canEdit} 
+            multiline
+            className="text-3xl md:text-5xl font-bold mb-12 max-w-4xl mx-auto" 
+          />
+          
+          <div className="grid md:grid-cols-2 gap-8 text-left max-w-5xl mx-auto mb-20">
+            <div className="p-8 rounded-3xl bg-white/5 border border-white/10">
+              <EditableText 
+                as="p"
+                value={data.solution.p1} 
+                onSave={(v) => updateData('solution.p1', v)} 
+                isAdmin={canEdit} 
+                multiline
+                className="text-lg text-white/60 leading-relaxed" 
+              />
+            </div>
+            <div className="p-8 rounded-3xl bg-red-600/10 border border-red-600/20">
+              <EditableText 
+                as="p"
+                value={data.solution.p2} 
+                onSave={(v) => updateData('solution.p2', v)} 
+                isAdmin={canEdit} 
+                multiline
+                className="text-lg text-white leading-relaxed font-medium" 
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center">
+            <div className="text-sm font-bold tracking-widest uppercase text-white/20 mb-12">Solusi yang lebih jelas dengan</div>
+            <motion.div 
+              whileHover={{ scale: 1.05 }}
+              className="text-7xl md:text-9xl font-black text-red-600 italic tracking-tighter"
+            >
+              Macfyi
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features List */}
+      <section id="features" className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold mb-16 text-center">5 Fitur Utama</h2>
+          <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-6">
+            {data.featuresList.map((feat, i) => (
+              <motion.div 
+                key={feat.id}
+                whileHover={{ y: -5 }}
+                className="p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-red-500/50 transition-colors"
+              >
+                <div className="w-12 h-12 bg-red-600/20 rounded-2xl flex items-center justify-center text-red-500 mb-6">
+                  <IconComponent name={feat.icon} />
+                </div>
+                <EditableText 
+                  as="h3"
+                  value={feat.title} 
+                  onSave={(v) => {
+                    const newList = [...data.featuresList];
+                    newList[i].title = v;
+                    updateData('featuresList', newList);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="font-bold mb-3 block" 
+                />
+                <EditableText 
+                  as="p"
+                  value={feat.desc} 
+                  onSave={(v) => {
+                    const newList = [...data.featuresList];
+                    newList[i].desc = v;
+                    updateData('featuresList', newList);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-sm text-white/60" 
+                />
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Details Sections */}
+      <section id="details" className="py-24 space-y-32">
+        {data.details.map((detail, i) => (
+          <div key={detail.id} className="container mx-auto px-4">
+            <div className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} gap-16 items-center`}>
+              <div className="flex-1 w-full">
+                <EditableText 
+                  as="h3"
+                  value={detail.title} 
+                  onSave={(v) => {
+                    const newDetails = [...data.details];
+                    newDetails[i].title = v;
+                    updateData('details', newDetails);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-2xl md:text-3xl font-bold mb-6 block" 
+                />
+                <EditableText 
+                  as="p"
+                  value={detail.p1} 
+                  onSave={(v) => {
+                    const newDetails = [...data.details];
+                    newDetails[i].p1 = v;
+                    updateData('details', newDetails);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-lg text-white/60 mb-8 block" 
+                />
+                <ul className="space-y-4">
+                  {detail.bullets.map((bullet, j) => (
+                    <li key={j} className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded-full bg-red-600/20 flex items-center justify-center text-red-500 shrink-0">
+                        <Check size={12} />
+                      </div>
+                      <EditableText 
+                        value={bullet} 
+                        onSave={(v) => {
+                          const newDetails = [...data.details];
+                          newDetails[i].bullets[j] = v;
+                          updateData('details', newDetails);
+                        }} 
+                        isAdmin={canEdit} 
+                        className="text-white/80" 
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="flex-1 w-full">
+                <div className="relative group">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-red-600/20 to-transparent rounded-3xl blur opacity-25" />
+                  <div className="relative rounded-2xl bg-white/5 border border-white/10 overflow-hidden shadow-2xl">
+                    <EditableImage 
+                      src={detail.image} 
+                      alt={detail.title} 
+                      onSave={(v) => {
+                        const newDetails = [...data.details];
+                        newDetails[i].image = v;
+                        updateData('details', newDetails);
+                      }} 
+                      isAdmin={canEdit} 
+                    />
+                    <div className="absolute bottom-4 left-4 right-4 p-4 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl">
+                      <p className="text-xs font-bold text-white/60 tracking-widest uppercase">Screenshot (editable in admin mode)</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </section>
+
+      {/* How It Works */}
+      <section className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 text-center">
+          <EditableText 
+            as="h2"
+            value={data.steps.title} 
+            onSave={(v) => updateData('steps.title', v)} 
+            isAdmin={canEdit} 
+            className="text-2xl font-bold mb-2 block" 
+          />
+          <EditableText 
+            as="p"
+            value={data.steps.subtitle} 
+            onSave={(v) => updateData('steps.subtitle', v)} 
+            isAdmin={canEdit} 
+            className="text-4xl md:text-5xl font-black mb-16 block text-red-600 italic" 
+          />
+
+          <div className="grid md:grid-cols-3 gap-12 max-w-5xl mx-auto">
+            {data.steps.items.map((item, i) => (
+              <div key={i} className="relative">
+                <div className={`w-20 h-20 ${item.color} rounded-3xl flex items-center justify-center text-white font-black text-3xl mx-auto mb-8 shadow-xl`}>
+                  {item.step}
+                </div>
+                <EditableText 
+                  as="h3"
+                  value={item.label} 
+                  onSave={(v) => {
+                    const newItems = [...data.steps.items];
+                    newItems[i].label = v;
+                    updateData('steps.items', newItems);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-xl font-bold mb-4 block" 
+                />
+                <EditableText 
+                  as="p"
+                  value={item.desc} 
+                  onSave={(v) => {
+                    const newItems = [...data.steps.items];
+                    newItems[i].desc = v;
+                    updateData('steps.items', newItems);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-white/60" 
+                />
+                {i < data.steps.items.length - 1 && (
+                  <div className="hidden md:block absolute top-10 left-[70%] w-full h-[2px] border-t-2 border-dashed border-white/10 -z-10" />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-24">
+        <div className="container mx-auto px-4">
+          <div className="max-w-4xl mx-auto rounded-[3rem] bg-gradient-to-br from-red-600/20 to-red-900/40 border border-red-500/30 overflow-hidden shadow-2xl">
+            <div className="p-8 md:p-16 flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1">
+                <EditableText 
+                  as="h2"
+                  value={data.pricing.title} 
+                  onSave={(v) => updateData('pricing.title', v)} 
+                  isAdmin={canEdit} 
+                  className="text-2xl font-bold mb-2 block" 
+                />
+                <EditableText 
+                  as="div"
+                  value={data.pricing.price} 
+                  onSave={(v) => updateData('pricing.price', v)} 
+                  isAdmin={canEdit} 
+                  className="text-5xl md:text-6xl font-black mb-2 block" 
+                />
+                <EditableText 
+                  as="p"
+                  value={data.pricing.label} 
+                  onSave={(v) => updateData('pricing.label', v)} 
+                  isAdmin={canEdit} 
+                  className="text-red-500 font-bold tracking-widest uppercase text-sm mb-8 block" 
+                />
+                <ul className="space-y-4 mb-8">
+                  {data.pricing.bullets.map((bullet, i) => (
+                    <li key={i} className="flex items-center gap-3">
+                      <Check className="text-red-500" size={18} />
+                      <EditableText 
+                        value={bullet} 
+                        onSave={(v) => {
+                          const newBullets = [...data.pricing.bullets];
+                          newBullets[i] = v;
+                          updateData('pricing.bullets', newBullets);
+                        }} 
+                        isAdmin={canEdit} 
+                      />
+                    </li>
+                  ))}
+                </ul>
+                <button 
+                  type="button"
+                  onClick={openCheckout}
+                  className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl text-xl font-bold transition shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 group"
+                >
+                  <EditableText value={data.pricing.cta} onSave={(v) => updateData('pricing.cta', v)} isAdmin={canEdit} />
+                  <Zap className="group-hover:scale-125 transition" size={20} fill="currentColor" />
+                </button>
+              </div>
+              <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-8 bg-black/40 rounded-3xl border border-white/5">
+                <Cloud className="text-red-500 mb-6" size={64} />
+                <p className="text-white/60 mb-6 font-medium">Satu kali bayar untuk ketenangan jangka panjang.</p>
+                <div className="h-px w-full bg-white/10 mb-6" />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
+                    <ShieldCheck className="text-red-500" />
+                  </div>
+                  <div className="text-left">
+                    <div className="font-bold">Verified Secure</div>
+                    <div className="text-xs text-white/40">Secure Checkout Process</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Value Stack */}
+      <section className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 max-w-4xl text-center">
+          <EditableText 
+            as="h2"
+            value={data.valueStack.title} 
+            onSave={(v) => updateData('valueStack.title', v)} 
+            isAdmin={canEdit} 
+            className="text-3xl font-bold mb-12 block" 
+          />
+          <div className="grid md:grid-cols-2 gap-4 mb-12">
+            {data.valueStack.items.map((item, i) => (
+              <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-4 text-left">
+                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 shrink-0">
+                  <Check size={20} />
+                </div>
+                <EditableText 
+                  value={item} 
+                  onSave={(v) => {
+                    const newItems = [...data.valueStack.items];
+                    newItems[i] = v;
+                    updateData('valueStack.items', newItems);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="font-medium" 
+                />
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={openCheckout}
+            className="text-red-500 font-bold flex items-center gap-2 mx-auto hover:underline"
+          >
+            <EditableText value={data.valueStack.cta} onSave={(v) => updateData('valueStack.cta', v)} isAdmin={canEdit} />
+            <Zap size={16} fill="currentColor" />
+          </button>
+        </div>
+      </section>
+
+      {/* Urgency Section */}
+      <section className="py-24">
+        <div className="container mx-auto px-4 max-w-3xl text-center">
+          <EditableText 
+            as="h2"
+            value={data.urgency.title} 
+            onSave={(v) => updateData('urgency.title', v)} 
+            isAdmin={canEdit} 
+            className="text-3xl font-bold mb-8 block text-red-500" 
+          />
+          <EditableText 
+            as="p"
+            value={data.urgency.p1} 
+            onSave={(v) => updateData('urgency.p1', v)} 
+            isAdmin={canEdit} 
+            className="text-lg text-white/60 mb-8 block" 
+          />
+          <div className="space-y-4 mb-12">
+            {data.urgency.bullets.map((bullet, i) => (
+              <div key={i} className="flex items-center gap-4 justify-center">
+                <AlertTriangle className="text-red-600" size={20} />
+                <EditableText 
+                  value={bullet} 
+                  onSave={(v) => {
+                    const newBullets = [...data.urgency.bullets];
+                    newBullets[i] = v;
+                    updateData('urgency.bullets', newBullets);
+                  }} 
+                  isAdmin={canEdit} 
+                  className="text-lg font-medium text-white/80" 
+                />
+              </div>
+            ))}
+          </div>
+          <button 
+            type="button"
+            onClick={openCheckout}
+            className="bg-white text-black hover:bg-white/90 px-8 py-4 rounded-2xl text-xl font-black transition"
+          >
+            <EditableText value={data.urgency.cta} onSave={(v) => updateData('urgency.cta', v)} isAdmin={canEdit} />
+          </button>
+        </div>
+      </section>
+
+      {/* Trust Section */}
+      <section className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 max-w-4xl">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <EditableText 
+                as="h2"
+                value={data.trust.title} 
+                onSave={(v) => updateData('trust.title', v)} 
+                isAdmin={canEdit} 
+                className="text-3xl font-bold mb-8 block" 
+              />
+              <div className="space-y-6">
+                {data.trust.bullets.map((bullet, i) => (
+                  <div key={i} className="flex gap-4">
+                    <div className="w-6 h-6 rounded-full bg-red-600 flex items-center justify-center text-white shrink-0 mt-1">
+                      <Check size={14} />
+                    </div>
+                    <EditableText 
+                      value={bullet} 
+                      onSave={(v) => {
+                        const newBullets = [...data.trust.bullets];
+                        newBullets[i] = v;
+                        updateData('trust.bullets', newBullets);
+                      }} 
+                      isAdmin={canEdit} 
+                      className="text-white/70" 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-8 rounded-3xl bg-black/40 border border-white/10 flex flex-col items-center justify-center text-center">
+              <ShieldCheck size={80} className="text-red-600 mb-6" />
+              <div className="text-2xl font-black mb-2 tracking-widest uppercase">100% Secure</div>
+              <div className="text-white/40 text-sm">Macfyi is built with security and privacy as our top priority.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Comparison Section */}
+      <section className="py-24">
+        <div className="container mx-auto px-4">
+          <EditableText 
+            as="h2"
+            value={data.comparison.title} 
+            onSave={(v) => updateData('comparison.title', v)} 
+            isAdmin={canEdit} 
+            className="text-3xl font-bold mb-16 text-center block" 
+          />
+          <div className="overflow-x-auto">
+            <table className="w-full max-w-5xl mx-auto">
+              <thead>
+                <tr>
+                  {data.comparison.headers.map((header, i) => (
+                    <th key={i} className={`p-6 text-left border-b border-white/10 ${i === 3 ? 'text-red-500' : 'text-white/40'}`}>
+                      <EditableText 
+                        value={header} 
+                        onSave={(v) => {
+                          const newHeaders = [...data.comparison.headers];
+                          newHeaders[i] = v;
+                          updateData('comparison.headers', newHeaders);
+                        }} 
+                        isAdmin={canEdit} 
+                      />
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {data.comparison.rows.map((row, i) => (
+                  <tr key={i}>
+                    <td className="p-6 border-b border-white/5 font-medium">
+                      <EditableText 
+                        value={row.label} 
+                        onSave={(v) => {
+                          const newRows = [...data.comparison.rows];
+                          newRows[i].label = v;
+                          updateData('comparison.rows', newRows);
+                        }} 
+                        isAdmin={canEdit} 
+                      />
+                    </td>
+                    {row.values.map((val, j) => (
+                      <td key={j} className={`p-6 border-b border-white/5 ${j === 2 ? 'bg-red-600/5' : ''}`}>
+                        {typeof val === 'boolean' ? (
+                          val ? <Check className="text-green-500" /> : <X className="text-red-500" />
+                        ) : (
+                          <EditableText 
+                            value={val} 
+                            onSave={(v) => {
+                              const newRows = [...data.comparison.rows];
+                              newRows[i].values[j] = v;
+                              updateData('comparison.rows', newRows);
+                            }} 
+                            isAdmin={canEdit} 
+                            className="text-sm"
+                          />
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-12 text-center p-6 bg-red-600/10 rounded-2xl max-w-xl mx-auto border border-red-600/20">
+            <EditableText 
+              value={data.comparison.conclusion} 
+              onSave={(v) => updateData('comparison.conclusion', v)} 
+              isAdmin={canEdit} 
+              className="text-xl font-bold italic" 
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* Demo Section */}
+      <section className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-3xl font-bold mb-16">Lihat Macfyi Bekerja</h2>
+          <div className="max-w-4xl mx-auto rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+            <EditableVideo 
+              url={data.settings.videoUrl} 
+              onSave={(v) => updateData('settings.videoUrl', v)} 
+              isAdmin={canEdit} 
+            />
+          </div>
+          <div className="mt-16">
+            <button 
+              type="button"
+              onClick={openCheckout}
+              className="bg-red-600 hover:bg-red-700 text-white px-10 py-5 rounded-full text-2xl font-black transition shadow-xl shadow-red-600/20"
+            >
+              Saya Mau!
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Final Push */}
+      <section className="py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-red-600/10 opacity-50" />
+        <div className="container mx-auto px-4 relative z-10 text-center">
+          <h2 className="text-4xl md:text-6xl font-black mb-8">Storage lega. Kerja lancar.<br/>Tanpa bingung lagi.</h2>
+          <p className="text-xl text-white/60 mb-12 max-w-2xl mx-auto">Saat storage mentok, Anda tidak perlu panik atau nebak-nebak.</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-6">
+            <button 
+              type="button"
+              onClick={openCheckout}
+              className="bg-red-600 hover:bg-red-700 text-white px-10 py-5 rounded-2xl text-2xl font-black transition shadow-xl shadow-red-600/20"
+            >
+              <EditableText value={data.pricing.cta} onSave={(v) => updateData('pricing.cta', v)} isAdmin={canEdit} />
+            </button>
+            <button 
+              type="button"
+              onClick={openLoginModal}
+              className="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-10 py-5 rounded-2xl text-2xl font-black transition"
+            >
+              Login
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <LeadCaptureForm settings={data.settings} toast={toast} />
+
+      {/* FAQ Section */}
+      <section id="faq" className="py-24 bg-white/[0.02]">
+        <div className="container mx-auto px-4 max-w-3xl">
+          <h2 className="text-3xl font-bold mb-16 text-center">Frequently Asked Questions</h2>
+          <div className="space-y-4">
+            {data.faq.map((item, i) => (
+              <FaqItem 
+                key={i} 
+                item={item} 
+                isAdmin={canEdit} 
+                isOpen={openFaqs.has(i)}
+                onToggle={() => toggleFaq(i)}
+                onSave={(field, val) => {
+                  const newFaq = [...data.faq];
+                  newFaq[i][field] = val;
+                  updateData('faq', newFaq);
+                }} 
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="py-20 border-t border-white/10 bg-[#070B14]">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-4 gap-12 mb-16">
+            <div>
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center font-bold italic">M</div>
+                <span className="font-bold text-xl tracking-tight">Macfyi</span>
+              </div>
+              <p className="text-white/40 text-sm leading-relaxed mb-6">Dibuat khusus untuk pemilik Mac yang ingin lega, tapi ragu. Kami memberi Anda peta penyimpanan yang jelas.</p>
+            </div>
+            <div>
+              <h4 className="font-bold mb-6 text-white/60 text-xs tracking-widest uppercase">Contact</h4>
+              <div className="space-y-4 text-sm text-white/40">
+                <div className="flex items-center gap-3">
+                  <Monitor size={14} className="text-red-600" />
+                  <EditableText value={data.footer.address} onSave={(v) => updateData('footer.address', v)} isAdmin={canEdit} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Mail size={14} className="text-red-600" />
+                  <EditableText value={data.footer.contact} onSave={(v) => updateData('footer.contact', v)} isAdmin={canEdit} />
+                </div>
+                <div className="flex items-center gap-3">
+                  <Zap size={14} className="text-red-600" />
+                  <EditableText value={data.footer.hours} onSave={(v) => updateData('footer.hours', v)} isAdmin={canEdit} />
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold mb-6 text-white/60 text-xs tracking-widest uppercase">Legal</h4>
+              <ul className="space-y-4 text-sm text-white/40">
+                {data.footer.links.map((link, i) => (
+                  <li key={i}>
+                    <a href={link.url} className="hover:text-red-500 transition">
+                      <EditableText 
+                        value={link.label} 
+                        onSave={(v) => {
+                          const newLinks = [...data.footer.links];
+                          newLinks[i].label = v;
+                          updateData('footer.links', newLinks);
+                        }} 
+                        isAdmin={canEdit} 
+                      />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <h4 className="font-bold mb-6 text-white/60 text-xs tracking-widest uppercase">Product</h4>
+              <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                <div className="text-2xl font-black mb-1 text-red-500">{data.settings.price}</div>
+                <div className="text-xs text-white/40 mb-4">Lifetime 1 Mac Device</div>
+                <button 
+                  type="button"
+                  onClick={openCheckout}
+                  className="w-full bg-red-600 hover:bg-red-700 py-2 rounded-xl text-xs font-bold transition"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/20">
+            <EditableText value={data.footer.copyright} onSave={(v) => updateData('footer.copyright', v)} isAdmin={canEdit} />
+            <div className="flex items-center gap-6">
+              <a href={data.settings.privacyPolicyUrl} className="hover:text-red-400 transition">
+                Privacy Policy
+              </a>
+              <a href={data.settings.termsUrl} className="hover:text-red-400 transition">
+                Terms of Service
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Gear: login atau pengaturan */}
+      <button 
+        type="button"
+        onClick={onGearClick}
+        title={sessionOk ? "Pengaturan" : "Admin — masuk"}
+        className="fixed bottom-6 left-6 z-[70] w-11 h-11 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/50 hover:text-white transition group shadow-lg"
+      >
+        <Settings className="group-hover:rotate-90 transition-transform duration-500" size={20} />
+      </button>
+
+      <AnimatePresence>
+        {sessionOk && adminPreview && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setAdminPreview(false)}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[75] px-5 py-2.5 rounded-full bg-red-600 text-white text-sm font-bold shadow-xl"
+          >
+            Lanjut edit halaman
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <CheckoutModal
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        settings={data.settings}
+        productLabel={`${data.settings.siteName} — Lifetime`}
+        priceDisplay={data.settings.price}
+        toast={toast}
+      />
+
+      <AdminLoginModal
+        open={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onSuccess={() => {
+          setSessionOk(true);
+          setAdminPreview(false);
+          toast('Mode admin aktif — sunting inline atau buka pengaturan.', 'success');
+        }}
+      />
+      {isSettingsOpen && (
+        <AdminSettingsModal
+          open={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          data={data}
+          baselineData={INITIAL_DATA}
+          patchSettings={patchSettings}
+          replaceData={replaceData}
+          toast={toast}
+          onTestToast={() => toast('Notifikasi toast (kanan bawah).', 'success')}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <LandingApp />
+    </ToastProvider>
+  );
+}
+
+function FaqItem({
+  item,
+  isAdmin,
+  isOpen,
+  onToggle,
+  onSave,
+}: {
+  item: { q: string; a: string };
+  isAdmin: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  onSave: (field: 'q' | 'a', val: string) => void;
+}) {
+  return (
+    <div className="border border-white/10 rounded-2xl overflow-hidden bg-[#0B1220]">
+      <button 
+        type="button"
+        onClick={onToggle}
+        className="w-full p-6 flex items-center justify-between text-left hover:bg-white/5 transition"
+      >
+        <EditableText 
+          value={item.q} 
+          onSave={(v) => onSave('q', v)} 
+          isAdmin={isAdmin} 
+          className="font-bold text-lg pr-8"
+        />
+        {isOpen ? <ChevronUp className="text-red-500 shrink-0" /> : <ChevronDown className="text-white/20 shrink-0" />}
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="p-6 pt-0 border-t border-white/5 text-white/60 leading-relaxed">
+              <EditableText 
+                value={item.a} 
+                onSave={(v) => onSave('a', v)} 
+                isAdmin={isAdmin} 
+                multiline
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}

@@ -1,0 +1,366 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		BF01 /* MacfyiApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR01 /* MacfyiApp.swift */; };
+		BF02 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR02 /* ContentView.swift */; };
+		BF03 /* Color+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR03 /* Color+Hex.swift */; };
+		BF04 /* MacFYITheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR04 /* MacFYITheme.swift */; };
+		BF05 /* OrbButtonView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR05 /* OrbButtonView.swift */; };
+		BF06 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR06 /* OnboardingView.swift */; };
+		BF07 /* SoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR07 /* SoundManager.swift */; };
+		BF08 /* AppNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR08 /* AppNotifications.swift */; };
+		BF09 /* PerformanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR09 /* PerformanceView.swift */; };
+		BF10 /* PerformanceViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR10 /* PerformanceViewModel.swift */; };
+		BF11 /* ModulePlaceholderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR11 /* ModulePlaceholderView.swift */; };
+		BF12 /* RAMStatsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR12 /* RAMStatsService.swift */; };
+		BF13 /* LaunchAgentService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR13 /* LaunchAgentService.swift */; };
+		BF14 /* LoginItemsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR14 /* LoginItemsService.swift */; };
+		BF15 /* MaintenanceTasksService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR15 /* MaintenanceTasksService.swift */; };
+		BF16 /* FolderBookmarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FR16 /* FolderBookmarkStore.swift */; };
+		BF17 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FR17 /* Assets.xcassets */; };
+		BF18 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = VGRP /* Localizable.strings */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		FR01 /* MacfyiApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacfyiApp.swift; sourceTree = "<group>"; };
+		FR02 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		FR03 /* Color+Hex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Hex.swift"; sourceTree = "<group>"; };
+		FR04 /* MacFYITheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MacFYITheme.swift; sourceTree = "<group>"; };
+		FR05 /* OrbButtonView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OrbButtonView.swift; sourceTree = "<group>"; };
+		FR06 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		FR07 /* SoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundManager.swift; sourceTree = "<group>"; };
+		FR08 /* AppNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppNotifications.swift; sourceTree = "<group>"; };
+		FR09 /* PerformanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceView.swift; sourceTree = "<group>"; };
+		FR10 /* PerformanceViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerformanceViewModel.swift; sourceTree = "<group>"; };
+		FR11 /* ModulePlaceholderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModulePlaceholderView.swift; sourceTree = "<group>"; };
+		FR12 /* RAMStatsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAMStatsService.swift; sourceTree = "<group>"; };
+		FR13 /* LaunchAgentService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAgentService.swift; sourceTree = "<group>"; };
+		FR14 /* LoginItemsService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItemsService.swift; sourceTree = "<group>"; };
+		FR15 /* MaintenanceTasksService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaintenanceTasksService.swift; sourceTree = "<group>"; };
+		FR16 /* FolderBookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderBookmarkStore.swift; sourceTree = "<group>"; };
+		FR17 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		FR18 /* Macfyi.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Macfyi.entitlements; sourceTree = "<group>"; };
+		FR19 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = id.lproj/Localizable.strings; sourceTree = "<group>"; };
+		FR20 /* Localizable.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Localizable.strings; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		PROD /* Macfyi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Macfyi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		FW01 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		G000 = {
+			isa = PBXGroup;
+			children = (
+				G001 /* Macfyi */,
+				G099 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		G001 /* Macfyi */ = {
+			isa = PBXGroup;
+			children = (
+				FR01 /* MacfyiApp.swift */,
+				FR02 /* ContentView.swift */,
+				G002 /* DesignSystem */,
+				G003 /* Components */,
+				G004 /* Onboarding */,
+				G005 /* Services */,
+				G006 /* Features */,
+				FR17 /* Assets.xcassets */,
+				FR18 /* Macfyi.entitlements */,
+				VGRP /* Localizable.strings */,
+			);
+			path = Macfyi;
+			sourceTree = "<group>";
+		};
+		G002 /* DesignSystem */ = {
+			isa = PBXGroup;
+			children = (
+				FR03 /* Color+Hex.swift */,
+				FR04 /* MacFYITheme.swift */,
+			);
+			path = DesignSystem;
+			sourceTree = "<group>";
+		};
+		G003 /* Components */ = {
+			isa = PBXGroup;
+			children = (
+				FR05 /* OrbButtonView.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		G004 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				FR06 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		G005 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				FR07 /* SoundManager.swift */,
+				FR08 /* AppNotifications.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		G006 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				FR11 /* ModulePlaceholderView.swift */,
+				FR12 /* RAMStatsService.swift */,
+				FR13 /* LaunchAgentService.swift */,
+				FR14 /* LoginItemsService.swift */,
+				FR15 /* MaintenanceTasksService.swift */,
+				FR16 /* FolderBookmarkStore.swift */,
+				G007 /* Performance */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		G007 /* Performance */ = {
+			isa = PBXGroup;
+			children = (
+				FR09 /* PerformanceView.swift */,
+				FR10 /* PerformanceViewModel.swift */,
+			);
+			path = Performance;
+			sourceTree = "<group>";
+		};
+		G099 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				PROD /* Macfyi.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		VGRP /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FR19 /* id */,
+				FR20 /* en */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		NT01 /* Macfyi */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BCL2 /* Build configuration list for PBXNativeTarget "Macfyi" */;
+			buildPhases = (
+				SRC1 /* Sources */,
+				FW01 /* Frameworks */,
+				RES1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Macfyi;
+			productName = Macfyi;
+			productReference = PROD /* Macfyi.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		PJ01 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+			};
+			buildConfigurationList = BCL1 /* Build configuration list for PBXProject "Macfyi" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = id;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				id,
+				Base,
+			);
+			mainGroup = G000;
+			productRefGroup = G099 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				NT01 /* Macfyi */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		RES1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF17 /* Assets.xcassets in Resources */,
+				BF18 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		SRC1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BF01 /* MacfyiApp.swift in Sources */,
+				BF02 /* ContentView.swift in Sources */,
+				BF03 /* Color+Hex.swift in Sources */,
+				BF04 /* MacFYITheme.swift in Sources */,
+				BF05 /* OrbButtonView.swift in Sources */,
+				BF06 /* OnboardingView.swift in Sources */,
+				BF07 /* SoundManager.swift in Sources */,
+				BF08 /* AppNotifications.swift in Sources */,
+				BF09 /* PerformanceView.swift in Sources */,
+				BF10 /* PerformanceViewModel.swift in Sources */,
+				BF11 /* ModulePlaceholderView.swift in Sources */,
+				BF12 /* RAMStatsService.swift in Sources */,
+				BF13 /* LaunchAgentService.swift in Sources */,
+				BF14 /* LoginItemsService.swift in Sources */,
+				BF15 /* MaintenanceTasksService.swift in Sources */,
+				BF16 /* FolderBookmarkStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		CFG1D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		CFG1R /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		CFG2D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Macfyi/Macfyi.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Macfyi;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Macfyi mengirim pemberitahuan saat pemindaian atau pembersihan selesai.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.macfyi.Macfyi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		CFG2R /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Macfyi/Macfyi.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Macfyi;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_NSUserNotificationsUsageDescription = "Macfyi mengirim pemberitahuan saat pemindaian atau pembersihan selesai.";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.macfyi.Macfyi;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		BCL1 /* Build configuration list for PBXProject "Macfyi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG1D /* Debug */,
+				CFG1R /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BCL2 /* Build configuration list for PBXNativeTarget "Macfyi" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CFG2D /* Debug */,
+				CFG2R /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = PJ01 /* Project object */;
+}

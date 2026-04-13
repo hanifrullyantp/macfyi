@@ -1,0 +1,10 @@
+pub mod common;
+pub mod scan;
+pub mod storage;
+pub mod apps;
+pub mod shell_probe;
+pub mod preview;
+pub mod trash;
+pub mod uninstaller;
+pub mod performance;
+pub mod license;

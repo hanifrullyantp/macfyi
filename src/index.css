@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  /* Premium red brand (Macfyi) — single source for accent UI */
+  :root {
+    --color-bg: #0f0f0f;
+    --color-bg-sidebar: #141414;
+    --color-bg-elevated: rgba(255, 255, 255, 0.06);
+    --color-bg-card: #1e1e1e;
+    --color-border: rgba(255, 255, 255, 0.1);
+    --color-text: rgba(255, 255, 255, 0.92);
+    --color-text-muted: rgba(255, 255, 255, 0.6);
+    --color-text-tertiary: #606060;
+    --color-brand: #c0392b;
+    --color-brand-hover: #a93226;
+    --color-brand-glow: #e74c3c;
+    --color-brand-accent: #ff6b6b;
+    --color-accent: #c0392b;
+    --color-accent-hover: #a93226;
+    --color-accent-soft: rgba(192, 57, 43, 0.25);
+    --color-accent-text: #ffe4e1;
+    --color-sidebar-active-bg: rgba(192, 57, 43, 0.25);
+    --color-sidebar-indicator: #e74c3c;
+    --color-success: #27ae60;
+    --color-warning: #f39c12;
+    --color-danger: #e74c3c;
+    --orb-ring: conic-gradient(
+      from 0deg,
+      transparent,
+      rgba(231, 76, 60, 0.85),
+      transparent,
+      rgba(231, 76, 60, 0.45),
+      transparent
+    );
+  }
+
+  body.macfyi-busy {
+    cursor: progress;
+  }
+
+  body {
+    @apply text-white antialiased;
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+    font-family: "SF Pro Text", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    letter-spacing: -0.01em;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  input,
+  textarea,
+  [contenteditable="true"],
+  .select-text {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+@layer components {
+  .surface-card {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_8px_24px_rgba(0,0,0,0.25)];
+  }
+
+  .surface-card-soft {
+    @apply rounded-xl border border-white/10 bg-white/[0.03] shadow-[0_4px_16px_rgba(0,0,0,0.22)];
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white active:scale-[0.99] transition-all duration-200;
+    background: linear-gradient(135deg, #8b0000 0%, #c0392b 50%, #e74c3c 100%);
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.08);
+  }
+}
+
+@layer utilities {
+  .animate-spin-slow {
+    animation: spin 12s linear infinite;
+  }
+  .animate-reverse-spin-slow {
+    animation: reverse-spin 8s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes reverse-spin {
+    from {
+      transform: rotate(360deg);
+    }
+    to {
+      transform: rotate(0deg);
+    }
+  }
+
+  @keyframes orb-bounce {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+
+  @keyframes orb-glow {
+    0%,
+    100% {
+      opacity: 0.38;
+      transform: scale(0.94);
+    }
+    50% {
+      opacity: 0.72;
+      transform: scale(1.06);
+    }
+  }
+
+  @keyframes orb-ring-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+}

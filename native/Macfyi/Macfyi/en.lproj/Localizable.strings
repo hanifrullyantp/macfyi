@@ -1,0 +1,135 @@
+/* Macfyi — English */
+"about.macfyi" = "About Macfyi";
+"common.ok" = "OK";
+"common.cancel" = "Cancel";
+
+"shell.smartCare" = "Smart Care";
+"shell.cleanup" = "Cleanup";
+"shell.clutter" = "Clutter";
+"shell.uninstaller" = "Uninstaller";
+"shell.userTrash" = "Trash";
+"shell.performance" = "Performance";
+"shell.monitor" = "Monitor";
+"shell.history" = "History";
+"shell.settings" = "Settings";
+"shell.section.maintenance" = "Maintenance";
+"shell.section.insights" = "Insights";
+"shell.section.system" = "System";
+
+"module.smartCare.title" = "Smart Care";
+"module.smartCare.subtitle" = "Scan and clean your Mac safely — this module will connect to the full scan flow.";
+"module.cleanup.title" = "Cleanup";
+"module.cleanup.subtitle" = "Clear caches, logs, and system junk.";
+"module.clutter.title" = "Clutter";
+"module.clutter.subtitle" = "Find large files and duplicates.";
+"module.uninstall.title" = "Uninstaller";
+"module.uninstall.subtitle" = "Remove apps and leftovers.";
+"module.trash.title" = "Trash";
+"module.trash.subtitle" = "Manage Trash contents.";
+"module.monitor.title" = "Monitor";
+"module.monitor.subtitle" = "Track storage trends and free space.";
+"module.history.title" = "History";
+"module.history.subtitle" = "Scan and cleanup activity.";
+
+"orb.label.scan" = "Scan";
+"orb.label.perfAnalyze" = "Analyze";
+"orb.label.rescan" = "Rescan";
+"orb.label.cleaning" = "Cleaning…";
+"orb.tooltip.tapScan" = "Tap to start a scan";
+
+"onboard.welcome.title" = "Welcome to Macfyi";
+"onboard.welcome.subtitle" = "Your AI assistant for Mac care.\nCleaner, faster, safer.";
+"onboard.welcome.cta" = "Start Tour";
+"onboard.next" = "Next →";
+
+"onboard.clean.title" = "Clean Junk Safely";
+"onboard.clean.body" = "Macfyi finds caches, duplicates, and unused files. Our AI keeps only what is safe to remove.";
+"onboard.clean.p1" = "🟢 System cache";
+"onboard.clean.p2" = "🟢 Duplicates";
+"onboard.clean.p3" = "🟢 Old downloads";
+
+"onboard.perf.title" = "Speed Up Your Mac";
+"onboard.perf.body" = "Reduce startup apps, free unused RAM, and feel your Mac like new.";
+"onboard.perf.p1" = "⚡ Login items";
+"onboard.perf.p2" = "💾 Free RAM";
+"onboard.perf.p3" = "🔧 Maintenance";
+
+"onboard.uninstall.title" = "Uninstall Thoroughly";
+"onboard.uninstall.body" = "Deleting apps often leaves hidden files. Macfyi clears leftover caches and data.";
+"onboard.uninstall.p1" = "🗑 Clean uninstall";
+"onboard.uninstall.p2" = "📦 Remove leftovers";
+"onboard.uninstall.p3" = "💰 Show savings";
+
+"onboard.ai.title" = "Ask AI, Get Clear Answers";
+"onboard.ai.body" = "Not sure a file is safe to delete? Ask Macfyi AI in plain language.";
+"onboard.ai.p1" = "🤖 Risk analysis";
+"onboard.ai.p2" = "💬 File help";
+"onboard.ai.p3" = "✅ Safe picks";
+
+"onboard.perm.title" = "One Last Step";
+"onboard.perm.body" = "Macfyi needs folder access to scan files. We do not read file contents — only names and sizes.";
+"onboard.perm.allow" = "Allow";
+"onboard.perm.choose" = "Choose Folder";
+"onboard.perm.cta" = "Start First Scan →";
+"onboard.perm.privacy" = "Your privacy is protected 🔒";
+"onboard.permission.documents" = "Documents folder";
+"onboard.permission.downloads" = "Downloads folder";
+"onboard.permission.desktop" = "Desktop folder";
+
+"onboard.demo.login" = "Login Items 5";
+"onboard.demo.bg" = "Background 12";
+"onboard.demo.save" = "Save 4.2 GB";
+"onboard.demo.q" = "What is node_modules?";
+"onboard.demo.a" = "Project dependencies folder — can be huge; remove only if unused.";
+
+"notif.scanComplete.title" = "Scan complete";
+"notif.scanComplete.body" = "Found %lld items • %@ can be freed";
+"notif.cleanComplete.title" = "Cleanup complete! 🎉";
+"notif.cleanComplete.body" = "Freed %@ of storage";
+
+"settings.sound" = "Sound effects";
+"settings.sound.hint" = "Play sounds when scan or cleanup completes";
+
+"perf.title" = "Performance";
+"perf.subtitle" = "Keep your Mac fast and responsive";
+"perf.section.login" = "⚡ Login items";
+"perf.section.login.subtitle" = "Apps that open automatically at startup";
+"perf.section.agents" = "Background items";
+"perf.section.agents.subtitle" = "LaunchAgents in LaunchAgents folders";
+"perf.section.ram" = "💾 RAM usage";
+"perf.section.maint" = "Maintenance tasks";
+"perf.empty.login" = "No login items detected (or list empty).";
+"perf.empty.agents" = "No plists readable — check sandbox / Full Disk Access.";
+"perf.openSystemLoginItems" = "Open Login Items settings";
+"perf.agent.runAtLoad" = "Run at load";
+"perf.agent.onDemand" = "On demand";
+"perf.ram.total" = "Total RAM: %@";
+"perf.ram.usedPct" = "%.0f%% used (%@)";
+"perf.ram.active" = "Active";
+"perf.ram.wired" = "Wired";
+"perf.ram.compressed" = "Compressed";
+"perf.ram.free" = "Free";
+"perf.topRam.title" = "🏆 Top memory consumers";
+"perf.ram.purge.button" = "🚀 Free unused RAM";
+"perf.ram.purge.title" = "Free RAM";
+"perf.ram.purge.message" = "The `purge` command usually requires an administrator password and is not always recommended. Quit heavy apps (e.g. browsers) to free RAM safely.";
+"perf.ai.login.none" = "No login items detected.";
+"perf.ai.login.some" = "Reviewing %d startup items can speed up boot.";
+"perf.ai.ram" = "RAM is %.0f%% used. Quit unused apps to reduce memory pressure.";
+"perf.phase.login" = "Checking login items…";
+"perf.phase.background" = "Checking background agents…";
+"perf.phase.ram" = "Measuring RAM…";
+"perf.phase.cpu" = "Sampling CPU…";
+"perf.phase.summary" = "Building summary…";
+"perf.phase.done" = "Analysis complete";
+"perf.maint.run" = "Run";
+"perf.maint.periodic.title" = "Periodic scripts";
+"perf.maint.periodic.desc" = "Runs daily/weekly/monthly scripts — often needs admin.";
+"perf.maint.disk.title" = "Verify volume (First Aid)";
+"perf.maint.disk.desc" = "Runs diskutil verifyVolume on the boot volume.";
+"perf.maint.dns.title" = "Flush DNS";
+"perf.maint.dns.desc" = "Clears DNS cache for more reliable networking.";
+"perf.maint.spotlight.title" = "Rebuild Spotlight index";
+"perf.maint.spotlight.desc" = "Rebuilds search index — may need admin for system volume.";
+"perf.maintenance.ok" = "Done.";
+"perf.maintenance.dns.done" = "DNS cache flushed.";

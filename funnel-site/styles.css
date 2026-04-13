@@ -1,0 +1,153 @@
+:root {
+  --bg: #0a0b0f;
+  --fg: #f4f4f5;
+  --muted: #a1a1aa;
+  --brand: #d97706;
+  --card: #14151a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  line-height: 1.6;
+}
+
+.wrap {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.hero {
+  padding: 4rem 0 3rem;
+  background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(217, 119, 6, 0.18), transparent);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+h1 {
+  font-size: clamp(2.25rem, 6vw, 3rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.lead {
+  font-size: 1.125rem;
+  color: var(--muted);
+  margin: 1rem 0 1.5rem;
+}
+
+.cta {
+  display: inline-block;
+  padding: 0.65rem 1.25rem;
+  background: var(--brand);
+  color: #0a0a0a;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  text-decoration: none;
+}
+
+.cta:hover {
+  filter: brightness(1.08);
+}
+
+.sections section {
+  padding: 2.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 0 0 1rem;
+}
+
+.bullets {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #d4d4d8;
+}
+
+.checkout .form {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding: 1.25rem;
+  background: var(--card);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.checkout label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.checkout input {
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #0c0d12;
+  color: var(--fg);
+}
+
+.checkout button[type="submit"] {
+  justify-self: start;
+  padding: 0.55rem 1rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--brand);
+  color: #0a0a0a;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.price {
+  margin-top: 1rem;
+  font-weight: 600;
+  color: #fde68a;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.muted.small {
+  font-size: 0.8rem;
+}
+
+.steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: #d4d4d8;
+}
+
+code {
+  font-size: 0.85em;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.footer {
+  padding: 2rem 1.25rem 3rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}

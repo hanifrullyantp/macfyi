@@ -1,0 +1,31 @@
+<!--
+  Transactional email body (HTML) — use with Resend, Supabase SMTP, or your ESP.
+  Replace placeholders: {{download_url}}, {{license_key}}, {{customer_email}}
+-->
+<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#0a0b0f;color:#f4f4f5;padding:24px;">
+  <tr>
+    <td align="center">
+      <table width="560" style="max-width:560px;background:#14151a;border-radius:12px;padding:28px;border:1px solid rgba(255,255,255,.08);">
+        <tr>
+          <td>
+            <h1 style="margin:0 0 8px;font-size:22px;">Terima kasih — Macfyi</h1>
+            <p style="margin:0 0 16px;color:#a1a1aa;font-size:15px;line-height:1.5;">
+              Pembelian Anda telah diproses. Gunakan <strong>email yang sama</strong> saat aktivasi di aplikasi.
+            </p>
+            <p style="margin:0 0 8px;font-size:14px;color:#a1a1aa;">Kode lisensi:</p>
+            <p style="margin:0 0 20px;font-size:18px;font-family:ui-monospace,Menlo,monospace;letter-spacing:.04em;">
+              {{license_key}}
+            </p>
+            <a href="{{download_url}}" style="display:inline-block;background:#d97706;color:#0a0a0a;font-weight:600;text-decoration:none;padding:12px 20px;border-radius:8px;">
+              Unduh Macfyi (DMG)
+            </a>
+            <p style="margin:24px 0 0;font-size:13px;color:#71717a;line-height:1.5;">
+              Buka Macfyi di Mac Anda, masukkan email <strong>{{customer_email}}</strong> dan kode di atas.
+              Lisensi ini untuk <strong>satu perangkat</strong> (lifetime untuk versi produk yang dibeli).
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
