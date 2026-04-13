@@ -3,6 +3,7 @@
 // Secrets: MIDTRANS_SERVER_KEY (for SHA512 verification), RESEND_API_KEY, EMAIL_FROM (optional email)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { processAffiliateCommission } from "../_shared/affiliateCommission.ts";
 
 async function sha256hex(plain: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(plain));
@@ -211,6 +212,12 @@ Deno.serve(async (req) => {
       payload,
       processed: true,
     });
+
+    try {
+      await processAffiliateCommission(supabase, orderId, pricePaid);
+    } catch (affErr) {
+      console.error("affiliate_commission_error", affErr);
+    }
 
     const { data: settings } = await supabase
       .from("app_settings")

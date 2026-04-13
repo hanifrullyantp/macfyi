@@ -8,6 +8,7 @@ import {
   validatePersonName,
   validatePhoneOptional,
 } from "../lib/formValidation";
+import { queueSiteEvent } from "../lib/siteAnalytics";
 
 export function LeadCaptureForm({
   settings,
@@ -57,6 +58,7 @@ export function LeadCaptureForm({
         phone: payload.phone,
         message: payload.message,
       });
+      queueSiteEvent("form_submitted", { form: "lead_capture" });
 
       const webhookUrl = import.meta.env.VITE_LEAD_WEBHOOK_URL?.trim();
       if (webhookUrl) {

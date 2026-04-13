@@ -121,7 +121,16 @@ export const AppShell = ({
 }: AppShellProps) => {
   const { t } = useI18n();
   const pct = Math.min(100, Math.max(0, Math.round(diskUsedPercent)));
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => {
+    try {
+      const stored = localStorage.getItem("macfyi.sidebar.collapsed");
+      if (stored === "0") return false;
+      if (stored === "1") return true;
+      return true;
+    } catch {
+      return true;
+    }
+  });
   const [diskMenuOpen, setDiskMenuOpen] = useState(false);
   const diskPopoverRef = useRef<HTMLDivElement>(null);
 
@@ -137,11 +146,6 @@ export const AppShell = ({
   }, [diskMenuOpen]);
 
   const headerTitle = title ?? t("appName");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("macfyi.sidebar.collapsed");
-    if (stored === "1") setCollapsed(true);
-  }, []);
 
   useEffect(() => {
     localStorage.setItem("macfyi.sidebar.collapsed", collapsed ? "1" : "0");
@@ -172,7 +176,7 @@ export const AppShell = ({
         <div className="flex items-center justify-between mb-2 px-1">
           {!collapsed && (
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--color-brand-glow)] shadow-[0_0_12px_rgba(231,76,60,0.65)]" />
+              <span className="h-2 w-2 rounded-full bg-[var(--color-brand-glow)]/80 shadow-[0_0_10px_rgba(199,92,82,0.28)]" />
               <span className="text-[11px] font-semibold text-white/80 tracking-wide">{t("appName")}</span>
             </div>
           )}
@@ -299,7 +303,7 @@ export const AppShell = ({
                 onClick={onAIButtonClick}
                 className="ml-1 px-2.5 py-1 bg-white/10 hover:bg-white/15 border border-white/10 rounded-lg flex items-center gap-1.5 transition-all duration-200 active:scale-[0.98]"
               >
-                <div className="w-2 h-2 rounded-full bg-[var(--color-brand-glow)] opacity-95" />
+                <div className="w-2 h-2 rounded-full bg-[var(--color-brand-glow)]/70" />
                 <span className="text-[10px] font-bold text-white/80">{t("shell.ai")}</span>
               </button>
             </div>
@@ -312,7 +316,7 @@ export const AppShell = ({
             {!hideMainGlow && (
               <div className="absolute inset-0 z-0 pointer-events-none" aria-hidden>
                 <div
-                  className="absolute rounded-full bg-[var(--color-brand)]/[0.045] blur-[88px]"
+                  className="absolute rounded-full blur-[88px] bg-indigo-500/[0.07]"
                   style={{
                     width: "min(52vw, 28rem)",
                     height: "min(52vw, 28rem)",
@@ -322,7 +326,7 @@ export const AppShell = ({
                   }}
                 />
                 <div
-                  className="absolute rounded-full bg-[var(--color-brand-glow)]/[0.03] blur-[72px]"
+                  className="absolute rounded-full blur-[72px] bg-violet-500/[0.05]"
                   style={{
                     width: "min(40vw, 20rem)",
                     height: "min(40vw, 20rem)",

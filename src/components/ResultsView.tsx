@@ -31,6 +31,7 @@ import { privacySafeItemInsight } from "../lib/ai-engine";
 import { DelayedTooltip } from "./results/DelayedTooltip";
 import { FilterPopover } from "./results/FilterPopover";
 import { TriStateCheckbox, categoryTriState } from "./results/TriStateCheckbox";
+import { ScanSummaryDashboard } from "./results/ScanSummaryDashboard";
 import { useI18n } from "../i18n/context";
 
 interface ResultsViewProps {
@@ -39,6 +40,10 @@ interface ResultsViewProps {
   onBack?: () => void;
   onPreview?: (path: string) => void;
   title?: string;
+  /** Disk capacity (GB) for post-scan summary charts — optional when unknown */
+  diskTotalGb?: number;
+  /** Free space (GB) — optional when unknown */
+  freeGb?: number;
   /** Sync bottom scan orb “cleaning” state with shell chrome */
   onCleaningPhaseChange?: (cleaning: boolean) => void;
   /** Selection totals for AI assistant (counts only — Issue 13) */
@@ -337,6 +342,8 @@ export const ResultsView = ({
   onBack,
   onPreview,
   title = "Review Items",
+  diskTotalGb,
+  freeGb,
   onCleaningPhaseChange,
   onSelectionStatsChange,
   onOrbIntentChange,
@@ -747,76 +754,20 @@ export const ResultsView = ({
 
   if (stage === "summary") {
     return (
-      <div className="h-full overflow-y-auto custom-scrollbar px-6 py-6 md:px-8">
-        <div className="max-w-4xl mx-auto space-y-5">
-          <div>
-            <h2 className="text-[30px] leading-[36px] font-semibold text-white tracking-tight">{title}</h2>
-            <p className="text-sm text-white/50 mt-1">AI reviewed your scan and prepared a safe recommended selection.</p>
-          </div>
-
-          <div className="surface-card p-6">
-            <p className="text-[11px] uppercase tracking-[0.12em] text-white/45 font-semibold">AI Recommendation</p>
-            <h3 className="text-2xl font-semibold text-white mt-1">You can safely free {formatBytes(recommendedBytes)}</h3>
-            <div className="mt-4 flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => setStage("review")}
-                className="btn-secondary"
-              >
-                Review Items
-              </button>
-              <button
-                type="button"
-                onClick={() =>
-                  openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
-                }
-                className="btn-primary"
-              >
-                Clean Safely
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowWhy((v) => !v)}
-                className="btn-secondary px-3 py-2 text-white/80"
-              >
-                <Info size={14} /> Why these?
-              </button>
-            </div>
-            <AnimatePresence>
-              {showWhy && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="overflow-hidden"
-                >
-                  <div className="mt-4 surface-card-soft bg-black/25 p-4 space-y-2">
-                    <p className="text-sm text-white/70">Recommended by AI based on safe locations, last used date, and duplicate certainty.</p>
-                    {results.slice(0, 3).map((r) => (
-                      <p key={r.category} className="text-xs text-white/50">
-                        <span className="text-white/75 font-medium">{CATEGORY_LABELS[r.category] ?? r.category}</span>: {r.recommendation} (confidence {(r.confidence * 100).toFixed(0)}%)
-                      </p>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {(["safe", "caution", "risky"] as const).map((risk) => {
-              const count = enriched.filter((x) => x.risk === risk).length;
-              return (
-                <div key={risk} className="surface-card-soft p-4">
-                  <RiskBadge risk={risk} />
-                  <p className="text-2xl font-semibold text-white mt-2">{count}</p>
-                  <p className="text-xs text-white/45 mt-1">{t("results.riskBucketHint")}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <ScanSummaryDashboard
+        title={title}
+        enriched={enriched}
+        results={results}
+        recommendedBytes={recommendedBytes}
+        diskTotalGb={diskTotalGb}
+        freeGb={freeGb}
+        showWhy={showWhy}
+        onToggleWhy={() => setShowWhy((v) => !v)}
+        onReview={() => setStage("review")}
+        onCleanSafely={() =>
+          openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
+        }
+      />
     );
   }
 

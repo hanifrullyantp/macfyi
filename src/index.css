@@ -5,35 +5,35 @@
     color-scheme: dark;
   }
 
-  /* Premium red brand (Macfyi) — single source for accent UI */
+  /* Brand accents — red reserved for CTAs; UI chrome stays cool/neutral */
   :root {
-    --color-bg: #0f0f0f;
-    --color-bg-sidebar: #141414;
+    --color-bg: #0b0c0f;
+    --color-bg-sidebar: #12131a;
     --color-bg-elevated: rgba(255, 255, 255, 0.06);
-    --color-bg-card: #1e1e1e;
+    --color-bg-card: #1a1b22;
     --color-border: rgba(255, 255, 255, 0.1);
     --color-text: rgba(255, 255, 255, 0.92);
     --color-text-muted: rgba(255, 255, 255, 0.6);
-    --color-text-tertiary: #606060;
-    --color-brand: #c0392b;
-    --color-brand-hover: #a93226;
-    --color-brand-glow: #e74c3c;
-    --color-brand-accent: #ff6b6b;
-    --color-accent: #c0392b;
-    --color-accent-hover: #a93226;
-    --color-accent-soft: rgba(192, 57, 43, 0.25);
-    --color-accent-text: #ffe4e1;
-    --color-sidebar-active-bg: rgba(192, 57, 43, 0.25);
-    --color-sidebar-indicator: #e74c3c;
+    --color-text-tertiary: #5c5c68;
+    --color-brand: #b04438;
+    --color-brand-hover: #9a3a30;
+    --color-brand-glow: #c75c52;
+    --color-brand-accent: #e8a598;
+    --color-accent: #b04438;
+    --color-accent-hover: #9a3a30;
+    --color-accent-soft: rgba(176, 68, 56, 0.14);
+    --color-accent-text: rgba(255, 228, 224, 0.92);
+    --color-sidebar-active-bg: rgba(255, 255, 255, 0.07);
+    --color-sidebar-indicator: rgba(125, 156, 255, 0.55);
     --color-success: #27ae60;
     --color-warning: #f39c12;
-    --color-danger: #e74c3c;
+    --color-danger: #c75c52;
     --orb-ring: conic-gradient(
       from 0deg,
       transparent,
-      rgba(231, 76, 60, 0.85),
+      rgba(199, 92, 82, 0.38),
       transparent,
-      rgba(231, 76, 60, 0.45),
+      rgba(199, 92, 82, 0.2),
       transparent
     );
   }
@@ -74,7 +74,7 @@
 
   .btn-primary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white active:scale-[0.99] transition-all duration-200;
-    background: linear-gradient(135deg, #8b0000 0%, #c0392b 50%, #e74c3c 100%);
+    background: linear-gradient(135deg, #6b2f2a 0%, #a63c32 45%, #c75c52 100%);
   }
 
   .btn-primary:hover {

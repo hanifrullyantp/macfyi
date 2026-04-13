@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, lazy, Suspense, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import { AppShell, type FeatureId } from "./components/AppShell";
 import { Dashboard } from "./components/Dashboard";
@@ -273,13 +273,20 @@ export default function App() {
     });
   }, []);
 
-  /** Returning users: load folder breakdown once (onboarding already completed before). Only after license gate — avoids TCC before activation. */
+  const monitorBreakdownAttemptedRef = useRef(false);
+
+  /** Folder breakdown is deferred until Monitor or Smart Scan — avoids long startup / TCC work on cold open. */
   useEffect(() => {
-    if (!licenseGatePassed) return;
-    if (hasCompletedOnboarding()) {
-      getStorageBreakdown().then(setStorageEntries).catch(() => {});
+    if (activeFeature !== "monitor") {
+      monitorBreakdownAttemptedRef.current = false;
+      return;
     }
-  }, [licenseGatePassed]);
+    if (!licenseGatePassed) return;
+    if (monitorBreakdownAttemptedRef.current) return;
+    monitorBreakdownAttemptedRef.current = true;
+    if (storageEntries.length > 0) return;
+    getStorageBreakdown().then(setStorageEntries).catch(() => {});
+  }, [activeFeature, licenseGatePassed, storageEntries.length]);
 
   useEffect(() => {
     if (appState !== "results") setShellCleaning(false);
@@ -513,6 +520,8 @@ export default function App() {
             onBack={() => setAppState("idle")}
             onPreview={(p) => setPreviewPath(p)}
             title={t("shell.smartCare")}
+            diskTotalGb={diskTotalGb}
+            freeGb={freeSpace}
             onCleaningPhaseChange={setShellCleaning}
             onSelectionStatsChange={setSelectionSummary}
             onOrbIntentChange={setReviewOrbIntent}
@@ -529,6 +538,8 @@ export default function App() {
           onClean={handleCleanFinished}
           onPreview={(p) => setPreviewPath(p)}
           title={t("shell.cleanup")}
+          diskTotalGb={diskTotalGb}
+          freeGb={freeSpace}
           onCleaningPhaseChange={setShellCleaning}
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
@@ -553,6 +564,8 @@ export default function App() {
           onClean={handleCleanFinished}
           onPreview={(p) => setPreviewPath(p)}
           title={t("shell.myClutter")}
+          diskTotalGb={diskTotalGb}
+          freeGb={freeSpace}
           onCleaningPhaseChange={setShellCleaning}
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
@@ -631,7 +644,9 @@ export default function App() {
             reviewOrbIntent.disabled)
         }
         scanOrbProgressPct={activeFeature === "performance" && perfLoading ? 52 : scanProgressPct}
-        showScanOrb={appState !== "scanning"}
+        showScanOrb={
+          appState !== "scanning" && !(activeFeature === "smart-care" && appState === "idle")
+        }
         onAIButtonClick={() => setIsAIChatOpen((v) => !v)}
         onSearchClick={() => setIsSearchOpen(true)}
         onSettingsClick={() => setIsSettingsOpen(true)}

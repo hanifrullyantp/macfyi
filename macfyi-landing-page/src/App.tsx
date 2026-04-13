@@ -35,6 +35,7 @@ import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { NotificationBanner } from './components/NotificationBanner';
 import { LeadCaptureForm } from './components/LeadCaptureForm';
 import { CheckoutModal } from './components/CheckoutModal';
+import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytics';
 
 const INITIAL_DATA: ContentData = {
   hero: {
@@ -320,6 +321,10 @@ function LandingApp() {
     if (data.settings.googleAnalyticsId?.trim()) injectGoogleAnalytics(data.settings.googleAnalyticsId);
   }, [data.settings.googleAnalyticsId]);
 
+  useEffect(() => {
+    bootstrapReferralAndTracking();
+  }, []);
+
   const updateData = useCallback((path: string, value: unknown) => {
     setData((prev) => {
       const newData = structuredClone(prev) as ContentData;
@@ -444,7 +449,10 @@ function LandingApp() {
     else setIsLoginOpen(true);
   };
 
-  const openCheckout = useCallback(() => setCheckoutOpen(true), []);
+  const openCheckout = useCallback(() => {
+    queueSiteEvent("cta_click", { target: "checkout" });
+    setCheckoutOpen(true);
+  }, []);
 
   const openLoginModal = useCallback(() => setIsLoginOpen(true), []);
 

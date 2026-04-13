@@ -2,6 +2,7 @@
 // Secrets: MIDTRANS_SERVER_KEY, MIDTRANS_IS_PRODUCTION (optional, "true" | "false")
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { asBool, getPlatformSetting } from "../_shared/platformSettings.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -79,6 +80,39 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    const referralSlugRaw = String(body.referral_slug ?? "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "");
+    let affiliateId: string | null = null;
+    let referralSlugSaved: string | null = null;
+
+    if (referralSlugRaw.length >= 2) {
+      const { data: affRow } = await supabase
+        .from("affiliates")
+        .select("id, user_id")
+        .eq("slug", referralSlugRaw)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (affRow) {
+        const allowSelf = asBool(await getPlatformSetting(supabase, "affiliate.allow_self_referral"), false);
+        let blockSelf = false;
+        const authHeader = req.headers.get("Authorization") ?? "";
+        if (authHeader.startsWith("Bearer ") && !allowSelf) {
+          const jwt = authHeader.slice(7).trim();
+          if (jwt.length > 20) {
+            const { data: userRes, error: userErr } = await supabase.auth.getUser(jwt);
+            if (!userErr && userRes.user?.id && userRes.user.id === affRow.user_id) {
+              blockSelf = true;
+            }
+          }
+        }
+        if (!blockSelf) {
+          affiliateId = affRow.id;
+          referralSlugSaved = referralSlugRaw;
+        }
+      }
+    }
+
     const { data: settings } = await supabase
       .from("app_settings")
       .select("lifetime_price_idr")
@@ -149,6 +183,11 @@ Deno.serve(async (req) => {
       gross_amount_idr: grossAmount,
       status: "pending",
       provider: "midtrans",
+      affiliate_id: affiliateId,
+      referral_slug: referralSlugSaved,
+      referral_attribution: referralSlugSaved
+        ? { slug: referralSlugSaved, source: "referral_link" }
+        : {},
     });
 
     if (insErr) {

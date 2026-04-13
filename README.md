@@ -43,6 +43,16 @@ If it fails: quit other apps using disk images, close Finder windows pointing at
 
 See [docs/RELEASE_MACOS.md](docs/RELEASE_MACOS.md) for Developer ID signing and notarization.
 
+### Admin (browser, terpisah dari app desktop)
+
+Untuk mengelola data Supabase (`app_settings`, lisensi, aktivasi, rahasia AI): gunakan proyek **[`admin-web/`](./admin-web/README.md)**.
+
+1. `cd admin-web && npm install && npm run dev`
+2. Buka URL yang ditampilkan Vite (default **http://localhost:5173**). Jika port bentrok dengan dev app utama, jalankan:  
+   `npm run dev -- --port 5174` → lalu buka **http://localhost:5174**
+
+**Ikon aplikasi desktop**, **versi build**, dan **notifikasi pembaruan** tidak diatur dari admin web: ubah aset di `src-tauri/icons/` dan konfigurasi di `src-tauri/tauri.conf.json` (serta plugin Tauri updater jika Anda menambahkannya).
+
 ## Architecture
 
 - **`src/App.tsx`** — Routes, disk stats, scan/clean flow, AI panel; **`src/components/AppShell.tsx`** — sidebar + header (no decorative “fake macOS window”)

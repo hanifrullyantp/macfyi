@@ -19,6 +19,12 @@ supabase secrets set MIDTRANS_SERVER_KEY=SB-Mid-server-...
 supabase secrets set MIDTRANS_CLIENT_KEY=SB-Mid-client-...
 # Optional: default is sandbox Snap URL
 supabase secrets set MIDTRANS_IS_PRODUCTION=false
+
+# Alert email penarikan (opsional, dipisah koma)
+supabase secrets set OPS_ALERT_EMAIL=ops@yourdomain.com
+
+# Secret untuk memanggil scheduled-ops dari cron eksternal
+supabase secrets set CRON_SECRET=random-long-string
 ```
 
 ## Edge Functions
@@ -27,14 +33,22 @@ supabase secrets set MIDTRANS_IS_PRODUCTION=false
 supabase functions deploy activate-license --no-verify-jwt
 supabase functions deploy payment-webhook --no-verify-jwt
 supabase functions deploy create-midtrans-snap --no-verify-jwt
+supabase functions deploy track-event --no-verify-jwt
+supabase functions deploy submit-withdrawal --no-verify-jwt
+supabase functions deploy admin-withdrawal --no-verify-jwt
+supabase functions deploy scheduled-ops --no-verify-jwt
 supabase functions deploy ai-proxy
 ```
 
 | Function | Role |
 |----------|------|
 | **activate-license** | Mac app: `email`, `license_key`, `device_fingerprint`. |
-| **create-midtrans-snap** | Landing/checkout: body `{ email, name, phone }` → creates `payment_transactions` row + returns `{ snap_token, client_key, is_production }` for Snap.js. |
-| **payment-webhook** | Midtrans HTTP notification URL: verify `signature_key` (SHA512), update `payment_transactions`, issue license + Resend email. Generic JSON fallback (dev only) if no Midtrans signature. |
+| **create-midtrans-snap** | Landing/checkout: body `{ email, name, phone, referral_slug? }` + user JWT opsional (anti self-referral). |
+| **payment-webhook** | Midtrans HTTP notification URL: verify `signature_key` (SHA512), update `payment_transactions`, issue license + Resend email; komisi affiliate idempotent. |
+| **track-event** | Landing analytics batch → CRM (`crm_contacts` / `crm_events`) + klik referral. |
+| **submit-withdrawal** | Member: header `Authorization: Bearer <user JWT>`, body `{ amount_idr, method, account_details }`. |
+| **admin-withdrawal** | Admin JWT: `{ id, status, admin_note?, proof_url? }`. |
+| **scheduled-ops** | Cron: header `Authorization: Bearer <CRON_SECRET>` atau `x-cron-secret` — konfirmasi komisi, tier, lifecycle event. |
 | **ai-proxy** | Admin-only stub; callers send user JWT. |
 
 ### Midtrans dashboard

@@ -10,6 +10,8 @@ import {
   validatePhoneRequired,
 } from "../lib/formValidation";
 import { loadMidtransSnapScript, payWithSnap } from "../lib/midtransSnap";
+import { getReferralSlugFromCookie, queueSiteEvent } from "../lib/siteAnalytics";
+import { getSupabaseBrowserClient } from "../lib/supabase";
 
 function buildCheckoutLink(base: string, email: string, name: string, phoneDigits: string): string | null {
   const b = base.trim();
@@ -55,6 +57,8 @@ export function CheckoutModal({
       setAgree(false);
       setSubmitting(false);
       setFieldErr({});
+    } else {
+      queueSiteEvent("form_open", { form: "checkout" });
     }
   }, [open]);
 
@@ -116,10 +120,17 @@ export function CheckoutModal({
       const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
 
       if (useMidtransSnap && supabaseUrl && anon) {
+        let authToken = anon;
+        const sb = getSupabaseBrowserClient();
+        if (sb) {
+          const { data: sess } = await sb.auth.getSession();
+          if (sess.session?.access_token) authToken = sess.session.access_token;
+        }
+        const referral_slug = getReferralSlugFromCookie() ?? undefined;
         const res = await fetch(`${supabaseUrl}/functions/v1/create-midtrans-snap`, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${anon}`,
+            Authorization: `Bearer ${authToken}`,
             apikey: anon,
             "Content-Type": "application/json",
           },
@@ -127,6 +138,7 @@ export function CheckoutModal({
             email: normalizeEmail(email),
             name: nameRes.value,
             phone: phoneRes.digits,
+            ...(referral_slug ? { referral_slug } : {}),
           }),
         });
         const data = (await res.json().catch(() => ({}))) as {
@@ -139,6 +151,7 @@ export function CheckoutModal({
         if (res.ok && data.snap_token && data.client_key) {
           try {
             await loadMidtransSnapScript(Boolean(data.is_production), data.client_key);
+            queueSiteEvent("snap_opened", {});
           } catch {
             toast("Gagal memuat skrip pembayaran. Refresh halaman dan coba lagi.", "error");
             return;
@@ -146,6 +159,7 @@ export function CheckoutModal({
           setSubmitting(false);
           payWithSnap(data.snap_token, {
             onSuccess: () => {
+              queueSiteEvent("payment_success", { channel: "midtrans_snap" });
               toast("Pembayaran berhasil. Cek email Anda untuk kunci lisensi.", "success");
               onClose();
             },
