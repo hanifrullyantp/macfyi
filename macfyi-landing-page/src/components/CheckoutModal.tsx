@@ -192,11 +192,12 @@ export function CheckoutModal({
   };
 
   const hasExternalCheckout = Boolean(settings.checkoutUrl?.trim() && /^https?:\/\//i.test(settings.checkoutUrl.trim()));
+  const s = settings;
   const primaryCtaLabel = useMidtransSnap
-    ? "Bayar dengan Midtrans"
+    ? s.checkoutCtaMidtrans || "Bayar dengan Midtrans"
     : hasExternalCheckout
-      ? "Lanjut ke pembayaran"
-      : "Konfirmasi pesanan";
+      ? s.checkoutCtaExternal || "Lanjut ke pembayaran"
+      : s.checkoutCtaConfirm || "Konfirmasi pesanan";
 
   return (
     <div className="fixed inset-0 z-[95] flex items-center justify-center p-4" id="checkout-modal">
@@ -235,23 +236,25 @@ export function CheckoutModal({
             M
           </div>
           <div>
-            <h2 className="text-xl font-bold">Checkout</h2>
-            <p className="text-white/45 text-sm">{productLabel}</p>
+            <h2 className="text-xl font-bold">{s.checkoutModalTitle || "Checkout"}</h2>
+            <p className="text-white/45 text-sm">
+              {s.checkoutProductSubtitle?.trim() ? s.checkoutProductSubtitle.trim() : productLabel}
+            </p>
           </div>
         </div>
 
         <div className="rounded-xl bg-white/5 border border-white/10 p-4 mb-6">
           <div className="flex justify-between items-baseline gap-4">
-            <span className="text-white/60 text-sm">Total</span>
+            <span className="text-white/60 text-sm">{s.checkoutTotalLabel || "Total"}</span>
             <span className="text-2xl font-black" style={{ color: settings.primaryColor }}>
               {priceDisplay}
             </span>
           </div>
-          <p className="text-white/35 text-xs mt-2">Lisensi lifetime · 1 perangkat Mac</p>
+          <p className="text-white/35 text-xs mt-2">{s.checkoutLicenseNote || "Lisensi lifetime · 1 perangkat Mac"}</p>
         </div>
 
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2" htmlFor="co-name">
-          Nama lengkap
+          {s.checkoutNameLabel || "Nama lengkap"}
         </label>
         <input
           id="co-name"
@@ -264,7 +267,7 @@ export function CheckoutModal({
           className={`w-full bg-white/5 border rounded-xl px-4 py-3 mb-1 outline-none focus:border-red-500 ${
             fieldErr.name ? "border-red-500/60" : "border-white/10"
           }`}
-          placeholder="Nama di bukti pembayaran"
+          placeholder={s.checkoutNamePlaceholder || "Nama di bukti pembayaran"}
           disabled={submitting}
         />
         {fieldErr.name && (
@@ -275,7 +278,7 @@ export function CheckoutModal({
         {!fieldErr.name && <div className="mb-3" />}
 
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2" htmlFor="co-email">
-          Email
+          {s.checkoutEmailLabel || "Email"}
         </label>
         <input
           id="co-email"
@@ -290,7 +293,7 @@ export function CheckoutModal({
           className={`w-full bg-white/5 border rounded-xl px-4 py-3 mb-1 outline-none focus:border-red-500 ${
             fieldErr.email ? "border-red-500/60" : "border-white/10"
           }`}
-          placeholder="Untuk lisensi & aktivasi"
+          placeholder={s.checkoutEmailPlaceholder || "Untuk lisensi & aktivasi"}
           disabled={submitting}
         />
         {fieldErr.email && (
@@ -301,7 +304,7 @@ export function CheckoutModal({
         {!fieldErr.email && <div className="mb-3" />}
 
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2" htmlFor="co-phone">
-          No. HP / WhatsApp
+          {s.checkoutPhoneLabel || "No. HP / WhatsApp"}
         </label>
         <input
           id="co-phone"
@@ -315,7 +318,7 @@ export function CheckoutModal({
           className={`w-full bg-white/5 border rounded-xl px-4 py-3 mb-1 outline-none focus:border-red-500 ${
             fieldErr.phone ? "border-red-500/60" : "border-white/10"
           }`}
-          placeholder="08xxxxxxxxxx atau +62…"
+          placeholder={s.checkoutPhonePlaceholder || "08xxxxxxxxxx atau +62…"}
           disabled={submitting}
         />
         {fieldErr.phone && (
@@ -334,9 +337,9 @@ export function CheckoutModal({
             disabled={submitting}
           />
           <span className="text-sm text-white/60">
-            Saya setuju dengan{" "}
+            {s.checkoutAgreePrefix || "Saya setuju dengan"}{" "}
             <a href={settings.termsUrl || "#"} className="text-red-400 hover:underline" target="_blank" rel="noreferrer">
-              Syarat & Ketentuan
+              {s.checkoutTermsLinkLabel || "Syarat & Ketentuan"}
             </a>{" "}
             dan{" "}
             <a
@@ -345,7 +348,7 @@ export function CheckoutModal({
               target="_blank"
               rel="noreferrer"
             >
-              Kebijakan Privasi
+              {s.checkoutPrivacyLinkLabel || "Kebijakan Privasi"}
             </a>
             .
           </span>
@@ -358,21 +361,15 @@ export function CheckoutModal({
           className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-white hover:opacity-95 transition disabled:opacity-60 disabled:pointer-events-none"
         >
           {submitting ? <Loader2 size={18} className="animate-spin" /> : <CreditCard size={18} />}
-          {submitting ? "Memproses…" : primaryCtaLabel}
+          {submitting ? s.checkoutSubmitLoading || "Memproses…" : primaryCtaLabel}
           {!submitting && hasExternalCheckout && !useMidtransSnap && <ExternalLink size={16} />}
         </button>
 
         {!useMidtransSnap && !hasExternalCheckout && (
-          <p className="text-white/40 text-xs mt-4 text-center">
-            Atur <strong className="text-white/60">VITE_SUPABASE_URL</strong> + <strong className="text-white/60">anon key</strong>{" "}
-            dan deploy <code className="text-white/50">create-midtrans-snap</code>, atau isi{" "}
-            <strong className="text-white/60">Checkout URL</strong> di pengaturan.
-          </p>
+          <p className="text-white/40 text-xs mt-4 text-center">{s.checkoutFooterNoGateway}</p>
         )}
         {useMidtransSnap && (
-          <p className="text-white/35 text-xs mt-4 text-center">
-            Pembayaran aman melalui Midtrans Snap (sandbox/production mengikuti secret backend).
-          </p>
+          <p className="text-white/35 text-xs mt-4 text-center">{s.checkoutFooterSnap}</p>
         )}
 
         <div className="mt-6 pt-6 border-t border-white/10 flex flex-wrap justify-center gap-4 text-sm">

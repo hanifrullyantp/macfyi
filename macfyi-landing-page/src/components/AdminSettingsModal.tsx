@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Download, Upload, Trash2, Plus } from "lucide-react";
 import type { ContentData, SiteSettings } from "../types/content";
@@ -12,6 +12,7 @@ const TABS = [
   { id: "seo", label: "SEO" },
   { id: "track", label: "Pixel & Analytics" },
   { id: "ui", label: "Banner & FAQ" },
+  { id: "checkout", label: "Checkout" },
   { id: "legal", label: "Footer & privasi" },
   { id: "content", label: "Konten JSON" },
   { id: "crm", label: "CRM & WA" },
@@ -55,6 +56,12 @@ export function AdminSettingsModal({
     }
     return m;
   }, [s.waTemplates]);
+
+  useEffect(() => {
+    if (open && tab === "content") {
+      setJsonText(JSON.stringify(data, null, 2));
+    }
+  }, [open, tab, data]);
 
   if (!open) return null;
 

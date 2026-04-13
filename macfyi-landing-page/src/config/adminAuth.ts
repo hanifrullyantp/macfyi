@@ -1,4 +1,6 @@
-/** Demo credentials — override with VITE_ADMIN_EMAIL / VITE_ADMIN_PASSWORD in production. */
+import { isSupabaseBrowserConfigured } from "../lib/supabase";
+
+/** Hanya dipakai jika VITE_SUPABASE_* tidak diatur (mode lokal). */
 export const ADMIN_EMAIL =
   (import.meta.env.VITE_ADMIN_EMAIL as string | undefined)?.trim() || "hanif.rullyant@gmail.com";
 export const ADMIN_PASSWORD =
@@ -7,7 +9,8 @@ export const ADMIN_PASSWORD =
 export const SESSION_KEY = "macfyi_landing_admin_session";
 export const SESSION_MS = 1000 * 60 * 60 * 12; // 12h
 
-export function isValidAdminSession(): boolean {
+export function isValidLegacyAdminSession(): boolean {
+  if (isSupabaseBrowserConfigured()) return false;
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return false;
@@ -22,21 +25,39 @@ export function isValidAdminSession(): boolean {
   }
 }
 
-export function saveAdminSession(): void {
+/** @deprecated gunakan isValidLegacyAdminSession — nama lama untuk kompatibilitas */
+export function isValidAdminSession(): boolean {
+  return isValidLegacyAdminSession();
+}
+
+export function saveLegacyAdminSession(): void {
   sessionStorage.setItem(
     SESSION_KEY,
     JSON.stringify({ email: ADMIN_EMAIL, exp: Date.now() + SESSION_MS })
   );
 }
 
-export function clearAdminSession(): void {
+export function clearLegacyAdminSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
 }
 
-export function tryLogin(email: string, password: string): boolean {
+/** @deprecated */
+export function saveAdminSession(): void {
+  saveLegacyAdminSession();
+}
+
+export function clearAdminSession(): void {
+  clearLegacyAdminSession();
+}
+
+export function tryLegacyLogin(email: string, password: string): boolean {
   if (email.trim().toLowerCase() === ADMIN_EMAIL.toLowerCase() && password === ADMIN_PASSWORD) {
-    saveAdminSession();
+    saveLegacyAdminSession();
     return true;
   }
   return false;
+}
+
+export function tryLogin(email: string, password: string): boolean {
+  return tryLegacyLogin(email, password);
 }

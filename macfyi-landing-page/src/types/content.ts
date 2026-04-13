@@ -27,6 +27,27 @@ export interface SiteSettings {
   landingNotesHtml: string;
   waCategories: string[];
   waTemplates: { id: string; category: string; body: string }[];
+  /** Teks modal checkout (override; kosongkan untuk fallback bawaan). */
+  checkoutModalTitle: string;
+  /** Subjudul di bawah judul; kosong = pakai label produk dari halaman. */
+  checkoutProductSubtitle: string;
+  checkoutTotalLabel: string;
+  checkoutLicenseNote: string;
+  checkoutNameLabel: string;
+  checkoutNamePlaceholder: string;
+  checkoutEmailLabel: string;
+  checkoutEmailPlaceholder: string;
+  checkoutPhoneLabel: string;
+  checkoutPhonePlaceholder: string;
+  checkoutAgreePrefix: string;
+  checkoutTermsLinkLabel: string;
+  checkoutPrivacyLinkLabel: string;
+  checkoutSubmitLoading: string;
+  checkoutCtaMidtrans: string;
+  checkoutCtaExternal: string;
+  checkoutCtaConfirm: string;
+  checkoutFooterSnap: string;
+  checkoutFooterNoGateway: string;
 }
 
 export interface ContentData {
@@ -144,4 +165,24 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
     { id: "t1", category: "Sales", body: "Halo {nama}, terima kasih sudah tertarik Macfyi. Mau kami bantu aktivasi?" },
     { id: "t2", category: "Support", body: "Halo, kami dari Macfyi. Ada yang bisa kami bantu?" },
   ],
+  checkoutModalTitle: "Checkout",
+  checkoutProductSubtitle: "",
+  checkoutTotalLabel: "Total",
+  checkoutLicenseNote: "Lisensi lifetime · 1 perangkat Mac",
+  checkoutNameLabel: "Nama lengkap",
+  checkoutNamePlaceholder: "Nama di bukti pembayaran",
+  checkoutEmailLabel: "Email",
+  checkoutEmailPlaceholder: "Untuk lisensi & aktivasi",
+  checkoutPhoneLabel: "No. HP / WhatsApp",
+  checkoutPhonePlaceholder: "08xxxxxxxxxx atau +62…",
+  checkoutAgreePrefix: "Saya setuju dengan",
+  checkoutTermsLinkLabel: "Syarat & Ketentuan",
+  checkoutPrivacyLinkLabel: "Kebijakan Privasi",
+  checkoutSubmitLoading: "Memproses…",
+  checkoutCtaMidtrans: "Bayar dengan Midtrans",
+  checkoutCtaExternal: "Lanjut ke pembayaran",
+  checkoutCtaConfirm: "Konfirmasi pesanan",
+  checkoutFooterSnap: "Pembayaran diproses melalui Midtrans (metode mengikuti pengaturan merchant).",
+  checkoutFooterNoGateway:
+    "Tambahkan variabel VITE_SUPABASE_URL dan kunci anon, atau atur Checkout URL di pengaturan.",
 };

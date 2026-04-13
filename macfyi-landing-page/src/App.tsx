@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Monitor, 
@@ -18,13 +18,16 @@ import {
   Eye, 
   Cloud,
   Mail,
-  Info
+  Info,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { EditableText, EditableImage, EditableVideo } from './components/Editable';
 import type { ContentData } from './types/content';
 import { DEFAULT_SITE_SETTINGS } from './types/content';
 import { deepMerge } from './lib/mergeData';
-import { isValidAdminSession, clearAdminSession } from './config/adminAuth';
+import { clearLegacyAdminSession, isValidLegacyAdminSession } from './config/adminAuth';
+import { getSupabaseBrowserClient, isSupabaseBrowserConfigured, isSupabaseUserAdmin } from './lib/supabase';
 import { injectFacebookPixel, injectGoogleAnalytics } from './lib/injectTracking';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { AdminLoginModal } from './components/AdminLoginModal';
@@ -221,7 +224,15 @@ function LandingApp() {
   const [data, setData] = useState<ContentData>(() =>
     typeof localStorage !== 'undefined' ? mergeSavedContent(localStorage.getItem('macfyi_data')) : INITIAL_DATA
   );
-  const [sessionOk, setSessionOk] = useState(() => isValidAdminSession());
+  const [legacyAdmin, setLegacyAdmin] = useState(() => isValidLegacyAdminSession());
+  const [supabaseAdmin, setSupabaseAdmin] = useState(false);
+  const sessionOk = isSupabaseBrowserConfigured() ? supabaseAdmin : legacyAdmin;
+  const [undoStack, setUndoStack] = useState<ContentData[]>([]);
+  const [redoStack, setRedoStack] = useState<ContentData[]>([]);
+  const dataRef = useRef(data);
+  useEffect(() => {
+    dataRef.current = data;
+  }, [data]);
   const [adminPreview, setAdminPreview] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -239,11 +250,56 @@ function LandingApp() {
   const leadWebhookActive = Boolean(leadWebhookUrl?.trim());
 
   useEffect(() => {
-    const t = window.setInterval(() => {
-      if (!isValidAdminSession() && sessionOk) setSessionOk(false);
-    }, 20000);
-    return () => window.clearInterval(t);
-  }, [sessionOk]);
+    if (!isSupabaseBrowserConfigured()) {
+      setLegacyAdmin(isValidLegacyAdminSession());
+      const t = window.setInterval(() => setLegacyAdmin(isValidLegacyAdminSession()), 20000);
+      return () => window.clearInterval(t);
+    }
+    const client = getSupabaseBrowserClient();
+    if (!client) return;
+    const sync = async () => {
+      const { data: sess } = await client.auth.getSession();
+      setSupabaseAdmin(isSupabaseUserAdmin(sess.session?.user ?? null));
+    };
+    void sync();
+    const { data: sub } = client.auth.onAuthStateChange(() => {
+      void sync();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const client = getSupabaseBrowserClient();
+      if (client) {
+        const { data: row } = await client
+          .from('landing_site_content')
+          .select('content')
+          .eq('id', 'default')
+          .maybeSingle();
+        if (cancelled) return;
+        if (row?.content && typeof row.content === 'object' && !Array.isArray(row.content)) {
+          const merged = deepMerge(
+            JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData,
+            row.content as Partial<ContentData>
+          );
+          setData(merged);
+          setUndoStack([]);
+          setRedoStack([]);
+          return;
+        }
+      }
+      if (!cancelled && typeof localStorage !== 'undefined') {
+        setData(mergeSavedContent(localStorage.getItem('macfyi_data')));
+        setUndoStack([]);
+        setRedoStack([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     document.title = data.settings.seoTitle;
@@ -273,19 +329,60 @@ function LandingApp() {
         current = current[keys[i]] as Record<string, unknown>;
       }
       current[keys[keys.length - 1]] = value;
+      if (JSON.stringify(prev) !== JSON.stringify(newData)) {
+        setUndoStack((u) => [...u.slice(-39), structuredClone(prev)]);
+        setRedoStack([]);
+      }
       return newData;
     });
     setHasChanges(true);
   }, []);
 
   const patchSettings = useCallback((partial: Partial<ContentData['settings']>) => {
-    setData((prev) => ({ ...prev, settings: { ...prev.settings, ...partial } }));
+    setData((prev) => {
+      const next = { ...prev, settings: { ...prev.settings, ...partial } };
+      if (JSON.stringify(prev) !== JSON.stringify(next)) {
+        setUndoStack((u) => [...u.slice(-39), structuredClone(prev)]);
+        setRedoStack([]);
+      }
+      return next;
+    });
     setHasChanges(true);
   }, []);
 
   const replaceData = useCallback((next: ContentData) => {
-    setData(next);
+    setData((prev) => {
+      if (JSON.stringify(prev) !== JSON.stringify(next)) {
+        setUndoStack((u) => [...u.slice(-39), structuredClone(prev)]);
+        setRedoStack([]);
+      }
+      return next;
+    });
     setHasChanges(true);
+  }, []);
+
+  const undo = useCallback(() => {
+    setUndoStack((u) => {
+      if (u.length === 0) return u;
+      const snap = u[u.length - 1];
+      const rest = u.slice(0, -1);
+      setRedoStack((r) => [...r.slice(-39), structuredClone(dataRef.current)]);
+      setData(structuredClone(snap));
+      setHasChanges(true);
+      return rest;
+    });
+  }, []);
+
+  const redo = useCallback(() => {
+    setRedoStack((r) => {
+      if (r.length === 0) return r;
+      const snap = r[r.length - 1];
+      const rest = r.slice(0, -1);
+      setUndoStack((u) => [...u.slice(-39), structuredClone(dataRef.current)]);
+      setData(structuredClone(snap));
+      setHasChanges(true);
+      return rest;
+    });
   }, []);
 
   const toggleFaq = useCallback(
@@ -308,12 +405,38 @@ function LandingApp() {
     localStorage.setItem('macfyi_data', JSON.stringify(data));
     setHasChanges(false);
     setLastSaved(new Date().toLocaleTimeString());
-    toast('Draft disimpan ke localStorage.', 'success');
+    toast('Draft disimpan di perangkat ini.', 'success');
   };
 
-  const publish = () => {
+  const publish = async () => {
+    const client = getSupabaseBrowserClient();
+    if (client) {
+      const { data: sess } = await client.auth.getSession();
+      if (!sess.session?.user || !isSupabaseUserAdmin(sess.session.user)) {
+        toast('Untuk menyimpan ke database, masuk dengan akun Supabase yang memiliki role admin.', 'error');
+        return;
+      }
+      const { error } = await client.from('landing_site_content').upsert(
+        { id: 'default', content: data, updated_at: new Date().toISOString() },
+        { onConflict: 'id' }
+      );
+      if (error) {
+        toast(error.message, 'error');
+        return;
+      }
+      localStorage.setItem('macfyi_data', JSON.stringify(data));
+      setHasChanges(false);
+      setLastSaved(new Date().toLocaleTimeString());
+      setUndoStack([]);
+      setRedoStack([]);
+      toast('Konten dipublikasikan ke database.', 'success');
+      return;
+    }
     saveToDraft();
-    toast('Dipublikasikan (lokal). Deploy build statis untuk produksi.', 'success');
+    toast(
+      'Draft lokal tersimpan. Tambahkan VITE_SUPABASE_URL dan kunci anon, lalu masuk dengan akun admin Supabase untuk publikasi ke server.',
+      'info'
+    );
   };
 
   const onGearClick = () => {
@@ -358,7 +481,11 @@ function LandingApp() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-2 h-2 rounded-full bg-amber-500/90" />
-                <span className="text-white/60">Mode admin (penyimpanan lokal)</span>
+                <span className="text-white/60">
+                  {isSupabaseBrowserConfigured()
+                    ? 'Penyuntingan konten · publikasi ke database'
+                    : 'Penyuntingan konten · draft lokal'}
+                </span>
               </div>
               {leadWebhookActive && (
                 <>
@@ -378,7 +505,25 @@ function LandingApp() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <button
+                type="button"
+                onClick={undo}
+                disabled={undoStack.length === 0}
+                className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-sm transition disabled:opacity-30 disabled:pointer-events-none"
+                title="Urungkan"
+              >
+                <Undo2 size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={redo}
+                disabled={redoStack.length === 0}
+                className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-sm transition disabled:opacity-30 disabled:pointer-events-none"
+                title="Ulangi"
+              >
+                <Redo2 size={14} />
+              </button>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
@@ -389,28 +534,32 @@ function LandingApp() {
                 onClick={saveToDraft}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
               >
-                <Save size={14} /> Save Draft
+                <Save size={14} /> Simpan draft
               </button>
               <button 
-                onClick={publish}
+                type="button"
+                onClick={() => void publish()}
                 className="flex items-center gap-2 bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-sm font-bold transition shadow-lg shadow-red-600/20"
               >
-                <Send size={14} /> Publish
+                <Send size={14} /> Publikasikan
               </button>
               <button 
                 onClick={() => setAdminPreview(true)}
                 className="ml-2 text-white/40 hover:text-white"
-                title="Pratinjau pengunjung"
+                title="Lihat tampilan publik"
               >
                 <Eye size={18} />
               </button>
               <button 
                 type="button"
-                onClick={() => {
-                  clearAdminSession();
-                  setSessionOk(false);
+                onClick={async () => {
+                  clearLegacyAdminSession();
+                  const c = getSupabaseBrowserClient();
+                  if (c) await c.auth.signOut();
+                  setLegacyAdmin(false);
+                  setSupabaseAdmin(false);
                   setAdminPreview(false);
-                  toast('Anda keluar dari mode admin.', 'info');
+                  toast('Anda telah keluar.', 'info');
                 }}
                 className="ml-2 text-xs text-white/50 hover:text-white px-2 py-1 rounded border border-white/15"
               >
@@ -1250,7 +1399,7 @@ function LandingApp() {
       <button 
         type="button"
         onClick={onGearClick}
-        title={sessionOk ? "Pengaturan" : "Admin — masuk"}
+        title={sessionOk ? "Pengaturan" : "Masuk penyunting"}
         className="fixed bottom-6 left-6 z-[70] w-11 h-11 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/50 hover:text-white transition group shadow-lg"
       >
         <Settings className="group-hover:rotate-90 transition-transform duration-500" size={20} />
@@ -1266,7 +1415,7 @@ function LandingApp() {
             onClick={() => setAdminPreview(false)}
             className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[75] px-5 py-2.5 rounded-full bg-red-600 text-white text-sm font-bold shadow-xl"
           >
-            Lanjut edit halaman
+            Kembali ke penyuntingan
           </motion.button>
         )}
       </AnimatePresence>
@@ -1284,9 +1433,11 @@ function LandingApp() {
         open={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
         onSuccess={() => {
-          setSessionOk(true);
+          if (!isSupabaseBrowserConfigured()) {
+            setLegacyAdmin(isValidLegacyAdminSession());
+          }
           setAdminPreview(false);
-          toast('Mode admin aktif — sunting inline atau buka pengaturan.', 'success');
+          toast('Anda dapat menyunting konten halaman.', 'success');
         }}
       />
       {isSettingsOpen && (
