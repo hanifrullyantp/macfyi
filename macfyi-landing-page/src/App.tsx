@@ -982,10 +982,10 @@ function LandingApp() {
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Pricing Section — accent hijau (hanya blok ini; bagian lain tetap merah/brand) */}
       <section id="pricing" className="py-24">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto rounded-[3rem] bg-gradient-to-br from-red-600/20 to-red-900/40 border border-red-500/30 overflow-hidden shadow-2xl">
+          <div className="max-w-4xl mx-auto rounded-[3rem] bg-gradient-to-br from-emerald-600/20 to-emerald-950/45 border border-emerald-500/35 overflow-hidden shadow-2xl">
             <div className="p-8 md:p-16 flex flex-col md:flex-row items-center gap-16">
               <div className="flex-1">
                 <EditableText 
@@ -1007,12 +1007,12 @@ function LandingApp() {
                   value={data.pricing.label} 
                   onSave={(v) => updateData('pricing.label', v)} 
                   isAdmin={canEdit} 
-                  className="text-red-500 font-bold tracking-widest uppercase text-sm mb-8 block" 
+                  className="text-emerald-400 font-bold tracking-widest uppercase text-sm mb-8 block" 
                 />
                 <ul className="space-y-4 mb-8">
                   {data.pricing.bullets.map((bullet, i) => (
                     <li key={i} className="flex items-center gap-3">
-                      <Check className="text-red-500" size={18} />
+                      <Check className="text-emerald-500" size={18} />
                       <EditableText 
                         value={bullet} 
                         onSave={(v) => {
@@ -1028,19 +1028,19 @@ function LandingApp() {
                 <button 
                   type="button"
                   onClick={openCheckout}
-                  className="w-full bg-red-600 hover:bg-red-700 text-white py-4 rounded-2xl text-xl font-bold transition shadow-xl shadow-red-600/20 flex items-center justify-center gap-3 group"
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl text-xl font-bold transition shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-3 group"
                 >
                   <EditableText value={data.pricing.cta} onSave={(v) => updateData('pricing.cta', v)} isAdmin={canEdit} />
                   <Zap className="group-hover:scale-125 transition" size={20} fill="currentColor" />
                 </button>
               </div>
               <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-8 bg-black/40 rounded-3xl border border-white/5">
-                <Cloud className="text-red-500 mb-6" size={64} />
+                <Cloud className="text-emerald-500 mb-6" size={64} />
                 <p className="text-white/60 mb-6 font-medium">Satu kali bayar untuk ketenangan jangka panjang.</p>
                 <div className="h-px w-full bg-white/10 mb-6" />
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                    <ShieldCheck className="text-red-500" />
+                    <ShieldCheck className="text-emerald-500" />
                   </div>
                   <div className="text-left">
                     <div className="font-bold">Verified Secure</div>
