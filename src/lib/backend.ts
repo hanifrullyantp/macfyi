@@ -153,6 +153,24 @@ export async function orphanDetect(): Promise<FileItem[]> {
   }
 }
 
+export async function removeOrphanPaths(paths: string[], useTrash: boolean): Promise<TrashResult> {
+  return await invoke<TrashResult>("remove_orphan_paths", { paths, use_trash: useTrash });
+}
+
+export async function uninstallAppBundle(
+  appPath: string,
+  bundleId: string,
+  relatedPaths: string[],
+  useTrash: boolean
+): Promise<TrashResult> {
+  return await invoke<TrashResult>("uninstall_app_bundle", {
+    app_path: appPath,
+    bundle_id: bundleId,
+    related_paths: relatedPaths,
+    use_trash: useTrash,
+  });
+}
+
 // --- Shell Probe ---
 export async function shellProbe(): Promise<ShellProbe[]> {
   try {
@@ -233,12 +251,7 @@ export async function openUserTrash(): Promise<void> {
 }
 
 export async function listTrashItems(): Promise<TrashListItem[]> {
-  try {
-    return await invoke<TrashListItem[]>("list_trash_items");
-  } catch {
-    if (import.meta.env.DEV) return [];
-    throw new Error("Trash listing requires the Macfyi app.");
-  }
+  return await invoke<TrashListItem[]>("list_trash_items");
 }
 
 export async function emptyTrash(): Promise<TrashResult> {

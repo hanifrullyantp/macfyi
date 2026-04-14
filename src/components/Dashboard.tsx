@@ -42,12 +42,13 @@ export const Dashboard = ({
 
         <div className="flex-1 flex flex-col items-center justify-center min-h-[min(52vh,28rem)] py-8">
           <div className="relative flex flex-col items-center gap-5">
-            <div className="relative scale-[1.55] sm:scale-[1.85] md:scale-[2]">
+            <div className="relative scale-[1.2] sm:scale-[1.35] md:scale-[1.45]">
               <ScanOrbButton
                 mode="idle_scan"
                 mainText={t("orb.scan")}
                 subLabel={t("orb.subSmart")}
                 onClick={onStartScan}
+                className="!w-[168px] !h-[168px] sm:!w-[176px] sm:!h-[176px]"
               />
             </div>
             <div className="flex flex-wrap items-center justify-center gap-2">

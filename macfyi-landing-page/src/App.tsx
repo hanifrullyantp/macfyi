@@ -33,6 +33,7 @@ import { ToastProvider, useToast } from './components/ToastProvider';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { NotificationBanner } from './components/NotificationBanner';
+import { SocialProofToast, toggleSocialProofMuteFromOutside, getSocialProofMuted } from './components/SocialProofToast';
 import { LeadCaptureForm } from './components/LeadCaptureForm';
 import { CheckoutModal } from './components/CheckoutModal';
 import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytics';
@@ -76,46 +77,32 @@ const INITIAL_DATA: ContentData = {
   details: [
     {
       id: 1,
-      title: "Detail 01 — Ketemu “Biang Kerok” Storage Penuh",
-      p1: "Macfyi menampilkan ringkasan yang mudah dipahami: Anda tahu bagian mana yang paling besar.",
-      bullets: ["Fokus ke yang paling berdampak", "Tidak perlu nebak-nebak", "Lebih cepat ambil keputusan"],
-      image: "https://images.unsplash.com/photo-1542744095-2ad4870f72dd?auto=format&fit=crop&q=80&w=1200"
+      title: "Deep Scan — Ketemu Penyebab Storage Penuh dalam Menit",
+      p1: "Macfyi memetakan folder dan file yang paling “berat”, jadi Anda tidak perlu bongkar satu-satu secara manual. Anda langsung tahu harus mulai dari mana untuk hasil paling terasa.",
+      bullets: ["Fokus ke yang paling berdampak", "Tidak perlu tebak-tebakan", "Lebih cepat ambil keputusan"],
+      image: "/landing/detail-01-deep-scan.png",
     },
     {
       id: 2,
-      title: "Detail 02 — Bersih-bersih Tanpa Deg-degan",
-      p1: "Macfyi membantu membedakan mana yang biasanya aman dibersihkan, dan mana yang perlu Anda cek dulu.",
-      bullets: ["Ada penanda kehati-hatian", "Anda tetap review sebelum hapus", "Kontrol tetap di tangan Anda"],
-      image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=1200"
+      title: "Safe Cleaning — Bersih-bersih Tanpa Deg-degan",
+      p1: "Macfyi memberi penanda “aman dibersihkan” dan “perlu dicek dulu”, sehingga Anda lebih yakin saat menghapus. Anda tetap review dulu sebelum aksi, jadi kontrol ada di tangan Anda.",
+      bullets: ["Ada penanda kehati-hatian yang jelas", "Anda tetap review sebelum hapus", "Mengurangi risiko salah hapus file penting"],
+      image: "/landing/detail-02-safe-cleaning.png",
     },
     {
       id: 3,
-      title: "Detail 03 — Uninstall yang Tidak Meninggalkan “Sisa”",
-      p1: "Macfyi membantu merapikan sisa file aplikasi yang sering tertinggal.",
-      bullets: ["Uninstall lebih rapi", "Mengurangi penumpukan sisa file"],
-      image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&q=80&w=1200"
+      title: "Complete Uninstall — Hapus Aplikasi Sampai Benar-benar Rapi",
+      p1: "Menghapus aplikasi sering meninggalkan sisa file yang diam-diam memakan ruang. Macfyi membantu Anda membereskan sisa-sisa itu, supaya storage tidak cepat penuh lagi.",
+      bullets: ["Aplikasi hilang, sisa file ikut beres", "Storage lebih rapi dari waktu ke waktu", "Mengurangi “sampah” tersembunyi setelah uninstall"],
+      image: "/landing/detail-03-complete-uninstall.png",
     },
     {
       id: 4,
-      title: "Detail 04 — Bereskan User Junk yang Menumpuk Diam-diam",
-      p1: "Cache/log/leftovers sering kecil, tapi menumpuk jadi besar.",
-      bullets: ["Lihat total yang menumpuk", "Pilih yang ingin dibersihkan", "Storage lebih terasa lega"],
-      image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1200"
+      title: "RAM Optimization — Mac Terasa Lebih Ringan Saat Dipakai",
+      p1: "Saat Mac terasa berat, bukan cuma storage yang jadi penyebab. Macfyi membantu Anda melihat apa yang paling membebani memori, supaya Anda bisa menutup atau merapikan yang tidak perlu.",
+      bullets: ["Tahu aplikasi mana yang paling membebani RAM", "Bantu kurangi beban saat kerja multitasking", "Mac lebih nyaman dipakai untuk aktivitas harian"],
+      image: "/landing/detail-04-ram-optimization.png",
     },
-    {
-      id: 5,
-      title: "Detail 05 — Mac Terasa Berat? Tinjau Penyebabnya",
-      p1: "Macfyi membantu melihat hal yang bisa membebani penggunaan sehari-hari.",
-      bullets: ["Ringkasan RAM", "Tinjau startup items seperlunya", "Rapikan dengan keputusan Anda"],
-      image: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200"
-    },
-    {
-      id: 6,
-      title: "Detail 06 — Tanya AI, Privasi Tetap Dijaga",
-      p1: "Butuh penjelasan cepat? Macfyi membantu tanpa membagikan lokasi file Anda secara detail.",
-      bullets: ["Penjelasan lebih mudah dipahami", "Privacy-first (tanpa path file penuh)"],
-      image: "https://images.unsplash.com/photo-1531746790731-6c087fecd65a?auto=format&fit=crop&q=80&w=1200"
-    }
   ],
   steps: {
     title: "Caranya Mudah",
@@ -244,6 +231,9 @@ function LandingApp() {
   const [bannerDismissed, setBannerDismissed] = useState(() =>
     typeof sessionStorage !== 'undefined' && sessionStorage.getItem('macfyi_banner_dismissed') === '1'
   );
+  const [socialMuteUi, setSocialMuteUi] = useState(() =>
+    typeof window !== 'undefined' ? getSocialProofMuted() : false
+  );
 
   const canEdit = sessionOk && !adminPreview;
 
@@ -323,6 +313,12 @@ function LandingApp() {
 
   useEffect(() => {
     bootstrapReferralAndTracking();
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setSocialMuteUi(getSocialProofMuted());
+    window.addEventListener('macfyi-social-proof-mute', sync);
+    return () => window.removeEventListener('macfyi-social-proof-mute', sync);
   }, []);
 
   const updateData = useCallback((path: string, value: unknown) => {
@@ -477,6 +473,12 @@ function LandingApp() {
         accentColor={data.settings.primaryColor}
       />
 
+      <SocialProofToast
+        enabled={data.settings.socialProofToastEnabled}
+        soundEnabled={data.settings.notificationSoundEnabled}
+        accentColor={data.settings.primaryColor}
+      />
+
       {/* Admin Toolbar */}
       <AnimatePresence>
         {sessionOk && !adminPreview && (
@@ -580,7 +582,7 @@ function LandingApp() {
 
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-[#070B14]/80 backdrop-blur-md border-b border-white/10 transition-all ${sessionOk && !adminPreview ? 'mt-[49px]' : ''}`}>
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="container mx-auto px-4 h-12 flex items-center justify-between">
           <div className="flex items-center gap-2">
             {data.settings.brandLogoUrl ? (
               <img src={data.settings.brandLogoUrl} alt="" className="w-8 h-8 rounded-lg object-contain bg-white/5" />
@@ -625,8 +627,8 @@ function LandingApp() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative pt-20 pb-32 overflow-hidden">
+      {/* Hero Section — vertikal ~75% vs layout sebelumnya */}
+      <section className="relative pt-[3.75rem] pb-24 overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-6xl h-full bg-gradient-radial from-red-600/10 to-transparent pointer-events-none" />
         
         <div className="container mx-auto px-4 relative z-10 text-center">
@@ -641,7 +643,7 @@ function LandingApp() {
               onSave={(v) => updateData('hero.headline', v)} 
               isAdmin={canEdit} 
               multiline
-              className="text-4xl md:text-6xl font-black mb-6 max-w-4xl mx-auto leading-tight" 
+              className="text-4xl md:text-6xl font-black mb-4 max-w-4xl mx-auto leading-tight" 
             />
             <EditableText 
               as="p"
@@ -649,11 +651,11 @@ function LandingApp() {
               onSave={(v) => updateData('hero.subheadline', v)} 
               isAdmin={canEdit} 
               multiline
-              className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-10" 
+              className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-7" 
             />
 
-            <div className="max-w-xl mx-auto mb-16 p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <div className="flex justify-between items-end mb-4">
+            <div className="max-w-xl mx-auto mb-12 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
+              <div className="flex justify-between items-end mb-3">
                 <div className="text-left">
                   <div className="text-sm text-white/40 mb-1 font-medium">Macintosh HD</div>
                   <div className="text-lg font-bold">Storage Status</div>
@@ -670,7 +672,7 @@ function LandingApp() {
                 </div>
               </div>
               
-              <div className="h-6 w-full bg-white/10 rounded-full overflow-hidden flex">
+              <div className="h-[18px] w-full bg-white/10 rounded-full overflow-hidden flex">
                 <motion.div 
                   initial={{ width: '98%' }}
                   animate={{ width: '30%' }}
@@ -697,7 +699,7 @@ function LandingApp() {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3 text-xs md:text-sm font-bold text-white/40">
+            <div className="flex flex-wrap justify-center gap-2 text-[11px] md:text-xs font-bold text-white/40">
               {data.hero.features.map((feat, i) => (
                 <React.Fragment key={i}>
                   <EditableText value={feat} onSave={(v) => {
@@ -714,14 +716,14 @@ function LandingApp() {
       </section>
 
       {/* Problem Section */}
-      <section className="py-24 bg-white/[0.02]">
+      <section className="py-[4.5rem] bg-white/[0.02]">
         <div className="container mx-auto px-4 max-w-4xl text-center">
           <EditableText 
             as="h2"
             value={data.problem.heading} 
             onSave={(v) => updateData('problem.heading', v)} 
             isAdmin={canEdit} 
-            className="text-red-500 font-bold mb-8 text-xl tracking-widest uppercase" 
+            className="text-red-500 font-bold mb-6 text-xl tracking-widest uppercase" 
           />
           <EditableText 
             as="p"
@@ -729,10 +731,10 @@ function LandingApp() {
             onSave={(v) => updateData('problem.p1', v)} 
             isAdmin={canEdit} 
             multiline
-            className="text-2xl md:text-3xl font-medium mb-12 text-white/80" 
+            className="text-2xl md:text-3xl font-medium mb-9 text-white/80" 
           />
           
-          <div className="relative py-12 px-8 mb-12 border-y border-white/10">
+          <div className="relative py-9 px-6 mb-9 border-y border-white/10">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#070B14] px-4 text-white/20">
               <Zap size={32} />
             </div>
@@ -757,7 +759,7 @@ function LandingApp() {
       </section>
 
       {/* Solution Section */}
-      <section className="py-24">
+      <section className="py-[4.5rem]">
         <div className="container mx-auto px-4 text-center">
           <EditableText 
             as="p"
@@ -1277,7 +1279,7 @@ function LandingApp() {
       </section>
 
       {/* Final Push */}
-      <section className="py-32 relative overflow-hidden">
+      <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 bg-red-600/10 opacity-50" />
         <div className="container mx-auto px-4 relative z-10 text-center">
           <h2 className="text-4xl md:text-6xl font-black mb-8">Storage lega. Kerja lancar.<br/>Tanpa bingung lagi.</h2>
@@ -1327,7 +1329,7 @@ function LandingApp() {
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-white/10 bg-[#070B14]">
+      <footer className="py-[3.75rem] border-t border-white/10 bg-[#070B14]">
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             <div>
@@ -1391,7 +1393,19 @@ function LandingApp() {
           </div>
           <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-white/20">
             <EditableText value={data.footer.copyright} onSave={(v) => updateData('footer.copyright', v)} isAdmin={canEdit} />
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-6">
+              {data.settings.socialProofToastEnabled && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleSocialProofMuteFromOutside();
+                    setSocialMuteUi(getSocialProofMuted());
+                  }}
+                  className="text-white/35 hover:text-white/70 transition"
+                >
+                  Notif demo: {socialMuteUi ? 'suara mati' : 'suara hidup'}
+                </button>
+              )}
               <a href={data.settings.privacyPolicyUrl} className="hover:text-red-400 transition">
                 Privacy Policy
               </a>

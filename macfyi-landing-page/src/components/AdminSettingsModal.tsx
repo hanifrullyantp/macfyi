@@ -344,6 +344,14 @@ export function AdminSettingsModal({
                 />
                 <span>Suara saat banner tampil / ditutup</span>
               </label>
+              <label className="flex items-center gap-2 cursor-pointer pt-2 border-t border-white/10">
+                <input
+                  type="checkbox"
+                  checked={s.socialProofToastEnabled}
+                  onChange={(e) => patchSettings({ socialProofToastEnabled: e.target.checked })}
+                />
+                <span>Toast social proof (kanan bawah, interval 25–45 dtk, suara setelah interaksi)</span>
+              </label>
               <div className="pt-2">
                 <button
                   type="button"

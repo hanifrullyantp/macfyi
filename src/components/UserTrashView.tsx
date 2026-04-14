@@ -11,7 +11,7 @@ function formatBytes(n: number): string {
   return `${(n / 1024).toFixed(0)} KB`;
 }
 
-export function UserTrashView() {
+export function UserTrashView({ refreshNonce = 0 }: { refreshNonce?: number }) {
   const { t } = useI18n();
   const [items, setItems] = useState<TrashListItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,7 +29,7 @@ export function UserTrashView() {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, refreshNonce]);
 
   const total = items.reduce((a, x) => a + x.sizeBytes, 0);
 

@@ -79,7 +79,7 @@ export function ScanOrbButton({
       onPointerEnter={onPointerEnter}
       onPointerLeave={onPointerLeave}
       className={cn(
-        "group/orb relative w-[140px] h-[140px] rounded-full select-none outline-none",
+        "group/orb relative w-[140px] h-[140px] rounded-full select-none outline-none transform-gpu",
         "transition-transform duration-200 ease-out",
         "hover:scale-[1.04] active:scale-[0.96]",
         "focus-visible:ring-2 focus-visible:ring-[var(--color-brand-glow)]/50 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg)]",
@@ -89,7 +89,6 @@ export function ScanOrbButton({
       )}
       aria-label={displayTitle}
     >
-      {/* Outer glow */}
       <div
         className={cn(
           "pointer-events-none absolute -inset-4 rounded-full blur-2xl opacity-70",
@@ -97,31 +96,20 @@ export function ScanOrbButton({
           glowActive ? "animate-[orb-glow_2.2s_ease-in-out_infinite]" : "opacity-35"
         )}
       />
-      {/* Angular ring */}
-      <div
-        className="pointer-events-none absolute -inset-1 rounded-full p-[2px] opacity-90"
-        style={{
-          background: "var(--orb-ring)",
-        }}
-      >
-        <div
-          className="h-full w-full rounded-full animate-[orb-ring-spin_14s_linear_infinite] opacity-95"
-          style={{
-            background: "conic-gradient(from 0deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%)",
-          }}
-        />
-      </div>
-      {/* Main sphere */}
       <div
         className={cn(
-          "absolute inset-0 rounded-full border border-white/20 shadow-2xl bg-gradient-to-br",
-          innerTint
+          "absolute inset-0 rounded-full p-[2px] shadow-2xl",
+          "bg-gradient-to-br from-white/25 via-white/5 to-transparent"
         )}
-      />
-      <div className="absolute inset-[10px] rounded-full border border-white/25 bg-black/25 backdrop-blur-[2px]" />
-      <div className="absolute inset-[18px] rounded-full border border-white/10" />
-      {/* Highlight */}
-      <div className="pointer-events-none absolute inset-[28px] rounded-full bg-gradient-to-br from-white/25 to-transparent opacity-40" />
+      >
+        <div
+          className={cn(
+            "h-full w-full rounded-full border border-white/25 bg-gradient-to-br",
+            innerTint
+          )}
+        />
+      </div>
+      <div className="pointer-events-none absolute inset-[22px] rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-35" />
       <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-0.5 px-3 text-center text-white">
         <div className="mb-0.5 drop-shadow-md">{Icon}</div>
         <span className="text-[15px] font-bold tracking-tight leading-none">{displayTitle}</span>

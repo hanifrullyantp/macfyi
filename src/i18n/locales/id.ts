@@ -41,6 +41,9 @@ export const id: MessageTree = {
     cleaning: "Membersihkan",
     subSmart: "Cerdas + Aman",
     perfAnalyze: "Analisa performa",
+    refreshTrash: "Muat ulang Tong Sampah",
+    refreshUninstaller: "Muat ulang daftar",
+    refreshMonitor: "Muat ulang penyimpanan",
   },
   dashboard: {
     heroHint: "Ketuk orb saat siap — indikator memuat hanya saat pemindaian berjalan.",
@@ -137,6 +140,8 @@ export const id: MessageTree = {
       reviewBeforeDelete: "Tinjau sebelum hapus",
       youreSafe: "Anda aman",
       whatCanBeCleaned: "Apa yang bisa dibersihkan",
+      categoryChartHint:
+        "Arahkan kursor atau ketuk segmen untuk detail. Persentase adalah bagian dari total ukuran file terpindaian dalam laporan ini.",
       safetyAnalysis: "Analisis keamanan",
       safetyGreatNews: "Kabar baik — tidak ada file berisiko dalam pemindaian ini.",
       safetyHasRisky: "Ada item berisiko — tinjau dengan teliti sebelum membersihkan.",
@@ -237,6 +242,14 @@ export const id: MessageTree = {
     refresh: "Muat ulang",
     noLeftovers: "Tidak ada file orphan terdeteksi, atau akses terbatas. Beri Full Disk Access untuk hasil lebih dalam.",
     reveal: "Tampilkan",
+    cleanOne: "Hapus",
+    cleanBulk: "Bersihkan semua sisa",
+    cleanBulkConfirm: "Pindahkan {n} folder sisa ke Tong Sampah (atau hapus permanen jika di Pengaturan)?",
+    uninstall: "Uninstall",
+    uninstallConfirm:
+      "Hapus “{name}”{extra}? Mengikuti mode penghapusan di Pengaturan (Tong Sampah vs permanen).",
+    uninstallExtraRelated: " dan data pendukung terpilih",
+    selectRelatedHint: "Juga hapus data pendukung yang dipilih di bawah (opsional).",
   },
   monitor: {
     title: "Monitor",
@@ -337,6 +350,10 @@ export const id: MessageTree = {
     intro:
       "Saya asisten Macfyi. Tanya tentang penyimpanan atau biarkan saya pandu hasil pindaian.",
     placeholder: "Tanya Macfyi…",
+    bannerQ1: "Ingin ringkasan bahasa awam tentang yang ditemukan?",
+    bannerQ2: "Tanyakan item mana yang paling aman dihapus dulu.",
+    bannerQ3: "Ragu tentang suatu kategori? Saya bisa jelaskan konsekuensinya.",
+    bannerCta: "Buka asisten",
   },
   upgrade: {
     title: "Buka Macfyi Pro",

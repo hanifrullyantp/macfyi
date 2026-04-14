@@ -23,6 +23,8 @@ export interface SiteSettings {
   notificationBannerEnabled: boolean;
   notificationBannerText: string;
   notificationSoundEnabled: boolean;
+  /** Toast social proof kanan bawah (interval acak 25–45 dtk) */
+  socialProofToastEnabled: boolean;
   /** Catatan migrasi / HTML dari WordPress (referensi editor). */
   landingNotesHtml: string;
   waCategories: string[];
@@ -159,6 +161,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   notificationBannerEnabled: true,
   notificationBannerText: "Promo lifetime — checkout sekarang dan rapikan Mac Anda dengan tenang.",
   notificationSoundEnabled: true,
+  socialProofToastEnabled: true,
   landingNotesHtml: "",
   waCategories: ["Sales", "Support", "Follow-up"],
   waTemplates: [

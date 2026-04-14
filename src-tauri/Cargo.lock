@@ -2226,6 +2226,7 @@ dependencies = [
  "chrono",
  "dirs 5.0.1",
  "hex",
+ "libc",
  "log",
  "plist",
  "reqwest 0.12.28",

@@ -65,6 +65,8 @@ Tabel `landing_site_content` menyimpan JSON konten yang disunting di admin landi
 2. Di **Authentication → Users**, buat atau pilih user admin → **App metadata** (raw JSON): `{ "role": "admin" }`.
 3. Di landing, masuk dengan email/password user itu; **Publikasikan** menyimpan ke baris `id = default`.
 
+Migrasi `20260414175000_landing_product_details_refresh.sql` mengisi ulang array `content.details` (empat fitur + path gambar `/landing/...`). Pastikan file di `macfyi-landing-page/public/landing/` ikut di-deploy bersama situs, atau ganti URL di admin dengan asset dari bucket Storage `landing-media`.
+
 ### Landing page (Vite)
 
 In `macfyi-landing-page/.env`:

@@ -31,6 +31,8 @@ pub fn run() {
       commands::trash::list_trash_items,
       commands::trash::empty_trash,
       commands::uninstaller::list_uninstall_apps,
+      commands::uninstaller::uninstall_app_bundle,
+      commands::uninstaller::remove_orphan_paths,
       commands::performance::get_memory_snapshot,
       commands::performance::get_top_processes,
       commands::performance::list_launch_agents,

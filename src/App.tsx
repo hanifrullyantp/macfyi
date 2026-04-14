@@ -28,6 +28,7 @@ import {
 import { ActivationScreen } from "./components/ActivationScreen";
 import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
 import { MonitorDashboard } from "./components/MonitorDashboard";
+import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
 
 const Scanner = lazy(async () => {
   const m = await import("./components/Scanner");
@@ -264,6 +265,10 @@ export default function App() {
   const [licenseGatePassed, setLicenseGatePassed] = useState(
     () => shouldSkipLicenseGate() || !!getStoredLicenseToken()
   );
+  const [trashRefreshNonce, setTrashRefreshNonce] = useState(0);
+  const [uninstallerRefreshNonce, setUninstallerRefreshNonce] = useState(0);
+  const [aiBannerVisible, setAiBannerVisible] = useState(false);
+  const [aiBannerIndex, setAiBannerIndex] = useState(0);
 
   /** Disk stats only — no user-folder walks (avoids macOS Documents TCC on cold start). */
   useEffect(() => {
@@ -392,8 +397,24 @@ export default function App() {
         size: estimateSafePotential(results),
       })
     );
-    setIsAIChatOpen(true);
+    setAiBannerIndex(0);
+    setAiBannerVisible(true);
   }, [freeSpace, t]);
+
+  const aiBannerQuestions = useMemo(
+    () => [t("assistant.bannerQ1"), t("assistant.bannerQ2"), t("assistant.bannerQ3")],
+    [t]
+  );
+
+  const handleAiBannerAutoAdvance = useCallback(() => {
+    setAiBannerIndex((prev) => {
+      if (prev >= 2) {
+        setAiBannerVisible(false);
+        return 0;
+      }
+      return prev + 1;
+    });
+  }, []);
 
   const handleCancelScan = useCallback(() => {
     setScanProgressPct(0);
@@ -446,6 +467,13 @@ export default function App() {
     if (activeFeature === "performance") {
       return perfLoading ? "scanning" : "idle_scan";
     }
+    const contextualOrb =
+      activeFeature === "user-trash" || activeFeature === "uninstaller" || activeFeature === "monitor";
+    if (contextualOrb) {
+      if (shellCleaning) return "cleaning";
+      if (appState === "scanning") return "scanning";
+      return "idle_scan";
+    }
     if (shellCleaning) return "cleaning";
     if (appState === "scanning") return "scanning";
     if (appState === "results" && reviewOrbIntent) {
@@ -459,6 +487,21 @@ export default function App() {
     if (activeFeature === "performance") {
       return perfLoading ? undefined : t("orb.perfAnalyze");
     }
+    if (activeFeature === "user-trash") {
+      if (shellCleaning) return t("orb.cleaning");
+      if (appState === "scanning") return undefined;
+      return t("orb.refreshTrash");
+    }
+    if (activeFeature === "uninstaller") {
+      if (shellCleaning) return t("orb.cleaning");
+      if (appState === "scanning") return undefined;
+      return t("orb.refreshUninstaller");
+    }
+    if (activeFeature === "monitor") {
+      if (shellCleaning) return t("orb.cleaning");
+      if (appState === "scanning") return undefined;
+      return t("orb.refreshMonitor");
+    }
     if (shellCleaning) return t("orb.cleaning");
     if (appState === "scanning") return undefined;
     if (appState === "results" && reviewOrbIntent) {
@@ -471,6 +514,27 @@ export default function App() {
   const handleOrbClick = useCallback(() => {
     if (activeFeature === "performance") {
       setPerfRefreshTick((n) => n + 1);
+      return;
+    }
+    if (activeFeature === "user-trash") {
+      setTrashRefreshNonce((n) => n + 1);
+      return;
+    }
+    if (activeFeature === "uninstaller") {
+      setUninstallerRefreshNonce((n) => n + 1);
+      return;
+    }
+    if (activeFeature === "monitor") {
+      getStorageBreakdown().then(setStorageEntries).catch(() => {});
+      getDiskStats()
+        .then((s) => {
+          setFreeSpace(s.free_gb);
+          setDiskTotalGb(s.total_gb);
+        })
+        .catch(() => {});
+      return;
+    }
+    if (activeFeature === "history" || activeFeature === "settings") {
       return;
     }
     if (appState === "results" && reviewOrbIntent) {
@@ -585,7 +649,7 @@ export default function App() {
   } else if (activeFeature === "uninstaller") {
     content = (
       <Suspense fallback={<ViewFallback />}>
-        <AppUninstallerView />
+        <AppUninstallerView refreshNonce={uninstallerRefreshNonce} />
       </Suspense>
     );
   } else if (activeFeature === "monitor") {
@@ -645,7 +709,10 @@ export default function App() {
         }
         scanOrbProgressPct={activeFeature === "performance" && perfLoading ? 52 : scanProgressPct}
         showScanOrb={
-          appState !== "scanning" && !(activeFeature === "smart-care" && appState === "idle")
+          appState !== "scanning" &&
+          !(activeFeature === "smart-care" && appState === "idle") &&
+          activeFeature !== "history" &&
+          activeFeature !== "settings"
         }
         onAIButtonClick={() => setIsAIChatOpen((v) => !v)}
         onSearchClick={() => setIsSearchOpen(true)}
@@ -664,6 +731,20 @@ export default function App() {
       >
         {content}
       </AppShell>
+
+      <AnimatePresence>
+        {aiBannerVisible && (
+          <AIAssistantPromptBanner
+            question={aiBannerQuestions[aiBannerIndex] ?? ""}
+            onOpen={() => {
+              setIsAIChatOpen(true);
+              setAiBannerVisible(false);
+            }}
+            onDismiss={() => setAiBannerVisible(false)}
+            onAutoAdvance={handleAiBannerAutoAdvance}
+          />
+        )}
+      </AnimatePresence>
 
       <Suspense fallback={null}>
         <AnimatePresence>

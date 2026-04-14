@@ -40,6 +40,9 @@ export const en = {
     cleaning: "Cleaning",
     subSmart: "Smart + Safe",
     perfAnalyze: "Analyze",
+    refreshTrash: "Refresh Trash",
+    refreshUninstaller: "Refresh list",
+    refreshMonitor: "Refresh storage",
   },
   dashboard: {
     heroHint: "Tap the orb when you’re ready — loading only runs during a scan.",
@@ -135,6 +138,7 @@ export const en = {
       reviewBeforeDelete: "Review before delete",
       youreSafe: "You're safe",
       whatCanBeCleaned: "What can be cleaned",
+      categoryChartHint: "Hover or tap a segment for details. Percentages are a share of all scanned file size in this report.",
       safetyAnalysis: "Safety analysis",
       safetyGreatNews: "Great news — no risky files in this scan.",
       safetyHasRisky: "Risky items are present — review carefully before cleaning.",
@@ -234,6 +238,14 @@ export const en = {
     refresh: "Refresh",
     noLeftovers: "No orphaned files found, or access is limited. Grant Full Disk Access for deeper results.",
     reveal: "Reveal",
+    cleanOne: "Remove",
+    cleanBulk: "Clean all leftovers",
+    cleanBulkConfirm: "Move {n} leftover folders to Trash (or delete permanently if set in Settings)?",
+    uninstall: "Uninstall",
+    uninstallConfirm:
+      "Remove “{name}”{extra}? This uses your deletion mode from Settings (Trash vs permanent).",
+    uninstallExtraRelated: " and selected support data",
+    selectRelatedHint: "Also remove selected support data below (optional).",
   },
   monitor: {
     title: "Monitor",
@@ -334,6 +346,10 @@ export const en = {
     intro:
       "I'm Macfyi's assistant. Ask about your storage or let me guide you through the scan results.",
     placeholder: "Ask Macfyi…",
+    bannerQ1: "Want a plain-language summary of what was found?",
+    bannerQ2: "Ask which items are safest to remove first.",
+    bannerQ3: "Not sure about a category? I can explain the tradeoffs.",
+    bannerCta: "Open assistant",
   },
   upgrade: {
     title: "Unlock Macfyi Pro",

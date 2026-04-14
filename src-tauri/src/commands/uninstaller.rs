@@ -1,4 +1,5 @@
 use super::common::*;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -91,4 +92,172 @@ pub fn list_uninstall_apps() -> Result<Vec<UninstallAppDto>, String> {
         tb.cmp(&ta)
     });
     Ok(out)
+}
+
+fn canonical_ok(path: &Path) -> Result<PathBuf, String> {
+    std::fs::canonicalize(path).map_err(|e| format!("Invalid path {}: {}", path.display(), e))
+}
+
+fn is_allowed_app_bundle(path: &Path) -> bool {
+    if path.extension().and_then(|e| e.to_str()) != Some("app") {
+        return false;
+    }
+    let Ok(canon) = std::fs::canonicalize(path) else {
+        return false;
+    };
+    if canon.starts_with("/System") {
+        return false;
+    }
+    let Ok(home) = home_dir() else {
+        return false;
+    };
+    if let Ok(sys_apps) = std::fs::canonicalize(PathBuf::from("/Applications")) {
+        if canon.starts_with(&sys_apps) {
+            return true;
+        }
+    }
+    let home_apps = home.join("Applications");
+    if home_apps.exists() {
+        if let Ok(h) = std::fs::canonicalize(&home_apps) {
+            if canon.starts_with(&h) {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn related_paths_allowed(home: &Path, bundle_id: &str, app_path: &str) -> HashSet<PathBuf> {
+    let mut set: HashSet<PathBuf> = HashSet::new();
+    for r in collect_related(home, bundle_id, app_path) {
+        if let Ok(c) = std::fs::canonicalize(PathBuf::from(&r.path)) {
+            set.insert(c);
+        }
+    }
+    set
+}
+
+fn validate_orphan_path(home: &Path, raw: &str) -> Result<PathBuf, String> {
+    let p = PathBuf::from(raw);
+    let canon = canonical_ok(&p)?;
+    let lib = home.join("Library");
+    let Ok(lib_canon) = std::fs::canonicalize(&lib) else {
+        return Err("Cannot resolve ~/Library".into());
+    };
+    if !canon.starts_with(&lib_canon) {
+        return Err("Path must be under your Library folder".into());
+    }
+    let rel = canon.strip_prefix(&lib_canon).map_err(|_| "strip".to_string())?;
+    let first = rel
+        .components()
+        .next()
+        .map(|c| c.as_os_str().to_string_lossy().to_string())
+        .unwrap_or_default();
+    match first.as_str() {
+        "Application Support" | "Containers" | "Caches" | "Preferences" | "Saved Application State" => Ok(canon),
+        _ => Err("Unsupported Library subfolder for leftover removal".into()),
+    }
+}
+
+/// Remove orphan support-folder paths created by `orphan_detect` (validated under ~/Library).
+#[tauri::command]
+pub fn remove_orphan_paths(paths: Vec<String>, use_trash: bool) -> Result<TrashResultDto, String> {
+    let home = home_dir()?;
+    let mut to_remove: Vec<PathBuf> = Vec::new();
+    for p in paths {
+        to_remove.push(validate_orphan_path(&home, &p)?);
+    }
+
+    let mut freed: u64 = 0;
+    let mut succeeded = Vec::new();
+    let mut failed = Vec::new();
+
+    for path in to_remove {
+        let pstr = path.to_string_lossy().to_string();
+        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        let res = if use_trash {
+            trash::delete(&path).map_err(|e| e.to_string())
+        } else {
+            if path.is_dir() {
+                std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
+            } else {
+                std::fs::remove_file(&path).map_err(|e| e.to_string())
+            }
+        };
+        match res {
+            Ok(()) => {
+                freed += size;
+                succeeded.push(pstr);
+            }
+            Err(e) => failed.push(TrashErrorDto { path: pstr, message: e }),
+        }
+    }
+
+    Ok(TrashResultDto {
+        freed_label: format_space(freed),
+        freed_bytes: freed,
+        succeeded,
+        failed,
+    })
+}
+
+/// Move the app bundle (and optionally related Library paths) to Trash or delete permanently.
+#[tauri::command]
+pub fn uninstall_app_bundle(
+    app_path: String,
+    bundle_id: String,
+    related_paths: Vec<String>,
+    use_trash: bool,
+) -> Result<TrashResultDto, String> {
+    let home = home_dir()?;
+    let app = PathBuf::from(&app_path);
+    if !is_allowed_app_bundle(&app) {
+        return Err("Only user-installed .app bundles under /Applications or ~/Applications can be removed.".into());
+    }
+    let app_canon = canonical_ok(&app)?;
+    let allowed_related = related_paths_allowed(&home, &bundle_id, &app_path);
+    let mut to_remove: Vec<PathBuf> = vec![app_canon];
+    for rp in related_paths {
+        let p = PathBuf::from(&rp);
+        let c = canonical_ok(&p)?;
+        if !allowed_related.contains(&c) {
+            return Err(format!(
+                "Related path not allowed for this app: {}",
+                p.display()
+            ));
+        }
+        to_remove.push(c);
+    }
+
+    let mut freed: u64 = 0;
+    let mut succeeded = Vec::new();
+    let mut failed = Vec::new();
+
+    for path in to_remove {
+        let pstr = path.to_string_lossy().to_string();
+        let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+        let res = if use_trash {
+            trash::delete(&path).map_err(|e| e.to_string())
+        } else {
+            if path.is_dir() {
+                std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
+            } else {
+                std::fs::remove_file(&path).map_err(|e| e.to_string())
+            }
+        };
+        match res {
+            Ok(()) => {
+                freed += size;
+                succeeded.push(pstr);
+            }
+            Err(e) => failed.push(TrashErrorDto { path: pstr, message: e }),
+        }
+    }
+
+    Ok(TrashResultDto {
+        freed_label: format_space(freed),
+        freed_bytes: freed,
+        succeeded,
+        failed,
+    })
 }

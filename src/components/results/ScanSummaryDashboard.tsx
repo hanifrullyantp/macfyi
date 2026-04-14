@@ -8,8 +8,8 @@ import {
   TriangleAlert,
   Zap,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip, type TooltipProps } from "recharts";
 import type { ScanResult } from "../../types";
 import { useI18n } from "../../i18n/context";
 import {
@@ -25,6 +25,8 @@ import { CATEGORY_LABELS, type EnrichedItem, type RiskBand } from "../../lib/res
 import { cn } from "../../utils/cn";
 
 const GB = 1024 ** 3;
+const RAD = Math.PI / 180;
+
 const CATEGORY_CHART_COLORS = [
   "#5b8def",
   "#3ecf8e",
@@ -170,10 +172,70 @@ export function ScanSummaryDashboard({
     () =>
       categorySlices.map((s, i) => ({
         name: s.label,
+        categoryKey: s.categoryKey,
         value: s.bytes,
         fill: CATEGORY_CHART_COLORS[i % CATEGORY_CHART_COLORS.length],
       })),
     [categorySlices]
+  );
+
+  const categoryTooltip = useMemo(() => {
+    type Payload = {
+      name: string;
+      categoryKey: string;
+      value: number;
+      fill?: string;
+    };
+    const Content = (props: TooltipProps<number, string>) => {
+      const { active, payload } = props;
+      if (!active || !payload?.[0]) return null;
+      const p = payload[0].payload as Payload;
+      const pct = byteSharePct(p.value, scanTotalBytes);
+      const descKey = `results.whatIs.${p.categoryKey}` as const;
+      const descRaw = t(descKey);
+      const desc = descRaw === descKey ? t("results.whatIs.other") : descRaw;
+      return (
+        <div className="rounded-lg border border-white/10 bg-[rgba(20,21,28,0.97)] px-3 py-2 shadow-xl max-w-[14rem]">
+          <p className="text-xs font-semibold text-white/95">{p.name}</p>
+          <p className="text-[11px] text-cyan-200/90 tabular-nums mt-0.5">
+            {formatBytes(p.value)} · {pct.toFixed(1)}%
+          </p>
+          <p className="text-[10px] text-white/55 mt-1 leading-snug">{desc}</p>
+        </div>
+      );
+    };
+    Content.displayName = "CategoryTooltip";
+    return Content;
+  }, [scanTotalBytes, t]);
+
+  const pieLabel = useCallback(
+    (props: {
+      cx: number;
+      cy: number;
+      midAngle: number;
+      innerRadius: number;
+      outerRadius: number;
+      percent: number;
+    }) => {
+      const { cx, cy, midAngle, innerRadius, outerRadius, percent } = props;
+      if (percent < 0.04) return null;
+      const radius = innerRadius + (outerRadius - innerRadius) * 0.55;
+      const x = cx + radius * Math.cos(-midAngle * RAD);
+      const y = cy + radius * Math.sin(-midAngle * RAD);
+      return (
+        <text
+          x={x}
+          y={y}
+          fill="rgba(255,255,255,0.88)"
+          textAnchor={x > cx ? "start" : "end"}
+          dominantBaseline="central"
+          className="text-[10px] font-semibold tabular-nums pointer-events-none"
+        >
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      );
+    },
+    []
   );
 
   const countSafe = riskAgg.safe.count;
@@ -185,6 +247,7 @@ export function ScanSummaryDashboard({
 
   const animatedRecommendedGb = useCountUp(recommendedGb, 1.05);
   const animatedPctDisk = useCountUp(pctOfDiskFromRecommended, 1.2);
+  const [activeCategoryKey, setActiveCategoryKey] = useState<string | null>(null);
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-6 py-6 md:px-8 pb-32">
@@ -425,37 +488,42 @@ export function ScanSummaryDashboard({
               </span>
               {t("results.summary.whatCanBeCleaned")}
             </h3>
-            <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <div className="h-[220px] w-full min-w-0">
+            <p className="text-[11px] text-white/45 mt-2 leading-snug">{t("results.summary.categoryChartHint")}</p>
+            <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 items-start">
+              <div className="h-[min(52vh,360px)] w-full min-w-0 min-h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
+                  <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
                     <Pie
                       data={categoryPieData}
                       dataKey="value"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
-                      innerRadius="48%"
-                      outerRadius="78%"
-                      stroke="rgba(255,255,255,0.06)"
+                      innerRadius="42%"
+                      outerRadius="82%"
+                      stroke="rgba(255,255,255,0.08)"
                       strokeWidth={1}
-                      paddingAngle={1}
+                      paddingAngle={categoryPieData.length > 1 ? 1.5 : 0}
                       isAnimationActive
                       animationDuration={800}
+                      labelLine={false}
+                      label={pieLabel}
+                      onClick={(_, index) => {
+                        const row = categoryPieData[index];
+                        setActiveCategoryKey((k) => (row && k === row.categoryKey ? null : row?.categoryKey ?? null));
+                      }}
                     >
-                      {categoryPieData.map((_, i) => (
-                        <Cell key={i} fill={categoryPieData[i].fill} />
+                      {categoryPieData.map((entry, i) => (
+                        <Cell
+                          key={entry.categoryKey}
+                          fill={entry.fill}
+                          opacity={
+                            activeCategoryKey && activeCategoryKey !== entry.categoryKey ? 0.35 : 1
+                          }
+                        />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: "rgba(20,21,28,0.95)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        borderRadius: 10,
-                        fontSize: 11,
-                      }}
-                      formatter={(value: number) => formatBytes(value)}
-                    />
+                    <Tooltip content={categoryTooltip} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -463,19 +531,37 @@ export function ScanSummaryDashboard({
                 {categorySlices.map((s, i) => {
                   const pct = byteSharePct(s.bytes, scanTotalBytes);
                   const fill = CATEGORY_CHART_COLORS[i % CATEGORY_CHART_COLORS.length];
+                  const descKey = `results.whatIs.${s.categoryKey}` as const;
+                  const descRaw = t(descKey);
+                  const desc = descRaw === descKey ? t("results.whatIs.other") : descRaw;
+                  const dim = activeCategoryKey && activeCategoryKey !== s.categoryKey;
                   return (
-                    <li key={s.categoryKey} className="space-y-1">
-                      <div className="flex items-center justify-between gap-2 text-sm">
-                        <span className="text-white/85 font-medium truncate flex items-center gap-2 min-w-0">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: fill }} />
-                          {s.label}
-                        </span>
-                        <span className="text-white/70 tabular-nums shrink-0">{formatBytes(s.bytes)}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                        <AnimatedByteBar value={pct} style={{ backgroundColor: fill }} />
-                      </div>
-                      <p className="text-[10px] text-white/35 tabular-nums text-right">{pct.toFixed(0)}%</p>
+                    <li
+                      key={s.categoryKey}
+                      className={`space-y-1 rounded-lg transition-opacity ${dim ? "opacity-35" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() =>
+                          setActiveCategoryKey((k) => (k === s.categoryKey ? null : s.categoryKey))
+                        }
+                      >
+                        <div className="flex items-center justify-between gap-2 text-sm">
+                          <span className="text-white/85 font-medium truncate flex items-center gap-2 min-w-0">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: fill }} />
+                            {s.label}
+                          </span>
+                          <span className="text-white/70 tabular-nums shrink-0">{formatBytes(s.bytes)}</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1">
+                          <AnimatedByteBar value={pct} style={{ backgroundColor: fill }} />
+                        </div>
+                        <p className="text-[10px] text-white/35 tabular-nums text-right">{pct.toFixed(0)}%</p>
+                      </button>
+                      {activeCategoryKey === s.categoryKey && (
+                        <p className="text-[10px] text-white/50 leading-snug pl-4 border-l border-white/10">{desc}</p>
+                      )}
                     </li>
                   );
                 })}

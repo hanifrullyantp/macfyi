@@ -16,3 +16,5 @@ Environment variables are documented in [`.env.example`](.env.example).
 **Pembayaran Midtrans + Supabase:** set `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`, deploy Edge Functions di [`supabase/README.md`](../supabase/README.md) (`create-midtrans-snap`, `payment-webhook`). Tanpa env itu, checkout memakai **Checkout URL** dari pengaturan admin atau pesan kontak.
 
 **Tutorial langkah demi langkah** (Supabase, Vercel, Midtrans, Resend): [`docs/TUTORIAL_INTEGRASI_STACK.md`](../docs/TUTORIAL_INTEGRASI_STACK.md).
+
+**Penjelasan detail produk** (empat blok teks + screenshot) diset di `src/App.tsx` (`details`). Gambar sumber ada di **`public/landing/`** (build → `dist/landing/`, URL `/landing/detail-0*.png`). Sinkron ke Postgres: migrasi [`supabase/migrations/20260414175000_landing_product_details_refresh.sql`](../supabase/migrations/20260414175000_landing_product_details_refresh.sql) (`supabase db push`), atau setelah sunting di mode admin tekan **Publikasikan**. Untuk URL dari **Supabase Storage** (bucket `landing-media`), unggah lewat overlay gambar di mode admin (klik pada screenshot) lalu publikasikan.
