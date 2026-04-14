@@ -1,5 +1,6 @@
 import { FileItem, ScanResult, SafetyLevel } from "../types";
 import type { RiskBand } from "./results-types";
+import { redactPaths } from "./redaction";
 
 const MOCK_FILES: FileItem[] = [
   { id: '1', name: 'Browser Cache', path: '~/Library/Caches/Google/Chrome', size: 1200000000, lastAccessed: new Date(), isDuplicate: false, aiSafetyScore: 0.95, category: 'cache', recommended: true },
@@ -98,7 +99,7 @@ export function privacySafeItemInsight(input: {
   return (
     `For a ${kind} in category “${input.categoryKey.replace(/_/g, " ")}” ` +
     `(${input.risk} risk, ${rec}): typical impact is ${riskHint(input.risk)}. ` +
-    `Filename “${input.name}” is only a label here — paths are not sent to the assistant.`
+    `Filename “${redactPaths(input.name)}” is only a label here — paths are not sent to the assistant.`
   );
 }
 

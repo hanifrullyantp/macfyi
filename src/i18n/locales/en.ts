@@ -361,6 +361,6 @@ export const en = {
     cta: "Upgrade Now — Rp 173k",
     later: "Maybe Later",
   },
-} as const;
+};
 
 export type MessageTree = typeof en;

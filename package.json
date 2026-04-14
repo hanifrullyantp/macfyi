@@ -10,8 +10,8 @@
     "test": "vitest run",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build",
-    "tauri:build:dmg": "tauri build --bundles app dmg"
+    "tauri:build": "bash scripts/fetch-llama-sidecar.sh && tauri build",
+    "tauri:build:dmg": "bash scripts/fetch-llama-sidecar.sh && tauri build --bundles app dmg"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.23",

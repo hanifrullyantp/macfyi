@@ -1,11 +1,9 @@
-import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   ExternalLink,
   Filter,
-  Info,
   ShieldAlert,
   ShieldCheck,
   TriangleAlert,
@@ -14,7 +12,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, memo, useCallback } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { CleanFinishDetail, FileItem, ReviewOrbIntent, ScanResult, SafetyLevel } from "../types";
+import type { AiItemContext, CleanFinishDetail, ReviewOrbIntent, ScanResult } from "../types";
 import { deletePathsPermanently, movePathsToTrash, openUserTrash, revealInFinder } from "../lib/backend";
 import type { DeletionModeSetting } from "../lib/deletion-settings";
 import { getDeletionMode } from "../lib/deletion-settings";
@@ -28,6 +26,7 @@ import { cloneFilterState, defaultFilterState, countActiveFilterDimensions, isFi
 import { buildScanSessionId, initSelectionFromScan, savePersistedSelection } from "../lib/selection-session";
 import { buildAppEnrichedGroups, buildAppFileGroups } from "../lib/app-file-index";
 import { privacySafeItemInsight } from "../lib/ai-engine";
+import { buildItemContextFromInspector } from "./AiAssistantPanel";
 import { DelayedTooltip } from "./results/DelayedTooltip";
 import { FilterPopover } from "./results/FilterPopover";
 import { TriStateCheckbox, categoryTriState } from "./results/TriStateCheckbox";
@@ -52,6 +51,7 @@ interface ResultsViewProps {
   onOrbIntentChange?: (intent: ReviewOrbIntent | null) => void;
   /** Start a new scan (orb + toolbar) */
   onRequestRescan?: () => void;
+  onAskAi?: (ctx: AiItemContext) => void;
 }
 
 type ReviewMode = "simple" | "advanced";
@@ -348,6 +348,7 @@ export const ResultsView = ({
   onSelectionStatsChange,
   onOrbIntentChange,
   onRequestRescan,
+  onAskAi,
 }: ResultsViewProps) => {
   const { t } = useI18n();
   const [stage, setStage] = useState<Stage>("summary");
@@ -1173,6 +1174,27 @@ export const ResultsView = ({
               <p className="text-[10px] text-white/35 leading-snug">
                 {t("results.inspectorAiNote")}
               </p>
+              {onAskAi && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!inspectorItem) return;
+                    onAskAi(
+                      buildItemContextFromInspector({
+                        category: inspectorItem.categoryKey,
+                        appHint: inspectorItem.item.associatedApp,
+                        sizeBytes: inspectorItem.item.size,
+                        riskBand: inspectorItem.risk,
+                        shortExplanation: inspectorItem.item.reason ?? inspectorItem.categoryRecommendation,
+                        basenameHint: inspectorItem.item.name,
+                      })
+                    );
+                  }}
+                  className="w-full btn-secondary text-xs mt-2"
+                >
+                  Tanya AI (lokal)
+                </button>
+              )}
             </div>
             <div className="space-y-2">
               <button

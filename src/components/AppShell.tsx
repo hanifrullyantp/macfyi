@@ -214,7 +214,9 @@ export const AppShell = ({
                       : "text-white/50 hover:bg-white/[0.06] hover:text-white/88 border border-transparent"
                   }`}
                 >
-                  <Icon size={16} className={isActive ? "scale-105" : "group-hover:scale-105 transition-transform"} />
+                  <span className={isActive ? "scale-105" : "group-hover:scale-105 transition-transform"}>
+                    <Icon size={16} />
+                  </span>
                   {!collapsed && (
                     <>
                       <span className="text-xs font-medium flex-1">{t(item.label)}</span>

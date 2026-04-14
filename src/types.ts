@@ -118,6 +118,25 @@ export type ReviewOrbIntent =
   | { kind: "rescan"; onPress: () => void }
   | { kind: "clean"; disabled: boolean; onPress: () => void };
 
+// --- Local AI Assistant (privacy-first) ---
+export type AiRiskLabel = "SAFE" | "REVIEW" | "HIGH";
+export type AiQuestionType = "what_is_this" | "why_recommended" | "is_it_safe" | "impact" | "custom";
+
+export type AiItemContext = {
+  category: string;
+  appHint?: string;
+  sizeBytes: number;
+  riskLabel: AiRiskLabel;
+  shortExplanation?: string;
+  basenameHint?: string;
+};
+
+export type AiRequest = {
+  questionType: AiQuestionType;
+  customQuestion?: string;
+  itemContext: AiItemContext;
+};
+
 export interface TrashListItem {
   name: string;
   path: string;

@@ -1,9 +1,12 @@
 mod commands;
+mod ai;
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .setup(|app| {
+      app.manage(crate::ai::state::AiState::default());
       app.handle().plugin(tauri_plugin_dialog::init())?;
       app.handle().plugin(tauri_plugin_notification::init())?;
       if cfg!(debug_assertions) {
@@ -41,6 +44,17 @@ pub fn run() {
       commands::performance::force_close_process,
       commands::license::get_device_fingerprint,
       commands::license::activate_license,
+      commands::ai::ai_status,
+      commands::ai::ai_enable,
+      commands::ai::ai_set_model,
+      commands::ai::ai_download_model,
+      commands::ai::ai_cancel_download,
+      commands::ai::ai_delete_model,
+      commands::ai::ai_open_panel,
+      commands::ai::ai_close_panel,
+      commands::ai::ai_runtime_status,
+      commands::ai::ai_generate,
+      commands::ai::ai_cancel_generation,
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

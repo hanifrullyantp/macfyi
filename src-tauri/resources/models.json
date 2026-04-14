@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "models": {
+    "lite": {
+      "id": "lite",
+      "label": "Lite (3B Q4)",
+      "recommendedRamGb": 8,
+      "files": [
+        {
+          "url": "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+          "sha256": "5ae0c201348e276d543a1e5c0e053370e32415774095c677319f62b302b1620a",
+          "sizeBytes": 2104932768,
+          "fileName": "qwen2.5-3b-instruct-q4_k_m.gguf"
+        }
+      ]
+    },
+    "better": {
+      "id": "better",
+      "label": "Better (7B Q4)",
+      "recommendedRamGb": 16,
+      "files": [
+        {
+          "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
+          "sha256": "3f05ffd19211f9787f06859e81eb6d3f1025df1f4f6ad8bd4d696cc975c67512",
+          "sizeBytes": 3993201344,
+          "fileName": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf"
+        },
+        {
+          "url": "https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf",
+          "sha256": "02b0dbe3f8706eb44e6972a1a8b119d8af8a94a8a74e8fb11ee8321bcb373372",
+          "sizeBytes": 689872288,
+          "fileName": "qwen2.5-7b-instruct-q4_k_m-00002-of-00002.gguf"
+        }
+      ]
+    }
+  }
+}
+

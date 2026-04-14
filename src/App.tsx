@@ -3,16 +3,17 @@ import { AnimatePresence } from "framer-motion";
 import { AppShell, type FeatureId } from "./components/AppShell";
 import { Dashboard } from "./components/Dashboard";
 import type { OrbDisplayMode } from "./components/ScanOrbButton";
-import type { CleanFinishDetail, ReviewOrbIntent, ScanResult, StorageEntry, AppInfo, ShellProbe } from "./types";
+import type { CleanFinishDetail, ReviewOrbIntent, ScanResult, StorageEntry } from "./types";
 import {
   appAudit,
+  aiClosePanel,
+  aiOpenPanel,
   getDiskStats,
   getStorageBreakdown,
   orphanDetect,
   shellProbe,
 } from "./lib/backend";
 import { addSavedThisMonth, recordScanComplete } from "./lib/storage";
-import type { InterviewQuestion } from "./lib/interview-engine";
 import { FolderSearch, Trash2 } from "lucide-react";
 import { getDeletionMode } from "./lib/deletion-settings";
 import { appendActivity } from "./lib/activity-log";
@@ -38,9 +39,9 @@ const ResultsView = lazy(async () => {
   const m = await import("./components/ResultsView");
   return { default: m.ResultsView };
 });
-const AIAssistant = lazy(async () => {
-  const m = await import("./components/AIAssistant");
-  return { default: m.AIAssistant };
+const AiAssistantPanel = lazy(async () => {
+  const m = await import("./components/AiAssistantPanel");
+  return { default: m.AiAssistantPanel };
 });
 const SearchOverlay = lazy(async () => {
   const m = await import("./components/SearchOverlay");
@@ -245,20 +246,19 @@ export default function App() {
   const [activeFeature, setActiveFeature] = useState<FeatureId>("smart-care");
   const [reviewOrbIntent, setReviewOrbIntent] = useState<ReviewOrbIntent | null>(null);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+  const [aiActiveContext, setAiActiveContext] = useState<import("./types").AiItemContext | null>(null);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [deletionMode, setDeletionMode] = useState<"trash" | "permanent">(() => getDeletionMode());
   const [shellCleaning, setShellCleaning] = useState(false);
   const [scanProgressPct, setScanProgressPct] = useState(0);
-  const [selectionSummary, setSelectionSummary] = useState<{ count: number; bytesLabel: string } | null>(null);
+  const [, setSelectionSummary] = useState<{ count: number; bytesLabel: string } | null>(null);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
   const [freeSpace, setFreeSpace] = useState(0);
   const [diskTotalGb, setDiskTotalGb] = useState(0);
   const [storageEntries, setStorageEntries] = useState<StorageEntry[]>([]);
-  const [apps, setApps] = useState<AppInfo[]>([]);
-  const [shellProbes, setShellProbes] = useState<ShellProbe[]>([]);
   const [perfRefreshTick, setPerfRefreshTick] = useState(0);
   const [perfLoading, setPerfLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
@@ -266,6 +266,14 @@ export default function App() {
     () => shouldSkipLicenseGate() || !!getStoredLicenseToken()
   );
   const [trashRefreshNonce, setTrashRefreshNonce] = useState(0);
+
+  useEffect(() => {
+    if (isAIChatOpen) {
+      void aiOpenPanel();
+    } else {
+      void aiClosePanel();
+    }
+  }, [isAIChatOpen]);
   const [uninstallerRefreshNonce, setUninstallerRefreshNonce] = useState(0);
   const [aiBannerVisible, setAiBannerVisible] = useState(false);
   const [aiBannerIndex, setAiBannerIndex] = useState(0);
@@ -341,13 +349,11 @@ export default function App() {
     recordScanComplete();
     setAppState("results");
     try {
-      const [a, o, s] = await Promise.all([
-        appAudit().catch(() => [] as AppInfo[]),
+      const [, o] = await Promise.all([
+        appAudit().catch(() => []),
         orphanDetect().catch(() => []),
-        shellProbe().catch(() => [] as ShellProbe[]),
+        shellProbe().catch(() => []),
       ]);
-      setApps(a);
-      setShellProbes(s);
       if (o.length > 0) {
         itemsAnalyzed += o.length;
         const total = o.reduce((acc, i) => acc + i.size, 0);
@@ -451,13 +457,6 @@ export default function App() {
     getStorageBreakdown().then(setStorageEntries).catch(() => {});
     setTimeout(() => setIsUpgradeOpen(true), 1200);
   }, [freeSpace, t]);
-
-  const handleInterviewAction = (q: InterviewQuestion, action: string) => {
-    if (action === "select-recommended") {
-      // handled in ResultsView
-    }
-    console.info("[interview]", q.id, action);
-  };
 
   const safePotentialLabel = estimateSafePotential(scanResults);
   const freeGbLabel = freeSpace > 0 ? freeSpace.toFixed(1) : undefined;
@@ -590,6 +589,10 @@ export default function App() {
             onSelectionStatsChange={setSelectionSummary}
             onOrbIntentChange={setReviewOrbIntent}
             onRequestRescan={handleStartScan}
+            onAskAi={(ctx) => {
+              setAiActiveContext(ctx);
+              setIsAIChatOpen(true);
+            }}
           />
         </Suspense>
       );
@@ -608,6 +611,10 @@ export default function App() {
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
           onRequestRescan={handleStartScan}
+          onAskAi={(ctx) => {
+            setAiActiveContext(ctx);
+            setIsAIChatOpen(true);
+          }}
         />
       </Suspense>
     ) : (
@@ -634,6 +641,10 @@ export default function App() {
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
           onRequestRescan={handleStartScan}
+          onAskAi={(ctx) => {
+            setAiActiveContext(ctx);
+            setIsAIChatOpen(true);
+          }}
         />
       </Suspense>
     ) : (
@@ -665,7 +676,7 @@ export default function App() {
   } else if (activeFeature === "user-trash") {
     content = (
       <Suspense fallback={<ViewFallback />}>
-        <UserTrashView />
+        <UserTrashView refreshNonce={trashRefreshNonce} />
       </Suspense>
     );
   } else if (activeFeature === "history") {
@@ -714,7 +725,13 @@ export default function App() {
           activeFeature !== "history" &&
           activeFeature !== "settings"
         }
-        onAIButtonClick={() => setIsAIChatOpen((v) => !v)}
+        onAIButtonClick={() =>
+          setIsAIChatOpen((v) => {
+            const next = !v;
+            if (!next) setAiActiveContext(null);
+            return next;
+          })
+        }
         onSearchClick={() => setIsSearchOpen(true)}
         onSettingsClick={() => setIsSettingsOpen(true)}
         diskUsedPercent={diskUsedPercent}
@@ -749,13 +766,13 @@ export default function App() {
       <Suspense fallback={null}>
         <AnimatePresence>
           {isAIChatOpen && (
-            <AIAssistant
+            <AiAssistantPanel
               scanSummary={scanResults.length > 0 ? scanResults : null}
-              apps={apps}
-              shellProbes={shellProbes}
-              onClose={() => setIsAIChatOpen(false)}
-              onInterviewAction={handleInterviewAction}
-              selectionSummary={selectionSummary}
+              activeContext={aiActiveContext}
+              onClose={() => {
+                setIsAIChatOpen(false);
+                setAiActiveContext(null);
+              }}
             />
           )}
         </AnimatePresence>

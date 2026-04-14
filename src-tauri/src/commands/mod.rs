@@ -8,3 +8,4 @@ pub mod trash;
 pub mod uninstaller;
 pub mod performance;
 pub mod license;
+pub mod ai;

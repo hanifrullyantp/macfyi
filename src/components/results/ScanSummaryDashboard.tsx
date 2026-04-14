@@ -513,7 +513,7 @@ export function ScanSummaryDashboard({
                         setActiveCategoryKey((k) => (row && k === row.categoryKey ? null : row?.categoryKey ?? null));
                       }}
                     >
-                      {categoryPieData.map((entry, i) => (
+                      {categoryPieData.map((entry) => (
                         <Cell
                           key={entry.categoryKey}
                           fill={entry.fill}
