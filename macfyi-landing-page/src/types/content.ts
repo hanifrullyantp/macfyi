@@ -25,6 +25,14 @@ export interface SiteSettings {
   notificationSoundEnabled: boolean;
   /** Toast social proof kanan bawah (interval acak 25–45 dtk) */
   socialProofToastEnabled: boolean;
+  /** Daftar kandidat untuk toast social proof (1 item per baris). */
+  socialProofNames: string;
+  socialProofActions: string;
+  socialProofProducts: string;
+  socialProofTimes: string;
+  /** Label tombol mute/unmute pada toast social proof. */
+  socialProofMuteLabel: string;
+  socialProofUnmuteLabel: string;
   /** Catatan migrasi / HTML dari WordPress (referensi editor). */
   landingNotesHtml: string;
   waCategories: string[];
@@ -73,6 +81,7 @@ export interface ContentData {
     heading: string;
     p1: string;
     p2: string;
+    closerLabel: string;
   };
   featuresList: {
     id: number;
@@ -162,6 +171,13 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   notificationBannerText: "Promo lifetime — checkout sekarang dan rapikan Mac Anda dengan tenang.",
   notificationSoundEnabled: true,
   socialProofToastEnabled: true,
+  socialProofNames: "Hanif\nRina\nBudi\nSari\nAndi\nDewi\nEko\nFitri\nGilang\nHana\nIndra\nJihan",
+  socialProofActions: "melakukan pemesanan\nbaru menyelesaikan checkout\nmengaktifkan lisensi\nmembeli paket\nmendaftar checkout",
+  socialProofProducts:
+    "lisensi Macfyi lifetime\nlisensi 1 perangkat Mac\npaket cleanup premium\naddon uninstaller\nbundle storage optimizer",
+  socialProofTimes: "barusan\n1 menit lalu\n2 menit lalu\n3 menit lalu\n5 menit lalu\nbeberapa menit lalu",
+  socialProofMuteLabel: "MUTE",
+  socialProofUnmuteLabel: "UNMUTE",
   landingNotesHtml: "",
   waCategories: ["Sales", "Support", "Follow-up"],
   waTemplates: [

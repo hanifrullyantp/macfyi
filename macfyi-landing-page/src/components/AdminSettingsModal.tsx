@@ -352,6 +352,58 @@ export function AdminSettingsModal({
                 />
                 <span>Toast social proof (kanan bawah, interval 25–45 dtk, suara setelah interaksi)</span>
               </label>
+              <div className="grid md:grid-cols-2 gap-4 pt-3">
+                <Field label="Social proof — daftar nama (1 per baris)">
+                  <textarea
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[120px] font-mono text-xs"
+                    value={s.socialProofNames}
+                    onChange={(e) => patchSettings({ socialProofNames: e.target.value })}
+                    placeholder={"Hanif\nSari\nBudi"}
+                  />
+                </Field>
+                <Field label="Social proof — daftar produk (1 per baris)">
+                  <textarea
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[120px] font-mono text-xs"
+                    value={s.socialProofProducts}
+                    onChange={(e) => patchSettings({ socialProofProducts: e.target.value })}
+                    placeholder={"lisensi 1 perangkat Mac\nlisensi Macfyi lifetime"}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Social proof — daftar aksi (1 per baris)">
+                  <textarea
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[120px] font-mono text-xs"
+                    value={s.socialProofActions}
+                    onChange={(e) => patchSettings({ socialProofActions: e.target.value })}
+                    placeholder={"melakukan pemesanan\nbaru menyelesaikan checkout"}
+                  />
+                </Field>
+                <Field label="Social proof — daftar waktu relatif (1 per baris)">
+                  <textarea
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[120px] font-mono text-xs"
+                    value={s.socialProofTimes}
+                    onChange={(e) => patchSettings({ socialProofTimes: e.target.value })}
+                    placeholder={"barusan\n2 menit lalu\nbeberapa menit lalu"}
+                  />
+                </Field>
+              </div>
+              <div className="grid md:grid-cols-2 gap-4">
+                <Field label="Label tombol mute">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.socialProofMuteLabel}
+                    onChange={(e) => patchSettings({ socialProofMuteLabel: e.target.value })}
+                  />
+                </Field>
+                <Field label="Label tombol unmute">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.socialProofUnmuteLabel}
+                    onChange={(e) => patchSettings({ socialProofUnmuteLabel: e.target.value })}
+                  />
+                </Field>
+              </div>
               <div className="pt-2">
                 <button
                   type="button"

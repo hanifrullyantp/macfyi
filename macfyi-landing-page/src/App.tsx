@@ -65,7 +65,8 @@ const INITIAL_DATA: ContentData = {
     preHeading: "Semua ini terjadi karena…",
     heading: "Masalahnya bukan cuma “storage penuh”. Masalahnya: Anda tidak punya peta.",
     p1: "Tanpa panduan, bersih-bersih Mac terasa seperti tebak-tebakan. Anda tidak tahu mana yang aman dibuang atau mana yang diam-diam membengkak.",
-    p2: "Macfyi dibuat untuk membantu Anda melihat penyebab storage penuh dan memberi rekomendasi yang lebih aman."
+    p2: "Macfyi dibuat untuk membantu Anda melihat penyebab storage penuh dan memberi rekomendasi yang lebih aman.",
+    closerLabel: "Solusi yang lebih jelas dengan"
   },
   featuresList: [
     { id: 1, title: "Peta storage", desc: "Anda langsung tahu apa yang paling makan ruang, tanpa bongkar folder satu-satu.", icon: "Monitor" },
@@ -477,6 +478,12 @@ function LandingApp() {
         enabled={data.settings.socialProofToastEnabled}
         soundEnabled={data.settings.notificationSoundEnabled}
         accentColor={data.settings.primaryColor}
+        names={data.settings.socialProofNames}
+        actions={data.settings.socialProofActions}
+        products={data.settings.socialProofProducts}
+        times={data.settings.socialProofTimes}
+        muteLabel={data.settings.socialProofMuteLabel}
+        unmuteLabel={data.settings.socialProofUnmuteLabel}
       />
 
       {/* Admin Toolbar */}
@@ -801,7 +808,12 @@ function LandingApp() {
           </div>
 
           <div className="flex flex-col items-center">
-            <div className="text-sm font-bold tracking-widest uppercase text-white/20 mb-12">Solusi yang lebih jelas dengan</div>
+            <EditableText
+              value={data.solution.closerLabel}
+              onSave={(v) => updateData("solution.closerLabel", v)}
+              isAdmin={canEdit}
+              className="text-sm font-bold tracking-widest uppercase text-white/20 mb-12 block"
+            />
             <motion.div 
               whileHover={{ scale: 1.05 }}
               className="text-7xl md:text-9xl font-black text-red-600 italic tracking-tighter"
@@ -858,7 +870,9 @@ function LandingApp() {
       <section id="details" className="py-24 space-y-32">
         {data.details.map((detail, i) => (
           <div key={detail.id} className="container mx-auto px-4">
-            <div className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} gap-16 items-center`}>
+            <div
+              className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} gap-16 items-center`}
+            >
               <div className="flex-1 w-full">
                 <EditableText 
                   as="h3"
@@ -916,9 +930,6 @@ function LandingApp() {
                       }} 
                       isAdmin={canEdit} 
                     />
-                    <div className="absolute bottom-4 left-4 right-4 p-4 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl">
-                      <p className="text-xs font-bold text-white/60 tracking-widest uppercase">Screenshot (editable in admin mode)</p>
-                    </div>
                   </div>
                 </div>
               </div>

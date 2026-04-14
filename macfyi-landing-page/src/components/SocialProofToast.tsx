@@ -41,10 +41,22 @@ export function SocialProofToast({
   enabled,
   soundEnabled,
   accentColor,
+  names,
+  actions,
+  products,
+  times,
+  muteLabel = "MUTE",
+  unmuteLabel = "UNMUTE",
 }: {
   enabled: boolean;
   soundEnabled: boolean;
   accentColor?: string;
+  names?: string;
+  actions?: string;
+  products?: string;
+  times?: string;
+  muteLabel?: string;
+  unmuteLabel?: string;
 }) {
   const [visible, setVisible] = useState(false);
   const [line, setLine] = useState("");
@@ -107,7 +119,7 @@ export function SocialProofToast({
       if (mainTimerRef.current) clearTimeout(mainTimerRef.current);
       mainTimerRef.current = window.setTimeout(() => {
         if (cancelled) return;
-        const msg = buildSocialProofLine();
+        const msg = buildSocialProofLine({ names, actions, products, times });
         setLine(msg.line);
         setTimeLabel(msg.timeLabel);
         setVisible(true);
@@ -128,7 +140,7 @@ export function SocialProofToast({
       cancelled = true;
       clearTimers();
     };
-  }, [enabled, muted, soundEnabled]);
+  }, [enabled, muted, soundEnabled, names, actions, products, times]);
 
   const toggleMute = () => {
     const next = !muted;
@@ -173,18 +185,19 @@ export function SocialProofToast({
               </div>
               <div className="min-w-0 pt-0.5">
                 <p className="text-[13px] leading-snug text-white/92 font-medium">{line}</p>
-                <p className="text-[11px] text-white/40 mt-1.5">{timeLabel}</p>
+                <div className="mt-1.5 flex items-center justify-between gap-3">
+                  <p className="text-[11px] text-white/40">{timeLabel}</p>
+                  <button
+                    type="button"
+                    onClick={toggleMute}
+                    className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-white/45 hover:text-white/80 px-2 py-1 rounded-md hover:bg-white/5"
+                    aria-label={muted ? unmuteLabel : muteLabel}
+                  >
+                    {muted ? <BellOff size={12} /> : <Bell size={12} />}
+                    {muted ? unmuteLabel : muteLabel}
+                  </button>
+                </div>
               </div>
-            </div>
-            <div className="mt-3 flex items-center justify-end gap-2 border-t border-white/10 pt-2">
-              <button
-                type="button"
-                onClick={toggleMute}
-                className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wide text-white/45 hover:text-white/80 px-2 py-1 rounded-md hover:bg-white/5"
-              >
-                {muted ? <BellOff size={12} /> : <Bell size={12} />}
-                {muted ? "Unmute" : "Mute"}
-              </button>
             </div>
           </motion.div>
         )}
