@@ -1,15 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
 import { AppShell, type FeatureId } from "./components/AppShell";
-import { Dashboard } from "./components/Dashboard";
+import { SmartCareDashboard } from "./components/SmartCareDashboard";
 import type { OrbDisplayMode } from "./components/ScanOrbButton";
-import type { CleanFinishDetail, ReviewOrbIntent, ScanResult, StorageEntry } from "./types";
+import type {
+  CleanFinishDetail,
+  FileItem,
+  ReviewOrbIntent,
+  ScanResult,
+  StorageEntry,
+  TrashListItem,
+  UninstallAppEntry,
+} from "./types";
 import {
   appAudit,
   aiClosePanel,
   aiOpenPanel,
   getDiskStats,
   getStorageBreakdown,
+  listTrashItems,
+  listUninstallApps,
   orphanDetect,
   shellProbe,
 } from "./lib/backend";
@@ -28,6 +38,10 @@ import {
 } from "./components/OnboardingTour";
 import { ActivationScreen } from "./components/ActivationScreen";
 import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
+import { isDemoMode, setDemoSession } from "./lib/demoSession";
+import { fetchPublicConfig } from "./lib/publicConfig";
+import { formatIdrShort } from "./lib/formatIdr";
+import { sendClientTelemetry } from "./lib/telemetry";
 import { MonitorDashboard } from "./components/MonitorDashboard";
 import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
 
@@ -263,9 +277,102 @@ export default function App() {
   const [perfLoading, setPerfLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
   const [licenseGatePassed, setLicenseGatePassed] = useState(
-    () => shouldSkipLicenseGate() || !!getStoredLicenseToken()
+    () => shouldSkipLicenseGate() || !!getStoredLicenseToken() || isDemoMode()
   );
-  const [trashRefreshNonce, setTrashRefreshNonce] = useState(0);
+  const [activatePrefill, setActivatePrefill] = useState<{ email?: string; license?: string }>({});
+  const [marketingSiteUrl, setMarketingSiteUrl] = useState<string | null>(null);
+  const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
+  const [trashItems, setTrashItems] = useState<TrashListItem[] | null>(null);
+  const [trashLoading, setTrashLoading] = useState(false);
+  const [trashLoadError, setTrashLoadError] = useState<string | null>(null);
+  const [uninstallerApps, setUninstallerApps] = useState<UninstallAppEntry[] | null>(null);
+  const [uninstallerOrphans, setUninstallerOrphans] = useState<FileItem[] | null>(null);
+  const [uninstallerAppsLoading, setUninstallerAppsLoading] = useState(false);
+  const [uninstallerOrphansLoading, setUninstallerOrphansLoading] = useState(false);
+  const [uninstallerLoadError, setUninstallerLoadError] = useState<string | null>(null);
+  const [aiBannerVisible, setAiBannerVisible] = useState(false);
+  const [aiBannerIndex, setAiBannerIndex] = useState(0);
+  const [smartCareOverviewLoading, setSmartCareOverviewLoading] = useState(false);
+  const lastOverviewPrefetchRef = useRef(0);
+  const overviewPrefetchInFlightRef = useRef(false);
+
+  const OVERVIEW_TTL_MS = 5 * 60 * 1000;
+
+  const prefetchSmartCareOverview = useCallback(
+    async (force: boolean) => {
+      if (overviewPrefetchInFlightRef.current) return;
+      const now = Date.now();
+      if (!force && now - lastOverviewPrefetchRef.current < OVERVIEW_TTL_MS) return;
+      overviewPrefetchInFlightRef.current = true;
+      setSmartCareOverviewLoading(true);
+      setUninstallerLoadError(null);
+      setTrashLoadError(null);
+      try {
+        const settled = await Promise.allSettled([
+          listUninstallApps(),
+          orphanDetect(),
+          listTrashItems(),
+        ]);
+        if (settled[0].status === "fulfilled") {
+          setUninstallerApps(settled[0].value);
+        } else {
+          const msg =
+            settled[0].reason instanceof Error ? settled[0].reason.message : String(settled[0].reason);
+          setUninstallerLoadError(msg);
+        }
+        if (settled[1].status === "fulfilled") {
+          setUninstallerOrphans(settled[1].value);
+        } else if (settled[0].status === "fulfilled") {
+          const msg =
+            settled[1].reason instanceof Error ? settled[1].reason.message : String(settled[1].reason);
+          setUninstallerLoadError((prev) => (prev ? `${prev}; ${msg}` : msg));
+        }
+        if (settled[2].status === "fulfilled") {
+          setTrashItems(settled[2].value);
+          setTrashLoadError(null);
+        } else {
+          const msg =
+            settled[2].reason instanceof Error ? settled[2].reason.message : String(settled[2].reason);
+          setTrashLoadError(msg);
+        }
+        lastOverviewPrefetchRef.current = Date.now();
+      } finally {
+        overviewPrefetchInFlightRef.current = false;
+        setSmartCareOverviewLoading(false);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (!licenseGatePassed) return;
+    if (activeFeature !== "smart-care" || appState !== "idle") return;
+
+    const run = () => {
+      void prefetchSmartCareOverview(false);
+    };
+    let idleId: number | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(run, { timeout: 2500 });
+    } else {
+      timeoutId = window.setTimeout(run, 500);
+    }
+    return () => {
+      if (idleId !== undefined && typeof window.cancelIdleCallback === "function") {
+        window.cancelIdleCallback(idleId);
+      }
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    };
+  }, [licenseGatePassed, activeFeature, appState, prefetchSmartCareOverview]);
+
+  /** Storage breakdown for dashboard chart — non-blocking when empty */
+  useEffect(() => {
+    if (!licenseGatePassed) return;
+    if (activeFeature !== "smart-care" || appState !== "idle") return;
+    if (storageEntries.length > 0) return;
+    void getStorageBreakdown().then(setStorageEntries).catch(() => {});
+  }, [licenseGatePassed, activeFeature, appState, storageEntries.length]);
 
   useEffect(() => {
     if (isAIChatOpen) {
@@ -274,15 +381,20 @@ export default function App() {
       void aiClosePanel();
     }
   }, [isAIChatOpen]);
-  const [uninstallerRefreshNonce, setUninstallerRefreshNonce] = useState(0);
-  const [aiBannerVisible, setAiBannerVisible] = useState(false);
-  const [aiBannerIndex, setAiBannerIndex] = useState(0);
 
   /** Disk stats only — no user-folder walks (avoids macOS Documents TCC on cold start). */
   useEffect(() => {
     getDiskStats().then((s) => {
       setFreeSpace(s.free_gb);
       setDiskTotalGb(s.total_gb);
+    });
+  }, []);
+
+  /** Harga lifetime untuk CTA upgrade — mengikuti admin (`app_settings` → public-config). */
+  useEffect(() => {
+    void fetchPublicConfig(false).then((cfg) => {
+      const idr = cfg?.pricing?.lifetime_price_idr;
+      if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
     });
   }, []);
 
@@ -318,12 +430,28 @@ export default function App() {
   const diskUsedPercent =
     diskTotalGb > 0 ? Math.min(100, ((diskTotalGb - freeSpace) / diskTotalGb) * 100) : 45;
 
+  const scanModuleCounts = useMemo(() => {
+    const cleanup = filterByFeature(scanResults, "cleanup").reduce((acc, r) => acc + r.items.length, 0);
+    const clutter = filterByFeature(scanResults, "my-clutter").reduce((acc, r) => acc + r.items.length, 0);
+    return { cleanup, clutter };
+  }, [scanResults]);
+
   const featureBadges = useMemo(() => {
     const out: Record<string, number> = {};
-    out.cleanup = filterByFeature(scanResults, "cleanup").reduce((acc, r) => acc + r.items.length, 0);
-    out["my-clutter"] = filterByFeature(scanResults, "my-clutter").reduce((acc, r) => acc + r.items.length, 0);
+    out.cleanup = scanModuleCounts.cleanup;
+    out["my-clutter"] = scanModuleCounts.clutter;
+    if (uninstallerApps !== null && uninstallerOrphans !== null) {
+      const oc = uninstallerOrphans.length;
+      const ac = uninstallerApps.length;
+      out.uninstaller = oc > 0 ? oc : ac;
+    }
     return out;
-  }, [scanResults]);
+  }, [scanModuleCounts, uninstallerApps, uninstallerOrphans]);
+
+  const navigateFromSmartCare = useCallback((id: FeatureId) => {
+    setActiveFeature(id);
+    if (id === "settings") setIsSettingsOpen(true);
+  }, []);
 
   const handleStartScan = useCallback(() => {
     if (storageEntries.length === 0) {
@@ -333,6 +461,35 @@ export default function App() {
     setActiveFeature("smart-care");
     setAppState("scanning");
   }, [storageEntries.length]);
+
+  const refreshTrash = useCallback(async () => {
+    setTrashLoading(true);
+    setTrashLoadError(null);
+    try {
+      const rows = await listTrashItems();
+      setTrashItems(rows);
+    } catch (e) {
+      setTrashLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTrashLoading(false);
+    }
+  }, []);
+
+  const refreshUninstaller = useCallback(async () => {
+    setUninstallerAppsLoading(true);
+    setUninstallerOrphansLoading(true);
+    setUninstallerLoadError(null);
+    try {
+      const [appRows, orphanRows] = await Promise.all([listUninstallApps(), orphanDetect()]);
+      setUninstallerApps(appRows);
+      setUninstallerOrphans(orphanRows);
+    } catch (e) {
+      setUninstallerLoadError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setUninstallerAppsLoading(false);
+      setUninstallerOrphansLoading(false);
+    }
+  }, []);
 
   const handleFinishScan = useCallback(async (results: ScanResult[]) => {
     let freeGbBefore = freeSpace;
@@ -347,6 +504,7 @@ export default function App() {
     setScanProgressPct(100);
     setScanResults(results);
     recordScanComplete();
+    lastOverviewPrefetchRef.current = 0;
     setAppState("results");
     try {
       const [, o] = await Promise.all([
@@ -405,6 +563,9 @@ export default function App() {
     );
     setAiBannerIndex(0);
     setAiBannerVisible(true);
+    const totalBytes = results.reduce((a, r) => a + r.items.reduce((b, i) => b + i.size, 0), 0);
+    const totalGb = Math.round((totalBytes / (1024 * 1024 * 1024)) * 100) / 100;
+    void sendClientTelemetry("ScanCompleted", { total_gb: totalGb, items: itemsAnalyzed });
   }, [freeSpace, t]);
 
   const aiBannerQuestions = useMemo(
@@ -455,20 +616,32 @@ export default function App() {
       });
     });
     getStorageBreakdown().then(setStorageEntries).catch(() => {});
+    lastOverviewPrefetchRef.current = 0;
     setTimeout(() => setIsUpgradeOpen(true), 1200);
   }, [freeSpace, t]);
 
   const safePotentialLabel = estimateSafePotential(scanResults);
   const freeGbLabel = freeSpace > 0 ? freeSpace.toFixed(1) : undefined;
   const activeTheme = FEATURE_THEME[activeFeature];
+  const smartCareFamily =
+    activeFeature === "smart-care" || activeFeature === "cleanup" || activeFeature === "my-clutter";
+  const uninstallerOrbLoading = uninstallerAppsLoading || uninstallerOrphansLoading;
 
   const orbMode = useMemo((): OrbDisplayMode => {
     if (activeFeature === "performance") {
       return perfLoading ? "scanning" : "idle_scan";
     }
-    const contextualOrb =
-      activeFeature === "user-trash" || activeFeature === "uninstaller" || activeFeature === "monitor";
-    if (contextualOrb) {
+    if (activeFeature === "user-trash") {
+      if (shellCleaning) return "cleaning";
+      if (trashLoading) return "scanning";
+      return "idle_scan";
+    }
+    if (activeFeature === "uninstaller") {
+      if (shellCleaning) return "cleaning";
+      if (uninstallerOrbLoading) return "scanning";
+      return "idle_scan";
+    }
+    if (activeFeature === "monitor") {
       if (shellCleaning) return "cleaning";
       if (appState === "scanning") return "scanning";
       return "idle_scan";
@@ -480,7 +653,15 @@ export default function App() {
     }
     if (appState === "results") return "rescan";
     return "idle_scan";
-  }, [activeFeature, perfLoading, shellCleaning, appState, reviewOrbIntent]);
+  }, [
+    activeFeature,
+    perfLoading,
+    shellCleaning,
+    appState,
+    reviewOrbIntent,
+    trashLoading,
+    uninstallerOrbLoading,
+  ]);
 
   const orbMainText = useMemo(() => {
     if (activeFeature === "performance") {
@@ -488,12 +669,12 @@ export default function App() {
     }
     if (activeFeature === "user-trash") {
       if (shellCleaning) return t("orb.cleaning");
-      if (appState === "scanning") return undefined;
+      if (trashLoading) return undefined;
       return t("orb.refreshTrash");
     }
     if (activeFeature === "uninstaller") {
       if (shellCleaning) return t("orb.cleaning");
-      if (appState === "scanning") return undefined;
+      if (uninstallerAppsLoading || uninstallerOrphansLoading) return undefined;
       return t("orb.refreshUninstaller");
     }
     if (activeFeature === "monitor") {
@@ -508,7 +689,17 @@ export default function App() {
     }
     if (appState === "results") return t("orb.rescan");
     return t("orb.scan");
-  }, [activeFeature, perfLoading, shellCleaning, appState, reviewOrbIntent, t]);
+  }, [
+    activeFeature,
+    perfLoading,
+    shellCleaning,
+    appState,
+    reviewOrbIntent,
+    t,
+    trashLoading,
+    uninstallerAppsLoading,
+    uninstallerOrphansLoading,
+  ]);
 
   const handleOrbClick = useCallback(() => {
     if (activeFeature === "performance") {
@@ -516,11 +707,11 @@ export default function App() {
       return;
     }
     if (activeFeature === "user-trash") {
-      setTrashRefreshNonce((n) => n + 1);
+      void refreshTrash();
       return;
     }
     if (activeFeature === "uninstaller") {
-      setUninstallerRefreshNonce((n) => n + 1);
+      void refreshUninstaller();
       return;
     }
     if (activeFeature === "monitor") {
@@ -545,7 +736,7 @@ export default function App() {
       return;
     }
     handleStartScan();
-  }, [activeFeature, appState, reviewOrbIntent, handleStartScan]);
+  }, [activeFeature, appState, reviewOrbIntent, handleStartScan, refreshTrash, refreshUninstaller]);
 
   if (!licenseGatePassed) {
     return <ActivationScreen onActivated={() => setLicenseGatePassed(true)} />;
@@ -558,14 +749,24 @@ export default function App() {
   if (activeFeature === "smart-care") {
     if (appState === "idle") {
       content = (
-        <Dashboard
+        <SmartCareDashboard
           onStartScan={handleStartScan}
           onReview={scanResults.length > 0 ? () => setAppState("results") : undefined}
           hasResults={scanResults.length > 0}
           safePotentialLabel={safePotentialLabel}
+          cleanupItemCount={scanModuleCounts.cleanup}
+          clutterItemCount={scanModuleCounts.clutter}
           storageEntries={storageEntries}
           freeGb={freeSpace}
           totalGb={diskTotalGb}
+          apps={uninstallerApps}
+          orphans={uninstallerOrphans}
+          trashItems={trashItems}
+          overviewLoading={smartCareOverviewLoading}
+          uninstallerError={uninstallerLoadError}
+          trashError={trashLoadError}
+          onNavigateFeature={navigateFromSmartCare}
+          onRefreshOverview={() => void prefetchSmartCareOverview(true)}
         />
       );
     } else if (appState === "scanning") {
@@ -660,7 +861,14 @@ export default function App() {
   } else if (activeFeature === "uninstaller") {
     content = (
       <Suspense fallback={<ViewFallback />}>
-        <AppUninstallerView refreshNonce={uninstallerRefreshNonce} />
+        <AppUninstallerView
+          apps={uninstallerApps}
+          orphans={uninstallerOrphans}
+          appsLoading={uninstallerAppsLoading}
+          orphansLoading={uninstallerOrphansLoading}
+          loadError={uninstallerLoadError}
+          onRefresh={refreshUninstaller}
+        />
       </Suspense>
     );
   } else if (activeFeature === "monitor") {
@@ -676,7 +884,12 @@ export default function App() {
   } else if (activeFeature === "user-trash") {
     content = (
       <Suspense fallback={<ViewFallback />}>
-        <UserTrashView refreshNonce={trashRefreshNonce} />
+        <UserTrashView
+          items={trashItems}
+          loading={trashLoading}
+          error={trashLoadError}
+          onRefresh={refreshTrash}
+        />
       </Suspense>
     );
   } else if (activeFeature === "history") {
@@ -712,15 +925,25 @@ export default function App() {
         onScanOrbClick={handleOrbClick}
         scanOrbDisabled={
           (activeFeature === "performance" && perfLoading) ||
-          appState === "scanning" ||
+          (trashLoading && activeFeature === "user-trash") ||
+          (uninstallerOrbLoading && activeFeature === "uninstaller") ||
+          (smartCareFamily && appState === "scanning") ||
           shellCleaning ||
-          (appState === "results" &&
+          (smartCareFamily &&
+            appState === "results" &&
             reviewOrbIntent?.kind === "clean" &&
             reviewOrbIntent.disabled)
         }
-        scanOrbProgressPct={activeFeature === "performance" && perfLoading ? 52 : scanProgressPct}
+        scanOrbProgressPct={
+          activeFeature === "performance" && perfLoading
+            ? 52
+            : (activeFeature === "user-trash" && trashLoading) ||
+                (activeFeature === "uninstaller" && uninstallerOrbLoading)
+              ? 52
+              : scanProgressPct
+        }
         showScanOrb={
-          appState !== "scanning" &&
+          !(smartCareFamily && appState === "scanning") &&
           !(activeFeature === "smart-care" && appState === "idle") &&
           activeFeature !== "history" &&
           activeFeature !== "settings"
@@ -822,7 +1045,14 @@ export default function App() {
         <AnimatePresence>
           {isUpgradeOpen && (
             <UpgradePrompt
-              onUpgrade={() => setIsUpgradeOpen(false)}
+              priceShort={upgradePriceShort}
+              onUpgrade={() => {
+                void sendClientTelemetry("UpgradeClicked", {});
+                setIsUpgradeOpen(false);
+                const envUrl = import.meta.env.VITE_MARKETING_SITE_URL?.trim().replace(/\/$/, "");
+                const target = marketingSiteUrl || envUrl || "https://macfyi.com";
+                window.open(target, "_blank", "noopener,noreferrer");
+              }}
               onMaybeLater={() => setIsUpgradeOpen(false)}
             />
           )}

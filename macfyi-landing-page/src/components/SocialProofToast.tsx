@@ -62,9 +62,15 @@ export function SocialProofToast({
   const [line, setLine] = useState("");
   const [timeLabel, setTimeLabel] = useState("");
   const [muted, setMuted] = useState(readMuted);
-  const audioOkRef = useRef(
-    typeof window !== "undefined" && localStorage.getItem(UNLOCK_KEY) === "1"
-  );
+  const audioOkInit = (() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem(UNLOCK_KEY) === "1";
+    } catch {
+      return false;
+    }
+  })();
+  const audioOkRef = useRef(audioOkInit);
   const mainTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

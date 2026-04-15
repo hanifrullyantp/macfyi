@@ -14,6 +14,7 @@ import {
   Sparkles,
   Trash2,
   Trash,
+  SlidersHorizontal,
 } from "lucide-react";
 import { ScanOrbButton, type OrbDisplayMode } from "./ScanOrbButton";
 import { useI18n } from "../i18n/context";
@@ -220,7 +221,7 @@ export const AppShell = ({
                   {!collapsed && (
                     <>
                       <span className="text-xs font-medium flex-1">{t(item.label)}</span>
-                      {(item.id === "cleanup" || item.id === "my-clutter") && (
+                      {(item.id === "cleanup" || item.id === "my-clutter" || item.id === "uninstaller") && (
                         <Badge count={badges[item.id]} />
                       )}
                     </>
@@ -259,10 +260,10 @@ export const AppShell = ({
                 type="button"
                 onClick={onDeletionModeClick}
                 className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-                title={deletionMode === "trash" ? t("shell.deletionTrash") : t("shell.deletionPermanent")}
-                aria-label={t("shell.deletion")}
+                title={t("shell.deletionModeTitle")}
+                aria-label={t("shell.deletionModeAria")}
               >
-                <Trash2 size={16} />
+                <SlidersHorizontal size={16} />
               </button>
               <div className="relative" ref={diskPopoverRef}>
                 <button

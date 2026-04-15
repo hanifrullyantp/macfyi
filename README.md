@@ -109,7 +109,7 @@ Untuk mengelola data Supabase (`app_settings`, lisensi, aktivasi, rahasia AI): g
 ## Marketing & landing (web)
 
 - **Ekosistem & funnel:** [docs/MARKETING_ECOSYSTEM.md](docs/MARKETING_ECOSYSTEM.md)
-- **Tutorial integrasi (Supabase, Vercel, Midtrans, Resend):** [docs/TUTORIAL_INTEGRASI_STACK.md](docs/TUTORIAL_INTEGRASI_STACK.md) — panduan detail untuk pemula.
+- **Tutorial integrasi (Supabase, Vercel, Midtrans, SMTP):** [docs/TUTORIAL_INTEGRASI_STACK.md](docs/TUTORIAL_INTEGRASI_STACK.md) — panduan detail untuk pemula.
 - **Landing page (Vite):** folder `macfyi-landing-page/`
 
 ---

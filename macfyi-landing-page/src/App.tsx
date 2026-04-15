@@ -17,6 +17,7 @@ import {
   Send, 
   Eye, 
   Cloud,
+  Download,
   Mail,
   Info,
   Undo2,
@@ -36,7 +37,90 @@ import { NotificationBanner } from './components/NotificationBanner';
 import { SocialProofToast, toggleSocialProofMuteFromOutside, getSocialProofMuted } from './components/SocialProofToast';
 import { LeadCaptureForm } from './components/LeadCaptureForm';
 import { CheckoutModal } from './components/CheckoutModal';
+import { DemoRequestModal } from './components/DemoRequestModal';
 import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytics';
+import { applyLifetimePriceIdrToContent, normalizePricingContent } from './lib/pricingContent';
+import { formatIdr } from './lib/formatIdr';
+import { ScarcityBand } from './components/ScarcityBand';
+
+type MacfyiPublicPromo = {
+  active: boolean;
+  ends_at: string | null;
+  compare_at_idr: number | null;
+  slots_remaining: number | null;
+  slots_display: number | null;
+};
+
+type MacfyiPublicConfigPayload = {
+  server_time?: string;
+  pricing?: { lifetime_price_idr?: number };
+  promo?: MacfyiPublicPromo;
+};
+
+type PromoLiveState = {
+  countdown: { endMs: number; clockOffsetMs: number } | null;
+  slotsDisplay: number | null;
+};
+
+async function fetchMacfyiPublicConfig(): Promise<{
+  idr: number | null;
+  promo: MacfyiPublicPromo | null;
+  serverTimeIso: string | null;
+} | null> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
+  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+  if (!supabaseUrl || !anon) return null;
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/public-config`, {
+      headers: { apikey: anon, Authorization: `Bearer ${anon}` },
+    });
+    if (!res.ok) return null;
+    const j = (await res.json()) as MacfyiPublicConfigPayload;
+    const idr = j.pricing?.lifetime_price_idr;
+    return {
+      idr: typeof idr === "number" && idr > 0 ? idr : null,
+      promo: j.promo ?? null,
+      serverTimeIso: j.server_time ?? null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function mergePricingFromServer(merged: ContentData, idr: number, compareAtIdr: number | null): ContentData {
+  let next = applyLifetimePriceIdrToContent(merged, idr);
+  if (compareAtIdr != null && compareAtIdr > 0) {
+    next = {
+      ...next,
+      pricing: { ...next.pricing, compareAtPrice: formatIdr(compareAtIdr) },
+    };
+  }
+  return next;
+}
+
+function buildPromoLiveFromConfig(cfg: {
+  promo: MacfyiPublicPromo | null;
+  serverTimeIso: string | null;
+}): PromoLiveState | null {
+  if (!cfg.promo) return null;
+  const p = cfg.promo;
+  let countdown: { endMs: number; clockOffsetMs: number } | null = null;
+  if (p.active && p.ends_at) {
+    const endMs = Date.parse(p.ends_at);
+    if (Number.isFinite(endMs) && endMs > 0) {
+      countdown = {
+        endMs,
+        clockOffsetMs: cfg.serverTimeIso ? Date.parse(cfg.serverTimeIso) - Date.now() : 0,
+      };
+    }
+  }
+  const slotOk = p.slots_display != null && Number.isFinite(Number(p.slots_display));
+  if (!countdown && !slotOk) return null;
+  return {
+    countdown,
+    slotsDisplay: slotOk ? Math.max(0, Math.round(Number(p.slots_display))) : null,
+  };
+}
 
 const INITIAL_DATA: ContentData = {
   hero: {
@@ -51,8 +135,8 @@ const INITIAL_DATA: ContentData = {
       "Monitor & performa",
       "Asisten AI (privasi)",
     ],
-    primaryCTA: "Saya Mau!",
-    secondaryCTA: "Login"
+    primaryCTA: "Coba Gratis",
+    secondaryCTA: "Beli Lifetime"
   },
   problem: {
     heading: "Bayangkan…",
@@ -115,11 +199,33 @@ const INITIAL_DATA: ContentData = {
     ]
   },
   pricing: {
-    title: "Harga Lifetime (1 Perangkat)",
-    price: "Rp 173.000",
+    title: "Demo gratis atau beli lifetime",
+    freeTitle: "Demo Macfyi",
+    freeSubtitle: "Unduh aplikasi, coba fitur utama, lalu putuskan kapan ingin membeli.",
+    freeBullets: ["Unduh DMG resmi", "Mode demo dengan batas wajar", "Tanpa kartu kredit"],
+    freeCta: "Coba gratis",
+    paidTitle: "Lifetime (1 perangkat Mac)",
+    compareAtPrice: "Rp 299.000",
+    price: "Rp. 173 rb",
     label: "Lifetime 1 Mac",
     bullets: ["Sekali bayar", "Tanpa langganan", "Dipakai kapan saja saat storage penuh lagi"],
-    cta: "Checkout Rp 173.000"
+    cta: "Lifetime (1x Bayar)",
+  },
+  scarcity: {
+    headline1: "Jangan Sampai Menyesal",
+    headline2: "Tidak Kebagian ya..",
+    badge: "Hanya Untuk 10 Orang Tercepat Saja",
+    slotsDash: "—",
+    slotsLabel: "Tersisa",
+    slotsCount: "7",
+    slotsDashAfter: "Slot! —",
+    hargaNormalLabel: "Harga Normal",
+    strikeLargest: "Rp 1.200.000",
+    strikeMedium: "Rp 379.000",
+    strikeSmall: "Rp 299.000",
+    exclusiveLine: "Khusus untuk 10 orang tercepat pertama sampai waktu berakhir:",
+    visitorCountdownMinutes: 165,
+    countdownEndIso: "",
   },
   valueStack: {
     title: "Yang Anda dapatkan setelah pakai Macfyi",
@@ -183,14 +289,21 @@ const INITIAL_DATA: ContentData = {
   }
 };
 
+function withDefaultSettings(d: ContentData): ContentData {
+  return {
+    ...d,
+    settings: { ...DEFAULT_SITE_SETTINGS, ...d.settings },
+  };
+}
+
 function mergeSavedContent(raw: string | null): ContentData {
-  if (!raw) return INITIAL_DATA;
+  if (!raw) return normalizePricingContent(withDefaultSettings(JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData));
   try {
     const parsed = JSON.parse(raw) as Partial<ContentData>;
     const base = JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData;
-    return deepMerge(base, parsed);
+    return normalizePricingContent(withDefaultSettings(deepMerge(base, parsed)));
   } catch {
-    return INITIAL_DATA;
+    return normalizePricingContent(withDefaultSettings(JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData));
   }
 }
 
@@ -208,13 +321,14 @@ const IconComponent = ({ name, className }: { name: string; className?: string }
   }
 };
 
-function LandingApp() {
+export function LandingApp() {
   const toast = useToast();
   const [data, setData] = useState<ContentData>(() =>
     typeof localStorage !== 'undefined' ? mergeSavedContent(localStorage.getItem('macfyi_data')) : INITIAL_DATA
   );
   const [legacyAdmin, setLegacyAdmin] = useState(() => isValidLegacyAdminSession());
   const [supabaseAdmin, setSupabaseAdmin] = useState(false);
+  const [supabaseLoggedIn, setSupabaseLoggedIn] = useState(false);
   const sessionOk = isSupabaseBrowserConfigured() ? supabaseAdmin : legacyAdmin;
   const [undoStack, setUndoStack] = useState<ContentData[]>([]);
   const [redoStack, setRedoStack] = useState<ContentData[]>([]);
@@ -226,6 +340,7 @@ function LandingApp() {
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(() => new Set([0]));
@@ -235,6 +350,7 @@ function LandingApp() {
   const [socialMuteUi, setSocialMuteUi] = useState(() =>
     typeof window !== 'undefined' ? getSocialProofMuted() : false
   );
+  const [promoLive, setPromoLive] = useState<PromoLiveState | null>(null);
 
   const canEdit = sessionOk && !adminPreview;
 
@@ -262,6 +378,18 @@ function LandingApp() {
 
   useEffect(() => {
     let cancelled = false;
+
+    const hydrateFromServer = async (merged: ContentData) => {
+      const cfg = await fetchMacfyiPublicConfig();
+      if (cancelled) return;
+      const idr = cfg?.idr ?? null;
+      const compare = cfg?.promo?.compare_at_idr;
+      const cmpOk = compare != null && typeof compare === "number" && compare > 0 ? compare : null;
+      const next = idr != null ? mergePricingFromServer(merged, idr, cmpOk) : merged;
+      setData(next);
+      setPromoLive(cfg ? buildPromoLiveFromConfig({ promo: cfg.promo, serverTimeIso: cfg.serverTimeIso }) : null);
+    };
+
     (async () => {
       const client = getSupabaseBrowserClient();
       if (client) {
@@ -272,20 +400,29 @@ function LandingApp() {
           .maybeSingle();
         if (cancelled) return;
         if (row?.content && typeof row.content === 'object' && !Array.isArray(row.content)) {
-          const merged = deepMerge(
-            JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData,
-            row.content as Partial<ContentData>
+          const merged = normalizePricingContent(
+            withDefaultSettings(
+              deepMerge(
+                JSON.parse(JSON.stringify(INITIAL_DATA)) as ContentData,
+                row.content as Partial<ContentData>
+              )
+            )
           );
-          setData(merged);
-          setUndoStack([]);
-          setRedoStack([]);
+          await hydrateFromServer(merged);
+          if (!cancelled) {
+            setUndoStack([]);
+            setRedoStack([]);
+          }
           return;
         }
       }
       if (!cancelled && typeof localStorage !== 'undefined') {
-        setData(mergeSavedContent(localStorage.getItem('macfyi_data')));
-        setUndoStack([]);
-        setRedoStack([]);
+        const localMerged = mergeSavedContent(localStorage.getItem('macfyi_data'));
+        await hydrateFromServer(localMerged);
+        if (!cancelled) {
+          setUndoStack([]);
+          setRedoStack([]);
+        }
       }
     })();
     return () => {
@@ -362,6 +499,27 @@ function LandingApp() {
     });
     setHasChanges(true);
   }, []);
+
+  const refreshPublicPromoState = useCallback(async () => {
+    const cfg = await fetchMacfyiPublicConfig();
+    setPromoLive(cfg ? buildPromoLiveFromConfig({ promo: cfg.promo, serverTimeIso: cfg.serverTimeIso }) : null);
+  }, []);
+
+  /** Setelah simpan `lifetime_price_idr` ke `app_settings` (admin landing). */
+  const applyServerLifetimePrice = useCallback((idr: number) => {
+    setData((prev) => applyLifetimePriceIdrToContent(prev, idr));
+    setHasChanges(true);
+    void refreshPublicPromoState();
+  }, [refreshPublicPromoState]);
+
+  const applyPromoSaveFromServer = useCallback(
+    (p: { lifetime_price_idr: number; compare_at_idr: number | null }) => {
+      setData((prev) => mergePricingFromServer(prev, p.lifetime_price_idr, p.compare_at_idr));
+      setHasChanges(true);
+      void refreshPublicPromoState();
+    },
+    [refreshPublicPromoState]
+  );
 
   const undo = useCallback(() => {
     setUndoStack((u) => {
@@ -441,17 +599,47 @@ function LandingApp() {
     );
   };
 
-  const onGearClick = () => {
-    if (sessionOk) setIsSettingsOpen(true);
-    else setIsLoginOpen(true);
-  };
-
   const openCheckout = useCallback(() => {
     queueSiteEvent("cta_click", { target: "checkout" });
+    queueSiteEvent("checkout_started", {});
     setCheckoutOpen(true);
   }, []);
 
   const openLoginModal = useCallback(() => setIsLoginOpen(true), []);
+
+  const openMemberArea = useCallback(() => {
+    const url = data.settings.loginUrl?.trim();
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    else toast('URL area anggota belum diatur di pengaturan.', 'info');
+  }, [data.settings.loginUrl, toast]);
+
+  const handleSignOut = useCallback(async () => {
+    clearLegacyAdminSession();
+    const c = getSupabaseBrowserClient();
+    if (c) await c.auth.signOut();
+    setLegacyAdmin(false);
+    setSupabaseAdmin(false);
+    setSupabaseLoggedIn(false);
+    setAdminPreview(false);
+    toast('Anda telah keluar.', 'info');
+  }, [toast]);
+
+  const onGearClick = () => {
+    if (sessionOk) {
+      setIsSettingsOpen(true);
+      return;
+    }
+    if (isSupabaseBrowserConfigured() && supabaseLoggedIn) {
+      openMemberArea();
+      return;
+    }
+    setIsLoginOpen(true);
+  };
+
+  const openDemoModal = useCallback(() => {
+    queueSiteEvent("cta_click", { target: "demo" });
+    setDemoModalOpen(true);
+  }, []);
 
   const dismissBanner = () => {
     sessionStorage.setItem('macfyi_banner_dismissed', '1');
@@ -569,15 +757,7 @@ function LandingApp() {
               </button>
               <button 
                 type="button"
-                onClick={async () => {
-                  clearLegacyAdminSession();
-                  const c = getSupabaseBrowserClient();
-                  if (c) await c.auth.signOut();
-                  setLegacyAdmin(false);
-                  setSupabaseAdmin(false);
-                  setAdminPreview(false);
-                  toast('Anda telah keluar.', 'info');
-                }}
+                onClick={() => void handleSignOut()}
                 className="ml-2 text-xs text-white/50 hover:text-white px-2 py-1 rounded border border-white/15"
               >
                 Keluar
@@ -614,17 +794,48 @@ function LandingApp() {
             <a href="#lead" className="hover:text-red-500 transition">Kontak</a>
             <a href="#faq" className="hover:text-red-500 transition">FAQ</a>
           </nav>
-          <div className="flex items-center gap-4">
-            <button 
+          <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+            {(() => {
+              const supabaseOn = isSupabaseBrowserConfigured();
+              const loggedIn = legacyAdmin || (supabaseOn && supabaseLoggedIn);
+              const headerAuthBtn =
+                'text-xs font-medium text-white/70 hover:text-white px-2.5 py-1.5 rounded-lg border border-white/15 hover:bg-white/5 transition';
+              if (loggedIn && sessionOk) {
+                return (
+                  <>
+                    <button type="button" onClick={() => setIsSettingsOpen(true)} className={headerAuthBtn}>
+                      Admin
+                    </button>
+                    <button type="button" onClick={openMemberArea} className={headerAuthBtn}>
+                      Member
+                    </button>
+                    <button type="button" onClick={() => void handleSignOut()} className={headerAuthBtn}>
+                      Keluar
+                    </button>
+                  </>
+                );
+              }
+              if (loggedIn) {
+                return (
+                  <>
+                    <button type="button" onClick={openMemberArea} className={headerAuthBtn}>
+                      Member
+                    </button>
+                    <button type="button" onClick={() => void handleSignOut()} className={headerAuthBtn}>
+                      Keluar
+                    </button>
+                  </>
+                );
+              }
+              return (
+                <button type="button" onClick={openLoginModal} className={headerAuthBtn}>
+                  Masuk
+                </button>
+              );
+            })()}
+            <button
               type="button"
-              onClick={openLoginModal}
-              className="hidden sm:block text-sm font-medium text-white/70 hover:text-white"
-            >
-              <EditableText value={data.hero.secondaryCTA} onSave={(v) => updateData('hero.secondaryCTA', v)} isAdmin={canEdit} />
-            </button>
-            <button 
-              type="button"
-              onClick={openCheckout}
+              onClick={openDemoModal}
               className="text-white px-5 py-2 rounded-full text-sm font-bold transition shadow-lg"
               style={{ backgroundColor: data.settings.primaryColor, boxShadow: `0 10px 40px ${data.settings.primaryColor}33` }}
             >
@@ -717,6 +928,24 @@ function LandingApp() {
                   {i < data.hero.features.length - 1 && <span>|</span>}
                 </React.Fragment>
               ))}
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3 mt-10">
+              <button
+                type="button"
+                onClick={openDemoModal}
+                className="text-white px-8 py-3 rounded-full text-sm font-bold transition shadow-lg"
+                style={{ backgroundColor: data.settings.primaryColor, boxShadow: `0 10px 40px ${data.settings.primaryColor}33` }}
+              >
+                <EditableText value={data.hero.primaryCTA} onSave={(v) => updateData('hero.primaryCTA', v)} isAdmin={canEdit} />
+              </button>
+              <button
+                type="button"
+                onClick={openCheckout}
+                className="px-8 py-3 rounded-full text-sm font-bold border border-white/20 text-white/90 hover:bg-white/5 transition"
+              >
+                <EditableText value={data.hero.secondaryCTA} onSave={(v) => updateData('hero.secondaryCTA', v)} isAdmin={canEdit} />
+              </button>
             </div>
           </motion.div>
         </div>
@@ -993,70 +1222,143 @@ function LandingApp() {
         </div>
       </section>
 
-      {/* Pricing Section — accent hijau (hanya blok ini; bagian lain tetap merah/brand) */}
+      <ScarcityBand
+        scarcity={data.scarcity}
+        canEdit={canEdit}
+        updateData={updateData}
+        promoCountdown={promoLive?.countdown ?? null}
+        promoSlotsDisplay={promoLive?.slotsDisplay ?? null}
+      />
+
+      {/* Pricing: kiri demo gratis, kanan lifetime (harga dari admin / app_settings → public-config) */}
       <section id="pricing" className="py-24">
         <div className="container mx-auto px-4">
-          <div className="max-w-4xl mx-auto rounded-[3rem] bg-gradient-to-br from-emerald-600/20 to-emerald-950/45 border border-emerald-500/35 overflow-hidden shadow-2xl">
-            <div className="p-8 md:p-16 flex flex-col md:flex-row items-center gap-16">
-              <div className="flex-1">
-                <EditableText 
-                  as="h2"
-                  value={data.pricing.title} 
-                  onSave={(v) => updateData('pricing.title', v)} 
-                  isAdmin={canEdit} 
-                  className="text-2xl font-bold mb-2 block" 
+          <div className="max-w-5xl mx-auto rounded-[2.5rem] border border-white/10 bg-gradient-to-b from-white/[0.06] to-black/30 overflow-hidden shadow-2xl">
+            <div className="px-6 py-8 md:px-10 md:py-10 border-b border-white/10">
+              <EditableText
+                as="h2"
+                value={data.pricing.title}
+                onSave={(v) => updateData("pricing.title", v)}
+                isAdmin={canEdit}
+                className="text-2xl md:text-3xl font-bold text-center block text-white"
+              />
+              <p className="text-center text-white/45 text-sm mt-2 max-w-2xl mx-auto">
+                Harga berbayar mengikuti angka di database (sama dengan checkout Midtrans dan tampilan di app). Atur di Pengaturan → Global &amp; merek.
+              </p>
+            </div>
+            <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-white/10">
+              {/* Kolom kiri — demo gratis */}
+              <div className="p-8 md:p-10 flex flex-col bg-slate-900/40">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-sky-400/90 mb-2">Gratis</span>
+                <EditableText
+                  as="h3"
+                  value={data.pricing.freeTitle}
+                  onSave={(v) => updateData("pricing.freeTitle", v)}
+                  isAdmin={canEdit}
+                  className="text-xl font-bold text-white mb-2 block"
                 />
-                <EditableText 
-                  as="div"
-                  value={data.pricing.price} 
-                  onSave={(v) => updateData('pricing.price', v)} 
-                  isAdmin={canEdit} 
-                  className="text-5xl md:text-6xl font-black mb-2 block" 
-                />
-                <EditableText 
+                <EditableText
                   as="p"
-                  value={data.pricing.label} 
-                  onSave={(v) => updateData('pricing.label', v)} 
-                  isAdmin={canEdit} 
-                  className="text-emerald-400 font-bold tracking-widest uppercase text-sm mb-8 block" 
+                  value={data.pricing.freeSubtitle}
+                  onSave={(v) => updateData("pricing.freeSubtitle", v)}
+                  isAdmin={canEdit}
+                  className="text-sm text-white/55 mb-6 block"
                 />
-                <ul className="space-y-4 mb-8">
-                  {data.pricing.bullets.map((bullet, i) => (
-                    <li key={i} className="flex items-center gap-3">
-                      <Check className="text-emerald-500" size={18} />
-                      <EditableText 
-                        value={bullet} 
+                <ul className="space-y-3 mb-8 flex-1">
+                  {data.pricing.freeBullets.map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm text-white/80">
+                      <Check className="text-sky-400 shrink-0 mt-0.5" size={18} />
+                      <EditableText
+                        value={bullet}
                         onSave={(v) => {
-                          const newBullets = [...data.pricing.bullets];
-                          newBullets[i] = v;
-                          updateData('pricing.bullets', newBullets);
-                        }} 
-                        isAdmin={canEdit} 
+                          const next = [...data.pricing.freeBullets];
+                          next[i] = v;
+                          updateData("pricing.freeBullets", next);
+                        }}
+                        isAdmin={canEdit}
                       />
                     </li>
                   ))}
                 </ul>
-                <button 
+                <button
                   type="button"
-                  onClick={openCheckout}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-4 rounded-2xl text-xl font-bold transition shadow-xl shadow-emerald-600/25 flex items-center justify-center gap-3 group"
+                  onClick={openDemoModal}
+                  className="w-full bg-sky-600/90 hover:bg-sky-500 text-white py-3.5 rounded-2xl text-base font-bold transition flex items-center justify-center gap-2"
                 >
-                  <EditableText value={data.pricing.cta} onSave={(v) => updateData('pricing.cta', v)} isAdmin={canEdit} />
-                  <Zap className="group-hover:scale-125 transition" size={20} fill="currentColor" />
+                  <Download size={18} />
+                  <EditableText
+                    value={data.pricing.freeCta}
+                    onSave={(v) => updateData("pricing.freeCta", v)}
+                    isAdmin={canEdit}
+                  />
                 </button>
               </div>
-              <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-8 bg-black/40 rounded-3xl border border-white/5">
-                <Cloud className="text-emerald-500 mb-6" size={64} />
-                <p className="text-white/60 mb-6 font-medium">Satu kali bayar untuk ketenangan jangka panjang.</p>
-                <div className="h-px w-full bg-white/10 mb-6" />
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center">
-                    <ShieldCheck className="text-emerald-500" />
-                  </div>
-                  <div className="text-left">
-                    <div className="font-bold">Verified Secure</div>
-                    <div className="text-xs text-white/40">Secure Checkout Process</div>
-                  </div>
+              {/* Kolom kanan — berbayar */}
+              <div className="p-8 md:p-10 flex flex-col bg-gradient-to-br from-emerald-950/50 to-emerald-900/20">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-400/95 mb-2">Berbayar</span>
+                <EditableText
+                  as="h3"
+                  value={data.pricing.paidTitle}
+                  onSave={(v) => updateData("pricing.paidTitle", v)}
+                  isAdmin={canEdit}
+                  className="text-xl font-bold text-white mb-2 block"
+                />
+                <EditableText
+                  as="div"
+                  value={data.pricing.compareAtPrice}
+                  onSave={(v) => updateData("pricing.compareAtPrice", v)}
+                  isAdmin={canEdit}
+                  className="text-sm md:text-base font-semibold text-red-400 line-through decoration-red-500 decoration-2 mb-2 block"
+                />
+                <EditableText
+                  as="div"
+                  value={data.pricing.price}
+                  onSave={(v) => updateData("pricing.price", v)}
+                  isAdmin={canEdit}
+                  className="text-4xl md:text-5xl font-black text-white mb-1 block"
+                />
+                <EditableText
+                  as="p"
+                  value={data.pricing.label}
+                  onSave={(v) => updateData("pricing.label", v)}
+                  isAdmin={canEdit}
+                  className="text-emerald-300/90 font-semibold tracking-wide uppercase text-xs mb-6 block"
+                />
+                <ul className="space-y-3 mb-8 flex-1">
+                  {data.pricing.bullets.map((bullet, i) => (
+                    <li key={i} className="flex items-start gap-3 text-sm text-white/85">
+                      <Check className="text-emerald-400 shrink-0 mt-0.5" size={18} />
+                      <EditableText
+                        value={bullet}
+                        onSave={(v) => {
+                          const newBullets = [...data.pricing.bullets];
+                          newBullets[i] = v;
+                          updateData("pricing.bullets", newBullets);
+                        }}
+                        isAdmin={canEdit}
+                      />
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={openCheckout}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-2xl text-base font-bold transition shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 group"
+                >
+                  <EditableText value={data.pricing.cta} onSave={(v) => updateData("pricing.cta", v)} isAdmin={canEdit} />
+                  <Zap className="group-hover:scale-110 transition" size={18} fill="currentColor" />
+                </button>
+              </div>
+            </div>
+            <div className="px-6 py-5 md:px-10 flex flex-col sm:flex-row items-center justify-center gap-4 bg-black/35 border-t border-white/10">
+              <Cloud className="text-emerald-500/80 hidden sm:block" size={40} />
+              <div className="flex items-center gap-3 text-center sm:text-left">
+                <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center shrink-0">
+                  <ShieldCheck className="text-emerald-500" size={20} />
+                </div>
+                <div>
+                  <div className="font-semibold text-white text-sm">Pembayaran aman</div>
+                  <div className="text-xs text-white/40">Checkout Midtrans mengikuti harga di server.</div>
                 </div>
               </div>
             </div>
@@ -1432,7 +1734,13 @@ function LandingApp() {
       <button 
         type="button"
         onClick={onGearClick}
-        title={sessionOk ? "Pengaturan" : "Masuk penyunting"}
+        title={
+          sessionOk
+            ? 'Pengaturan'
+            : isSupabaseBrowserConfigured() && supabaseLoggedIn
+              ? 'Buka aplikasi (Member)'
+              : 'Masuk'
+        }
         className="fixed bottom-6 left-6 z-[70] w-11 h-11 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/50 hover:text-white transition group shadow-lg"
       >
         <Settings className="group-hover:rotate-90 transition-transform duration-500" size={20} />
@@ -1453,6 +1761,7 @@ function LandingApp() {
         )}
       </AnimatePresence>
 
+      <DemoRequestModal open={demoModalOpen} onClose={() => setDemoModalOpen(false)} toast={toast} />
       <CheckoutModal
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
@@ -1465,12 +1774,16 @@ function LandingApp() {
       <AdminLoginModal
         open={isLoginOpen}
         onClose={() => setIsLoginOpen(false)}
-        onSuccess={() => {
+        onSuccess={({ role }) => {
           if (!isSupabaseBrowserConfigured()) {
             setLegacyAdmin(isValidLegacyAdminSession());
           }
           setAdminPreview(false);
-          toast('Anda dapat menyunting konten halaman.', 'success');
+          if (role === 'admin') {
+            toast('Anda dapat menyunting konten halaman.', 'success');
+          } else {
+            toast('Selamat datang. Buka Member untuk masuk ke aplikasi.', 'success');
+          }
         }}
       />
       {isSettingsOpen && (
@@ -1483,17 +1796,11 @@ function LandingApp() {
           replaceData={replaceData}
           toast={toast}
           onTestToast={() => toast('Notifikasi toast (kanan bawah).', 'success')}
+          onApplyServerLifetimePrice={applyServerLifetimePrice}
+          onAfterPromoSave={applyPromoSaveFromServer}
         />
       )}
     </div>
-  );
-}
-
-export default function App() {
-  return (
-    <ToastProvider>
-      <LandingApp />
-    </ToastProvider>
   );
 }
 

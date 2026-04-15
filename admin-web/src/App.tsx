@@ -5,12 +5,15 @@ import {
   AffiliatesAdmin,
   AnalyticsAdmin,
   AnnouncementsAdmin,
-  CrmKanbanAdmin,
+  CrmHubAdmin,
   EventsAdmin,
   PlatformSettingsAdmin,
   TransactionsAdmin,
   WithdrawalsAdmin,
 } from "./AdminExtraPages";
+import { ErrorsLogsAdmin } from "./ErrorsLogsAdmin";
+import { MarketingSettingsAdmin } from "./MarketingSettingsAdmin";
+import { WaTemplatesAdmin } from "./WaTemplatesAdmin";
 import { AdminShell } from "./AdminShell";
 import { LegacyDashboard } from "./LegacyDashboard";
 import { supabase, supabaseConfigured } from "./supabase";
@@ -115,11 +118,14 @@ export function App() {
         <Route path="analitik" element={<AnalyticsAdmin />} />
         <Route path="penarikan" element={<WithdrawalsAdmin session={session} />} />
         <Route path="transaksi" element={<TransactionsAdmin />} />
-        <Route path="crm" element={<CrmKanbanAdmin />} />
+        <Route path="crm" element={<CrmHubAdmin />} />
         <Route path="affiliates" element={<AffiliatesAdmin />} />
         <Route path="platform" element={<PlatformSettingsAdmin />} />
         <Route path="acara" element={<EventsAdmin />} />
         <Route path="pengumuman" element={<AnnouncementsAdmin />} />
+        <Route path="marketing" element={<MarketingSettingsAdmin />} />
+        <Route path="wa-templates" element={<WaTemplatesAdmin />} />
+        <Route path="logs" element={<ErrorsLogsAdmin />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

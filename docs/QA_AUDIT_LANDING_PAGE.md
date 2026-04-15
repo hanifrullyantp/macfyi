@@ -18,7 +18,7 @@
 
 **Flow C (repeat purchase / duplicate email):** **Not enforced** — leads are appended in `localStorage` with no deduplication.
 
-**A6–A11, Midtrans Snap, webhooks, email download tokens:** **Not implemented in this SPA.** Partial related code exists elsewhere in monorepo: [`supabase/functions/payment-webhook/index.ts`](../supabase/functions/payment-webhook/index.ts) (generic paid payload, idempotency on `payment_events`, Resend email) — **not wired** from landing checkout modal.
+**A6–A11, Midtrans Snap, webhooks, email download tokens:** **Not implemented in this SPA.** Partial related code exists elsewhere in monorepo: [`supabase/functions/payment-webhook/index.ts`](../supabase/functions/payment-webhook/index.ts) (generic paid payload, idempotency on `payment_events`, SMTP email) — **not wired** from landing checkout modal.
 
 ---
 

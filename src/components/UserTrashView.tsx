@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { ExternalLink, Loader2, Trash2 } from "lucide-react";
 import type { TrashListItem } from "../types";
-import { emptyTrash, listTrashItems, openUserTrash, revealInFinder } from "../lib/backend";
+import { emptyTrash, openUserTrash, revealInFinder } from "../lib/backend";
+import { isDemoMode } from "../lib/demoSession";
 import { useI18n } from "../i18n/context";
 import { LoadingButton } from "./common/LoadingButton";
 
@@ -11,36 +12,34 @@ function formatBytes(n: number): string {
   return `${(n / 1024).toFixed(0)} KB`;
 }
 
-export function UserTrashView({ refreshNonce = 0 }: { refreshNonce?: number }) {
+export type UserTrashViewProps = {
+  items: TrashListItem[] | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => Promise<void>;
+};
+
+export function UserTrashView({ items, loading, error, onRefresh }: UserTrashViewProps) {
   const { t } = useI18n();
-  const [items, setItems] = useState<TrashListItem[]>([]);
-  const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    setLoading(true);
-    setError(null);
-    listTrashItems()
-      .then(setItems)
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load, refreshNonce]);
-
-  const total = items.reduce((a, x) => a + x.sizeBytes, 0);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const rows = items ?? [];
+  const hasLoaded = items !== null;
+  const total = rows.reduce((a, x) => a + x.sizeBytes, 0);
 
   const handleEmpty = async () => {
+    if (isDemoMode()) {
+      setLocalError("Demo: mengosongkan Tong Sampah tidak tersedia. Upgrade ke Pro untuk penghapusan penuh.");
+      return;
+    }
     if (!window.confirm(t("trash.emptyConfirm"))) return;
     setBusy(true);
+    setLocalError(null);
     try {
       await emptyTrash();
-      await load();
+      await onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setLocalError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -62,7 +61,7 @@ export function UserTrashView({ refreshNonce = 0 }: { refreshNonce?: number }) {
               loading={busy}
               loadingLabel="…"
               onClick={handleEmpty}
-              disabled={items.length === 0 || loading}
+              disabled={!hasLoaded || rows.length === 0 || loading}
               className="btn-secondary text-sm px-4 py-2"
             >
               {t("trash.empty")}
@@ -70,25 +69,50 @@ export function UserTrashView({ refreshNonce = 0 }: { refreshNonce?: number }) {
             <button type="button" onClick={() => openUserTrash()} className="btn-secondary text-sm px-4 py-2">
               {t("trash.openInFinder")} <ExternalLink size={14} className="inline ml-1" />
             </button>
+            <LoadingButton
+              loading={loading}
+              loadingLabel="…"
+              onClick={() => void onRefresh()}
+              className="btn-primary text-sm px-4 py-2"
+            >
+              {t("trash.scanButton")}
+            </LoadingButton>
           </div>
         </div>
 
-        {error && <p className="text-sm text-amber-300">{error}</p>}
+        {(error || localError) && <p className="text-sm text-amber-300">{error || localError}</p>}
 
-        {loading && (
+        {!hasLoaded && !loading && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
+            <p className="text-sm text-white/60">{t("trash.notLoadedHint")}</p>
+            <LoadingButton loading={loading} loadingLabel="…" onClick={() => void onRefresh()} className="btn-primary text-sm px-4 py-2">
+              {t("trash.scanButton")}
+            </LoadingButton>
+          </div>
+        )}
+
+        {loading && !hasLoaded && (
           <div className="flex items-center gap-2 text-white/45 py-8">
             <Loader2 className="animate-spin" size={18} /> {t("loading")}
           </div>
         )}
 
-        {!loading && (
-          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        {hasLoaded && (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 relative">
+            {loading && (
+              <div className="absolute inset-0 z-10 bg-black/20 flex items-center justify-center rounded-xl">
+                <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/70 px-3 py-2 text-sm text-white/85">
+                  <Loader2 className="animate-spin" size={16} />
+                  {t("loading")}
+                </div>
+              </div>
+            )}
             <p className="text-sm text-white/70">
-              {t("trash.total")}: <strong className="text-white tabular-nums">{formatBytes(total)}</strong> · {items.length}{" "}
+              {t("trash.total")}: <strong className="text-white tabular-nums">{formatBytes(total)}</strong> · {rows.length}{" "}
               {t("trash.items")}
             </p>
             <ul className="mt-3 space-y-2 max-h-[min(60vh,520px)] overflow-y-auto custom-scrollbar">
-              {items.map((it) => (
+              {rows.map((it) => (
                 <li
                   key={it.path}
                   className="flex items-center justify-between gap-2 py-2 border-b border-white/5 last:border-0 text-sm"
@@ -104,7 +128,7 @@ export function UserTrashView({ refreshNonce = 0 }: { refreshNonce?: number }) {
                   </button>
                 </li>
               ))}
-              {items.length === 0 && <li className="text-white/40 text-sm py-4">—</li>}
+              {rows.length === 0 && <li className="text-white/40 text-sm py-4">—</li>}
             </ul>
           </div>
         )}

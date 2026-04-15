@@ -68,6 +68,12 @@ function ensureVisitorId(): string {
   return id;
 }
 
+/** Visitor id for CRM + checkout attribution (persisted). */
+export function getMacfyiVisitorId(): string {
+  if (typeof window === "undefined") return crypto.randomUUID();
+  return ensureVisitorId();
+}
+
 function trackingEnabled(): boolean {
   if (import.meta.env.VITE_SITE_TRACKING === "false") return false;
   const url = import.meta.env.VITE_SUPABASE_URL?.trim();

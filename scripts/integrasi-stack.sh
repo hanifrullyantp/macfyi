@@ -18,7 +18,7 @@
 # File env wajib berisi (export ...):
 #   SUPABASE_URL, SUPABASE_ANON_KEY, PROJECT_REF,
 #   MIDTRANS_SERVER_KEY, MIDTRANS_CLIENT_KEY,
-#   RESEND_API_KEY, EMAIL_FROM
+#   SMTP_HOST, SMTP_USER, SMTP_PASS, EMAIL_FROM (opsional: SMTP_PORT, SMTP_TLS)
 
 set -euo pipefail
 
@@ -80,7 +80,9 @@ require SUPABASE_ANON_KEY
 require PROJECT_REF
 require MIDTRANS_SERVER_KEY
 require MIDTRANS_CLIENT_KEY
-require RESEND_API_KEY
+require SMTP_HOST
+require SMTP_USER
+require SMTP_PASS
 require EMAIL_FROM
 
 if ! command -v supabase &>/dev/null; then
@@ -140,9 +142,19 @@ else
   esac
 fi
 
-echo "==> supabase secrets set (Midtrans, Resend, ...)"
-supabase secrets set RESEND_API_KEY="$RESEND_API_KEY"
+echo "==> supabase secrets set (Midtrans, SMTP, ...)"
+supabase secrets set SMTP_HOST="$SMTP_HOST"
+supabase secrets set SMTP_USER="$SMTP_USER"
+supabase secrets set SMTP_PASS="$SMTP_PASS"
 supabase secrets set EMAIL_FROM="$EMAIL_FROM"
+if [[ -n "${SMTP_PORT:-}" ]]; then
+  supabase secrets set SMTP_PORT="$SMTP_PORT"
+else
+  supabase secrets set SMTP_PORT="587"
+fi
+if [[ -n "${SMTP_TLS:-}" ]]; then
+  supabase secrets set SMTP_TLS="$SMTP_TLS"
+fi
 supabase secrets set MIDTRANS_SERVER_KEY="$MIDTRANS_SERVER_KEY"
 supabase secrets set MIDTRANS_CLIENT_KEY="$MIDTRANS_CLIENT_KEY"
 supabase secrets set MIDTRANS_IS_PRODUCTION="$MIDTRANS_PROD_FLAG"

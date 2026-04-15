@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { asBool, getPlatformSetting } from "../_shared/platformSettings.ts";
+import { resolvePromoContext, shouldBlockCheckoutForSlots } from "../_shared/promoPlan.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -113,16 +114,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    const visitorId = String(body.visitor_id ?? "").trim();
+
     const { data: settings } = await supabase
       .from("app_settings")
-      .select("lifetime_price_idr")
+      .select("lifetime_price_idr, checkout_success_base_url")
       .eq("id", "default")
       .maybeSingle();
 
-    const grossAmount = Number(settings?.lifetime_price_idr) > 0 ? Number(settings?.lifetime_price_idr) : 173000;
+    let crmContactId: string | null = null;
+    if (visitorId.length >= 8) {
+      const { data: lead } = await supabase
+        .from("crm_contacts")
+        .select("id")
+        .eq("visitor_id", visitorId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      crmContactId = (lead?.id as string) ?? null;
+    }
+    if (!crmContactId) {
+      const { data: byEmail } = await supabase
+        .from("crm_contacts")
+        .select("id")
+        .eq("email", email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      crmContactId = (byEmail?.id as string) ?? null;
+    }
+
+    const baseIdr = Number(settings?.lifetime_price_idr) > 0 ? Number(settings?.lifetime_price_idr) : 173000;
+    const promoResolved = resolvePromoContext({
+      now: new Date(),
+      baseLifetimeIdr: baseIdr,
+      plan: settings?.promo_plan ?? null,
+      promoSlotsRemaining: settings?.promo_slots_remaining ?? null,
+    });
+    if (shouldBlockCheckoutForSlots(promoResolved)) {
+      return new Response(JSON.stringify({ error: "promo_slots_exhausted" }), {
+        status: 409,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+    const grossAmount =
+      promoResolved.lifetime_price_idr > 0 ? promoResolved.lifetime_price_idr : 173000;
     const orderId = `MFY-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 
-    const snapBody = {
+    const finishBase = String(settings?.checkout_success_base_url ?? "").trim().replace(/\/$/, "");
+    const finishUrl = finishBase
+      ? `${finishBase}/checkout/success?order_id=${encodeURIComponent(orderId)}`
+      : undefined;
+
+    const snapBody: Record<string, unknown> = {
       transaction_details: {
         order_id: orderId,
         gross_amount: grossAmount,
@@ -141,6 +185,9 @@ Deno.serve(async (req) => {
         },
       ],
     };
+    if (finishUrl) {
+      snapBody.callbacks = { finish: finishUrl };
+    }
 
     const auth = btoa(`${serverKey}:`);
     const snapUrl = isProd ? SNAP_PROD : SNAP_SANDBOX;
@@ -188,6 +235,7 @@ Deno.serve(async (req) => {
       referral_attribution: referralSlugSaved
         ? { slug: referralSlugSaved, source: "referral_link" }
         : {},
+      crm_contact_id: crmContactId,
     });
 
     if (insErr) {

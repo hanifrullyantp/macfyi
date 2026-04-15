@@ -89,16 +89,32 @@ export function ScanOrbButton({
       )}
       aria-label={displayTitle}
     >
+      {glowActive && !disabled && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-[4px] rounded-full z-[1] flex items-center justify-center overflow-hidden"
+        >
+          <div
+            className="h-[165%] w-[165%] shrink-0 animate-[spin_7s_linear_infinite] opacity-[0.88]"
+            style={{
+              background:
+                "conic-gradient(from 0deg, #450a0a, #dc2626, #7f1d1d, #fca5a5, #991b1b, #ef4444, #450a0a)",
+              WebkitMaskImage: "radial-gradient(circle closest-side, transparent 56%, black 58%)",
+              maskImage: "radial-gradient(circle closest-side, transparent 56%, black 58%)",
+            }}
+          />
+        </div>
+      )}
       <div
         className={cn(
-          "pointer-events-none absolute -inset-4 rounded-full blur-2xl opacity-70",
+          "pointer-events-none absolute -inset-4 rounded-full blur-2xl opacity-70 z-0",
           "bg-gradient-to-br from-[var(--color-brand-glow)]/50 via-[var(--color-brand)]/30 to-transparent",
           glowActive ? "animate-[orb-glow_2.2s_ease-in-out_infinite]" : "opacity-35"
         )}
       />
       <div
         className={cn(
-          "absolute inset-0 rounded-full p-[2px] shadow-2xl",
+          "absolute inset-0 rounded-full p-[2px] shadow-2xl z-[2]",
           "bg-gradient-to-br from-white/25 via-white/5 to-transparent"
         )}
       >
@@ -109,8 +125,8 @@ export function ScanOrbButton({
           )}
         />
       </div>
-      <div className="pointer-events-none absolute inset-[22px] rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-35" />
-      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center gap-0.5 px-3 text-center text-white">
+      <div className="pointer-events-none absolute inset-[22px] rounded-full bg-gradient-to-br from-white/20 to-transparent opacity-35 z-[2]" />
+      <div className="relative z-[3] flex h-full w-full flex-col items-center justify-center gap-0.5 px-3 text-center text-white">
         <div className="mb-0.5 drop-shadow-md">{Icon}</div>
         <span className="text-[15px] font-bold tracking-tight leading-none">{displayTitle}</span>
         <span className="text-[9px] uppercase tracking-[0.14em] text-white/75 font-semibold">{subLabel}</span>

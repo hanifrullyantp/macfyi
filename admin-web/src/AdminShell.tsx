@@ -31,6 +31,15 @@ export function AdminShell({
           <NavLink to="/crm" className={linkCls}>
             CRM
           </NavLink>
+          <NavLink to="/marketing" className={linkCls}>
+            Marketing &amp; demo
+          </NavLink>
+          <NavLink to="/wa-templates" className={linkCls}>
+            WA templates
+          </NavLink>
+          <NavLink to="/logs" className={linkCls}>
+            Logs
+          </NavLink>
           <NavLink to="/affiliates" className={linkCls}>
             Affiliate
           </NavLink>

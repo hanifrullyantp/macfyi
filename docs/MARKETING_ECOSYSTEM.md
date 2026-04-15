@@ -11,7 +11,7 @@ flowchart LR
   gateway[ID_payment_gateway]
   edgePay[payment_webhook_FN]
   db[(Supabase_Postgres)]
-  email[Resend_or_SMTP]
+  email[SMTP_transactional]
   admin[admin_web]
   app[Macfyi_Tauri]
   edgeAct[activate_license_FN]
@@ -26,7 +26,7 @@ flowchart LR
 ```
 
 - **Single database (Supabase):** licenses (hashed keys), `activations` (one device per license), `app_settings` (price, URLs, CRM webhook), `payment_events` (idempotency).
-- **Landing + checkout:** Host [`funnel-site/`](../funnel-site/) or a Next.js site. The form submits to your **payment provider** (Midtrans, Xendit, etc.). The provider calls **`payment-webhook`** with a signed payload; the function verifies payment, inserts a license row, and optionally sends email (e.g. via Resend).
+- **Landing + checkout:** Host [`funnel-site/`](../funnel-site/) or a Next.js site. The form submits to your **payment provider** (Midtrans, Xendit, etc.). The provider calls **`payment-webhook`** with a signed payload; the function verifies payment, inserts a license row, and optionally sends email (SMTP from Edge secrets).
 - **Email:** DMG download link (from `app_settings.download_base_url` or signed URL) plus **plain license key** once.
 - **Desktop app:** Calls **`activate-license`** with email, license key, and device fingerprint; receives a session token stored locally.
 - **Admin (`admin-web/`):** Supabase Auth with `app_metadata.role = "admin"`; manages settings, keys, and views license rows (RLS policies in migrations).
@@ -59,6 +59,14 @@ Use this with your documentation or README as extra context.
 
 ---
 
+## Demo → Pro funnel (ringkas)
+
+1. **Landing** (`macfyi-landing-page/`): CTA **Coba Gratis** memanggil Edge `demo-request` → redirect `/download?token=…`.
+2. **Download page**: token + tautan DMG (`app_settings.download_base_url`) + `macfyi://demo?token=…`.
+3. **Desktop**: mode demo / lisensi di [`ActivationScreen`](../src/components/ActivationScreen.tsx); deep link `macfyi://` via plugin; konfig publik [`public-config`](../supabase/functions/public-config/index.ts).
+4. **Checkout**: Midtrans Snap + `checkout_success_base_url` + halaman `/checkout/success`; CRM stage **PAID** lewat webhook.
+5. **Aktivasi**: `activate-license` menaikkan CRM ke **ACTIVATED** bila email cocok dengan stage **PAID**.
+
 ## Repo pointers
 
 | Piece | Location |
@@ -67,3 +75,4 @@ Use this with your documentation or README as extra context.
 | Admin UI | [`admin-web/`](../admin-web/) |
 | Static funnel | [`funnel-site/`](../funnel-site/) |
 | Activation & license gate (app) | [`src/lib/activation.ts`](../src/lib/activation.ts), [`src/components/ActivationScreen.tsx`](../src/components/ActivationScreen.tsx) |
+| Landing SPA | [`macfyi-landing-page/`](../macfyi-landing-page/) |

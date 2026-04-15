@@ -11,6 +11,8 @@ type AppSettingsRow = {
   crm_webhook_url: string | null;
   email_from_name: string | null;
   download_base_url: string | null;
+  checkout_success_base_url: string | null;
+  config_version?: number | null;
 };
 
 type LicenseRow = {
@@ -38,6 +40,37 @@ type SecretRow = {
   updated_at: string;
 };
 
+const DEMO_PLATFORM_KEYS = [
+  "demo.token_ttl_days",
+  "demo.clean_daily_gb_cap",
+  "demo.clean_daily_items_cap",
+  "demo.clean_safe_risk_only",
+  "demo.uninstall_actions_per_day",
+  "demo.ai_questions_per_day",
+  "demo.allow_anonymous_demo_request",
+] as const;
+
+function platformValueToInput(v: unknown): string {
+  if (typeof v === "boolean") return v ? "true" : "false";
+  if (typeof v === "number" && Number.isFinite(v)) return String(v);
+  if (typeof v === "string") return v;
+  if (v === null || v === undefined) return "";
+  try {
+    return JSON.stringify(v);
+  } catch {
+    return "";
+  }
+}
+
+function parseDemoInput(key: string, raw: string): unknown {
+  const t = raw.trim();
+  if (key === "demo.clean_safe_risk_only" || key === "demo.allow_anonymous_demo_request") {
+    return t === "true" || t === "1" || t === "yes";
+  }
+  const n = Number(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function isAdmin(session: Session | null): boolean {
   return session?.user.app_metadata?.role === "admin";
 }
@@ -51,13 +84,14 @@ export function LegacyDashboard({ session }: { session: Session }) {
   const [dataError, setDataError] = useState<string | null>(null);
   const [newSecretProvider, setNewSecretProvider] = useState("openai");
   const [newSecretKey, setNewSecretKey] = useState("");
+  const [demoPlatform, setDemoPlatform] = useState<Record<string, string>>({});
 
   const loadDashboard = useCallback(async () => {
     if (!session || !isAdmin(session)) return;
     setBusy(true);
     setDataError(null);
     try {
-      const [s, l, a, sec] = await Promise.all([
+      const [s, l, a, sec, demo] = await Promise.all([
         supabase.from("app_settings").select("*").eq("id", "default").maybeSingle(),
         supabase.from("licenses").select("id,email,status,created_at,revoked_at,price_paid_idr").order("created_at", { ascending: false }).limit(200),
         supabase
@@ -66,11 +100,20 @@ export function LegacyDashboard({ session }: { session: Session }) {
           .order("activated_at", { ascending: false })
           .limit(200),
         supabase.from("ai_provider_secrets").select("id,provider,api_key_encrypted,updated_at").order("id"),
+        supabase.from("platform_settings").select("key, value").in("key", [...DEMO_PLATFORM_KEYS]),
       ]);
       if (s.error) throw s.error;
       if (l.error) throw l.error;
       if (a.error) throw a.error;
       if (sec.error) throw sec.error;
+      if (demo.error) throw demo.error;
+      const nextDemo: Record<string, string> = {};
+      for (const k of DEMO_PLATFORM_KEYS) nextDemo[k] = "";
+      for (const row of demo.data ?? []) {
+        const r = row as { key: string; value: unknown };
+        nextDemo[r.key] = platformValueToInput(r.value);
+      }
+      setDemoPlatform(nextDemo);
       setSettings(s.data as AppSettingsRow);
       setLicenses((l.data ?? []) as LicenseRow[]);
       setActivations((a.data ?? []) as ActivationRow[]);
@@ -86,10 +129,33 @@ export function LegacyDashboard({ session }: { session: Session }) {
     void loadDashboard();
   }, [loadDashboard]);
 
+  const saveDemoPlatform = async () => {
+    setBusy(true);
+    setDataError(null);
+    try {
+      for (const key of DEMO_PLATFORM_KEYS) {
+        const raw = demoPlatform[key] ?? "";
+        const value = parseDemoInput(key, raw);
+        const { error } = await supabase.from("platform_settings").upsert({
+          key,
+          value: value as never,
+          updated_at: new Date().toISOString(),
+        });
+        if (error) throw error;
+      }
+      await loadDashboard();
+    } catch (e) {
+      setDataError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const saveSettings = async () => {
     if (!settings) return;
     setBusy(true);
     setDataError(null);
+    const nextCfgVer = (Number(settings.config_version) || 1) + 1;
     const { error } = await supabase.from("app_settings").upsert({
       id: "default",
       lifetime_price_idr: settings.lifetime_price_idr,
@@ -99,6 +165,8 @@ export function LegacyDashboard({ session }: { session: Session }) {
       crm_webhook_url: settings.crm_webhook_url || null,
       email_from_name: settings.email_from_name || null,
       download_base_url: settings.download_base_url || null,
+      checkout_success_base_url: settings.checkout_success_base_url || null,
+      config_version: nextCfgVer,
     });
     setBusy(false);
     if (error) setDataError(error.message);
@@ -193,6 +261,15 @@ export function LegacyDashboard({ session }: { session: Session }) {
                 onChange={(e) => setSettings({ ...settings, download_base_url: e.target.value || null })}
               />
             </label>
+            <label className="block md:col-span-2">
+              <span className="text-zinc-500">Checkout success base URL (landing origin untuk Midtrans finish)</span>
+              <input
+                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                value={settings.checkout_success_base_url ?? ""}
+                onChange={(e) => setSettings({ ...settings, checkout_success_base_url: e.target.value || null })}
+                placeholder="https://your-landing.example.com"
+              />
+            </label>
             <label className="block">
               <span className="text-zinc-500">Terms URL</span>
               <input
@@ -234,6 +311,91 @@ export function LegacyDashboard({ session }: { session: Session }) {
           className="mt-6 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 disabled:opacity-50"
         >
           Save settings
+        </button>
+      </section>
+
+      <section className="rounded-2xl border border-zinc-800 bg-zinc-900/50 p-6">
+        <h2 className="text-lg font-medium text-white">Demo &amp; desktop limits</h2>
+        <p className="text-xs text-zinc-500 mt-1">
+          Disimpan di <code className="text-zinc-400">platform_settings</code>. Desktop demo membaca snapshot saat verifikasi token + app
+          memakai batas harian lokal (item / GB / uninstall).
+        </p>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+          <label className="block">
+            <span className="text-zinc-500">Token TTL (hari)</span>
+            <input
+              type="number"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.token_ttl_days"] ?? ""}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.token_ttl_days": e.target.value }))}
+            />
+          </label>
+          <label className="block">
+            <span className="text-zinc-500">Bersih demo: maks GB / hari</span>
+            <input
+              type="number"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.clean_daily_gb_cap"] ?? ""}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_daily_gb_cap": e.target.value }))}
+            />
+          </label>
+          <label className="block">
+            <span className="text-zinc-500">Bersih demo: maks item / hari</span>
+            <input
+              type="number"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.clean_daily_items_cap"] ?? ""}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_daily_items_cap": e.target.value }))}
+            />
+          </label>
+          <label className="block">
+            <span className="text-zinc-500">Uninstall / bersih sisa: maks aksi / hari</span>
+            <input
+              type="number"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.uninstall_actions_per_day"] ?? ""}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.uninstall_actions_per_day": e.target.value }))}
+            />
+          </label>
+          <label className="block">
+            <span className="text-zinc-500">AI: pertanyaan / hari (demo)</span>
+            <input
+              type="number"
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.ai_questions_per_day"] ?? ""}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.ai_questions_per_day": e.target.value }))}
+            />
+          </label>
+          <label className="block">
+            <span className="text-zinc-500">Demo: hanya risiko Safe saat bersih</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.clean_safe_risk_only"] === "true" ? "true" : "false"}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_safe_risk_only": e.target.value }))}
+            >
+              <option value="true">Ya (disarankan)</option>
+              <option value="false">Tidak (izinkan Caution/Risky — hati-hati)</option>
+            </select>
+          </label>
+          <label className="block md:col-span-2">
+            <span className="text-zinc-500">Izinkan minta demo tanpa login (legacy / QA)</span>
+            <select
+              className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+              value={demoPlatform["demo.allow_anonymous_demo_request"] === "true" ? "true" : "false"}
+              onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.allow_anonymous_demo_request": e.target.value }))}
+            >
+              <option value="false">Tidak — wajib daftar + password (disarankan produksi)</option>
+              <option value="true">Ya — endpoint demo-request tanpa JWT</option>
+            </select>
+          </label>
+        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void saveDemoPlatform()}
+          className="mt-6 rounded-lg bg-amber-200 px-4 py-2 text-sm font-medium text-zinc-900 disabled:opacity-50"
+        >
+          Save demo limits
         </button>
       </section>
 

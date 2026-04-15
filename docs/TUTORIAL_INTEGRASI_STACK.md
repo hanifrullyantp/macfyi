@@ -1,4 +1,4 @@
-# Integrasi stack (Supabase · Vercel · Midtrans · Resend)
+# Integrasi stack (Supabase · Vercel · Midtrans · SMTP)
 
 ## Aturan satu kalimat
 
@@ -19,13 +19,13 @@ Centang ketika selesai:
 | 2 | Buat akun **Supabase** → buat **proyek** baru → tunggu Active | Butuh akun + password DB Anda |
 | 3 | Buat akun **Vercel** (login dengan GitHub) | OAuth ke akun Anda |
 | 4 | Buat akun **Midtrans** (merchant) | Identitas / syarat merchant |
-| 5 | Buat akun **Resend** | Email Anda |
+| 5 | Siapkan **SMTP transaksional** (Postmark, SendGrid, Mailgun, Amazon SES, atau SMTP domain Anda) | Identitas / DNS di penyedia |
 | 6 | Di **Supabase Dashboard** → **Settings → API**: salin **Project URL** dan **anon key** ke Notepad / file lokal | Rahasia proyek Anda |
 | 7 | Di **Supabase** → **Settings → General**: salin **Reference ID** (project ref) | — |
 | 8 | Di **Midtrans Sandbox**: salin **Server Key** dan **Client Key** | Rahasia merchant |
-| 9 | Di **Resend**: buat **API Key**, salin | Rahasia |
+| 9 | Di penyedia SMTP: salin **host, port, user, password** (dan atur **EMAIL_FROM** domain yang sah) | Rahasia |
 | 10 | **Sekali** jalankan `supabase login` dan `vercel login` di Terminal Cursor — **browser Anda** yang approve | OAuth harus dari sesi Anda |
-| 11 | (Produksi) **DNS** untuk domain email di Resend: tambah rekaman di registrar **Anda** | Akses DNS Anda |
+| 11 | (Produksi) **DNS** (SPF/DKIM) untuk domain pengirim sesuai panduan penyedia SMTP | Akses DNS Anda |
 
 **Semua angka di atas = ~1%.** Sisanya = perintah di bawah.
 
@@ -42,8 +42,11 @@ export SUPABASE_ANON_KEY="eyJhbGciOi..."
 export PROJECT_REF="xxxx"
 export MIDTRANS_SERVER_KEY="SB-Mid-server-..."
 export MIDTRANS_CLIENT_KEY="SB-Mid-client-..."
-export RESEND_API_KEY="re_..."
-# Contoh; sesuaikan domain Resend Anda:
+export SMTP_HOST="smtp.postmarkapp.com"
+export SMTP_PORT="587"
+export SMTP_USER="..."
+export SMTP_PASS="..."
+# Port 465 + TLS implisit: export SMTP_TLS="true" dan SMTP_PORT="465"
 export EMAIL_FROM='Macfyi <no-replay@macfyi.com>'
 ```
 
@@ -99,8 +102,12 @@ supabase db push
 #### 3) Masukkan secret ke Supabase (backend)
 
 ```bash
-supabase secrets set RESEND_API_KEY="$RESEND_API_KEY"
+supabase secrets set SMTP_HOST="$SMTP_HOST"
+supabase secrets set SMTP_USER="$SMTP_USER"
+supabase secrets set SMTP_PASS="$SMTP_PASS"
 supabase secrets set EMAIL_FROM="$EMAIL_FROM"
+supabase secrets set SMTP_PORT="${SMTP_PORT:-587}"
+# Opsional (port 465 / TLS implisit): supabase secrets set SMTP_TLS=true
 supabase secrets set MIDTRANS_SERVER_KEY="$MIDTRANS_SERVER_KEY"
 supabase secrets set MIDTRANS_CLIENT_KEY="$MIDTRANS_CLIENT_KEY"
 supabase secrets set MIDTRANS_IS_PRODUCTION=false
@@ -168,7 +175,7 @@ Ganti `<PROJECT_REF>` dengan `PROJECT_REF` Anda. **Midtrans tidak punya CLI publ
 
 1. Buka URL production Vercel.
 2. Checkout → Snap terbuka → bayar dengan kartu **sandbox** Midtrans (lihat dokumentasi Midtrans).
-3. Cek email / Resend / tabel `licenses` di Supabase.
+3. Cek kotak email pembeli / log Edge / tabel `licenses` di Supabase.
 
 ---
 

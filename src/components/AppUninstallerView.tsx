@@ -1,14 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, PackageOpen, RefreshCw, Trash2 } from "lucide-react";
 import { LoadingButton } from "./common/LoadingButton";
 import type { FileItem, UninstallAppEntry } from "../types";
-import {
-  listUninstallApps,
-  orphanDetect,
-  removeOrphanPaths,
-  revealInFinder,
-  uninstallAppBundle,
-} from "../lib/backend";
+import { removeOrphanPaths, revealInFinder, uninstallAppBundle } from "../lib/backend";
+import { recordDemoUninstallUsage, validateDemoUninstall } from "../lib/demoLimits";
 import { getDeletionMode } from "../lib/deletion-settings";
 import { useI18n } from "../i18n/context";
 
@@ -18,60 +13,47 @@ function formatBytes(n: number): string {
   return `${(n / 1024).toFixed(0)} KB`;
 }
 
-export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number }) {
+export type AppUninstallerViewProps = {
+  apps: UninstallAppEntry[] | null;
+  orphans: FileItem[] | null;
+  appsLoading: boolean;
+  orphansLoading: boolean;
+  loadError: string | null;
+  onRefresh: () => Promise<void>;
+};
+
+export function AppUninstallerView({
+  apps,
+  orphans,
+  appsLoading,
+  orphansLoading,
+  loadError,
+  onRefresh,
+}: AppUninstallerViewProps) {
   const { t } = useI18n();
-  const [apps, setApps] = useState<UninstallAppEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [orphans, setOrphans] = useState<FileItem[]>([]);
-  const [orphanLoading, setOrphanLoading] = useState(false);
   /** `null` idle, `"bulk"` / `"uninstall"`, or a single orphan path being removed */
   const [busy, setBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [relatedPick, setRelatedPick] = useState<Record<string, boolean>>({});
 
-  const loadApps = useCallback(() => {
-    setRefreshing(true);
-    setError(null);
-    listUninstallApps()
-      .then((rows) => {
-        setApps(rows);
-        if (rows[0]) setSelectedId(`${rows[0].bundleId}|${rows[0].appPath}`);
-      })
-      .catch((e) => {
-        setError(e instanceof Error ? e.message : String(e));
-      })
-      .finally(() => {
-        setLoading(false);
-        setRefreshing(false);
-      });
-  }, []);
-
-  const loadOrphans = useCallback(() => {
-    setOrphanLoading(true);
-    orphanDetect()
-      .then(setOrphans)
-      .catch(() => setOrphans([]))
-      .finally(() => setOrphanLoading(false));
-  }, []);
-
   useEffect(() => {
-    loadApps();
-  }, [loadApps]);
-
-  useEffect(() => {
-    loadOrphans();
-  }, [loadOrphans]);
-
-  useEffect(() => {
-    if (refreshNonce > 0) {
-      loadApps();
-      loadOrphans();
+    if (apps === null) {
+      setSelectedId(null);
+      return;
     }
-  }, [refreshNonce, loadApps, loadOrphans]);
+    if (apps.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+    setSelectedId((prev) => {
+      if (prev && apps.some((a) => `${a.bundleId}|${a.appPath}` === prev)) return prev;
+      return `${apps[0]!.bundleId}|${apps[0]!.appPath}`;
+    });
+  }, [apps]);
 
   const selected = useMemo(() => {
+    if (!apps || apps.length === 0) return null;
     if (!selectedId) return apps[0] ?? null;
     return apps.find((a) => `${a.bundleId}|${a.appPath}` === selectedId) ?? apps[0] ?? null;
   }, [apps, selectedId]);
@@ -91,23 +73,32 @@ export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number
   }, [selected]);
 
   const useTrash = getDeletionMode() === "trash";
+  const bannerError = loadError || actionError;
+  const hasData = apps !== null && orphans !== null;
+  const orphanRows = orphans ?? [];
 
   const removeOrphans = async (paths: string[], mode: "bulk" | "one") => {
     if (paths.length === 0) return;
+    const gate = validateDemoUninstall(paths.length);
+    if (!gate.ok) {
+      setActionError(gate.message);
+      return;
+    }
     setBusy(mode === "bulk" ? "bulk" : paths[0]!);
-    setError(null);
+    setActionError(null);
     try {
       await removeOrphanPaths(paths, useTrash);
-      await loadOrphans();
+      recordDemoUninstallUsage(paths.length);
+      await onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
   };
 
   const handleBulkOrphans = () => {
-    if (orphans.length === 0) return;
+    if (!orphans || orphans.length === 0) return;
     if (!window.confirm(t("uninstallerPanel.cleanBulkConfirm", { n: orphans.length }))) return;
     void removeOrphans(
       orphans.map((o) => o.path),
@@ -134,15 +125,20 @@ export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number
     ) {
       return;
     }
+    const gate = validateDemoUninstall(1);
+    if (!gate.ok) {
+      setActionError(gate.message);
+      return;
+    }
     setBusy("uninstall");
-    setError(null);
+    setActionError(null);
     try {
       await uninstallAppBundle(selected.appPath, selected.bundleId, extra, useTrash);
       setRelatedPick({});
-      await loadApps();
-      await loadOrphans();
+      recordDemoUninstallUsage(1);
+      await onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setActionError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -154,26 +150,29 @@ export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number
 
   return (
     <div className="h-full flex flex-col min-h-0">
-      {error && <p className="shrink-0 px-4 py-2 text-sm text-amber-300 border-b border-white/10 bg-black/40">{error}</p>}
+      {bannerError && (
+        <p className="shrink-0 px-4 py-2 text-sm text-amber-300 border-b border-white/10 bg-black/40">{bannerError}</p>
+      )}
       <div className="shrink-0 border-b border-white/10 px-4 py-3 bg-black/30">
         <div className="flex items-center justify-between gap-2 mb-1">
           <h3 className="text-sm font-semibold text-white">{t("uninstallerPanel.leftoversTitle")}</h3>
           <div className="flex items-center gap-2 shrink-0">
-            {orphans.length > 0 && (
+            {hasData && orphanRows.length > 0 && (
               <LoadingButton
                 loading={busy === "bulk"}
                 loadingLabel="…"
                 onClick={handleBulkOrphans}
-                disabled={!!busy || orphanLoading}
+                disabled={!!busy || orphansLoading}
                 className="btn-primary px-2 py-1 text-[11px] min-w-0"
               >
                 <Trash2 size={12} /> {t("uninstallerPanel.cleanBulk")}
               </LoadingButton>
             )}
             <LoadingButton
-              loading={orphanLoading}
+              loading={orphansLoading}
               loadingLabel="…"
-              onClick={loadOrphans}
+              onClick={() => void onRefresh()}
+              disabled={!!busy}
               className="btn-secondary px-2 py-1 text-[11px] min-w-0"
             >
               <RefreshCw size={12} /> {t("uninstallerPanel.refresh")}
@@ -182,15 +181,18 @@ export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number
         </div>
         <p className="text-[11px] text-white/45 mb-2">{t("uninstallerPanel.leftoversHint")}</p>
         <div className="max-h-[min(28vh,200px)] overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
-          {orphanLoading && orphans.length === 0 && (
+          {orphansLoading && (orphans === null || orphanRows.length === 0) && (
             <div className="flex items-center gap-2 text-white/40 text-xs py-2">
               <Loader2 size={14} className="animate-spin" /> …
             </div>
           )}
-          {!orphanLoading && orphans.length === 0 && (
+          {!orphansLoading && orphans === null && (
+            <p className="text-xs text-white/40 py-1">{t("uninstallerPanel.leftoversNotLoaded")}</p>
+          )}
+          {!orphansLoading && orphans !== null && orphanRows.length === 0 && (
             <p className="text-xs text-white/40 py-1">{t("uninstallerPanel.noLeftovers")}</p>
           )}
-          {orphans.map((o) => (
+          {orphanRows.map((o) => (
             <div
               key={o.id}
               className="rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1.5 flex flex-wrap items-center justify-between gap-2"
@@ -234,43 +236,69 @@ export function AppUninstallerView({ refreshNonce = 0 }: { refreshNonce?: number
               <p className="text-[11px] text-white/45 mt-1">Apps in /Applications and ~/Applications with related Library data.</p>
             </div>
             <LoadingButton
-              loading={refreshing}
-              loadingLabel="Refreshing"
-              onClick={loadApps}
+              loading={appsLoading}
+              loadingLabel="…"
+              onClick={() => void onRefresh()}
+              disabled={!!busy}
               className="btn-secondary px-3 py-1.5 text-xs min-w-0 shrink-0"
             >
-              <RefreshCw size={14} /> Refresh
+              <RefreshCw size={14} /> {t("common.refresh")}
             </LoadingButton>
           </div>
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-            {loading && (
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar relative">
+            {apps === null && appsLoading && (
               <div className="flex items-center justify-center py-16 text-white/40 gap-2 text-sm">
-                <Loader2 size={18} className="animate-spin" /> Loading…
+                <Loader2 size={18} className="animate-spin" /> {t("loading")}
               </div>
             )}
-            {!loading &&
-              !error &&
-              apps.map((a) => {
-                const key = `${a.bundleId}|${a.appPath}`;
-                const footprint = a.appSizeBytes + a.related.reduce((s, r) => s + r.sizeBytes, 0);
-                const active = selected && `${selected.bundleId}|${selected.appPath}` === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setSelectedId(key)}
-                    className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${
-                      active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <p className="text-sm font-medium text-white truncate">{a.name}</p>
-                    <p className="text-[10px] text-white/40 truncate mt-0.5">{a.bundleId || "—"}</p>
-                    <p className="text-[11px] text-white/50 tabular-nums mt-1">{formatBytes(footprint)} total</p>
-                  </button>
-                );
-              })}
-            {!loading && !error && apps.length === 0 && (
-              <p className="p-4 text-sm text-white/45">No applications found. Open the desktop app with Full Disk Access for best results.</p>
+            {apps === null && !appsLoading && (
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-white/50">{t("uninstallerPanel.notLoadedHint")}</p>
+                <LoadingButton
+                  loading={appsLoading}
+                  loadingLabel="…"
+                  onClick={() => void onRefresh()}
+                  className="btn-primary px-4 py-2 text-sm"
+                >
+                  {t("orb.refreshUninstaller")}
+                </LoadingButton>
+              </div>
+            )}
+            {apps !== null && (
+              <>
+                {appsLoading && (
+                  <div className="absolute inset-0 z-10 bg-black/25 flex items-start justify-center pt-8 pointer-events-none">
+                    <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-black/70 px-3 py-2 text-xs text-white/80">
+                      <Loader2 size={14} className="animate-spin shrink-0" />
+                      {t("loading")}
+                    </div>
+                  </div>
+                )}
+                {apps.map((a) => {
+                    const key = `${a.bundleId}|${a.appPath}`;
+                    const footprint = a.appSizeBytes + a.related.reduce((s, r) => s + r.sizeBytes, 0);
+                    const active = selected && `${selected.bundleId}|${selected.appPath}` === key;
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setSelectedId(key)}
+                        className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${
+                          active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-white truncate">{a.name}</p>
+                        <p className="text-[10px] text-white/40 truncate mt-0.5">{a.bundleId || "—"}</p>
+                        <p className="text-[11px] text-white/50 tabular-nums mt-1">{formatBytes(footprint)} total</p>
+                      </button>
+                    );
+                  })}
+                {apps.length === 0 && (
+                  <p className="p-4 text-sm text-white/45">
+                    No applications found. Open the desktop app with Full Disk Access for best results.
+                  </p>
+                )}
+              </>
             )}
           </div>
         </div>

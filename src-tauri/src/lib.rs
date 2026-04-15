@@ -9,6 +9,7 @@ pub fn run() {
       app.manage(crate::ai::state::AiState::default());
       app.handle().plugin(tauri_plugin_dialog::init())?;
       app.handle().plugin(tauri_plugin_notification::init())?;
+      app.handle().plugin(tauri_plugin_deep_link::init())?;
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()

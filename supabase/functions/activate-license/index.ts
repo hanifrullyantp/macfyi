@@ -91,6 +91,28 @@ Deno.serve(async (req) => {
         .eq("license_id", lic.id);
     }
 
+    const ts = new Date().toISOString();
+    const { data: paidLead } = await supabase
+      .from("crm_contacts")
+      .select("id")
+      .eq("email", email)
+      .eq("stage", "PAID")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const leadId = (paidLead?.id as string) ?? null;
+    if (leadId) {
+      await supabase
+        .from("crm_contacts")
+        .update({ stage: "ACTIVATED", last_activity_at: ts, updated_at: ts })
+        .eq("id", leadId);
+      await supabase.from("crm_events").insert({
+        contact_id: leadId,
+        event_type: "license_activated",
+        payload: { license_id: lic.id },
+      });
+    }
+
     const token = crypto.randomUUID();
     return new Response(
       JSON.stringify({ token, license_id: lic.id, expires_at: null }),

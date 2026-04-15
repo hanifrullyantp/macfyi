@@ -22,15 +22,51 @@ const ALLOWED_TYPES = new Set([
   "payment_success",
   "download_completed",
   "affiliate_applied",
+  "lead_submitted",
+  "download_clicked",
+  "checkout_started",
+  "purchase_completed",
 ]);
 
+/** Maps event → CRM stage when stage should advance. */
 const STAGE_MAP: Record<string, string> = {
-  cta_click: "interested",
-  form_open: "interested",
-  form_submitted: "payment_pending",
-  payment_success: "paid",
+  cta_click: "UPGRADE_INTENT",
+  form_open: "UPGRADE_INTENT",
+  form_submitted: "UPGRADE_INTENT",
+  checkout_started: "UPGRADE_INTENT",
+  snap_opened: "UPGRADE_INTENT",
+  payment_success: "PAID",
+  purchase_completed: "PAID",
+  download_completed: "DOWNLOADED",
+  lead_submitted: "DEMO_REQUESTED",
   affiliate_applied: "affiliate_customer",
 };
+
+const FUNNEL_ORDER = [
+  "DEMO_REQUESTED",
+  "DOWNLOADED",
+  "DEMO_ACTIVATED",
+  "SCANNED",
+  "UPGRADE_INTENT",
+  "PAID",
+  "ACTIVATED",
+  "ARCHIVED",
+] as const;
+
+function funnelRank(stage: string): number {
+  const i = (FUNNEL_ORDER as readonly string[]).indexOf(stage);
+  return i < 0 ? -1 : i;
+}
+
+function maxStage(a: string, b: string): string {
+  if (a === "affiliate_customer" || b === "affiliate_customer") return "affiliate_customer";
+  const ra = funnelRank(a);
+  const rb = funnelRank(b);
+  if (ra < 0 && rb < 0) return "DEMO_REQUESTED";
+  if (ra < 0) return b;
+  if (rb < 0) return a;
+  return ra >= rb ? a : b;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
@@ -119,7 +155,7 @@ Deno.serve(async (req) => {
       .from("crm_contacts")
       .insert({
         visitor_id: visitorId,
-        stage: "lead",
+        stage: "DEMO_REQUESTED",
         source: "direct",
         last_activity_at: now,
         metadata: { page_url: body.page_url ?? null, referrer: body.referrer ?? null },
@@ -136,7 +172,7 @@ Deno.serve(async (req) => {
     contactId = ins.id;
   }
 
-  let newStage = existing?.stage ?? "lead";
+  let newStage = (existing?.stage as string) ?? "DEMO_REQUESTED";
   for (const ev of events) {
     await supabase.from("crm_events").insert({
       contact_id: contactId,
@@ -145,12 +181,11 @@ Deno.serve(async (req) => {
     });
     const mapped = STAGE_MAP[ev.type];
     if (mapped) {
-      const order = ["lead", "interested", "payment_pending", "paid", "affiliate_customer"];
-      const rank = (s: string) => {
-        const i = order.indexOf(s);
-        return i < 0 ? 0 : i;
-      };
-      if (rank(mapped) > rank(newStage)) newStage = mapped;
+      if (mapped === "affiliate_customer") {
+        newStage = "affiliate_customer";
+      } else if (newStage !== "affiliate_customer") {
+        newStage = maxStage(newStage, mapped);
+      }
     }
   }
 

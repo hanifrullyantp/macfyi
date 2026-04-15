@@ -5,9 +5,12 @@ import { useI18n } from "../i18n/context";
 export const UpgradePrompt = ({
   onUpgrade,
   onMaybeLater,
+  priceShort,
 }: {
   onUpgrade: () => void;
   onMaybeLater: () => void;
+  /** Dari public-config (admin); jika kosong pakai teks i18n bawaan */
+  priceShort?: string | null;
 }) => {
   const { t } = useI18n();
   return (
@@ -37,7 +40,9 @@ export const UpgradePrompt = ({
               onClick={onUpgrade}
               className="w-full py-4 btn-primary rounded-2xl font-bold text-lg shadow-lg shadow-black/25"
             >
-              {t("upgrade.cta")}
+              {priceShort?.trim()
+                ? t("upgrade.ctaWithPrice", { price: priceShort.trim() })
+                : t("upgrade.cta")}
             </button>
             <button
               type="button"

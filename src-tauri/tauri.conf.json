@@ -9,6 +9,13 @@
     "beforeDevCommand": "vite",
     "beforeBuildCommand": "npm run build"
   },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": ["macfyi"]
+      }
+    }
+  },
   "app": {
     "windows": [
       {

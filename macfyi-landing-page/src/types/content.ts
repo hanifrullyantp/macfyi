@@ -1,6 +1,9 @@
 export interface SiteSettings {
   primaryColor: string;
   secondaryColor: string;
+  /** Harga lifetime (IDR) — sumber kebenaran bersama app & Midtrans via `app_settings` / public-config */
+  lifetime_price_idr: number;
+  /** Label tampilan (disinkron dari lifetime_price_idr; boleh diedit manual lalu disimpan ke draft) */
   price: string;
   checkoutUrl: string;
   loginUrl: string;
@@ -102,11 +105,38 @@ export interface ContentData {
     items: { step: string; label: string; desc: string; color: string }[];
   };
   pricing: {
+    /** Judul blok pricing (dua kolom) */
     title: string;
+    freeTitle: string;
+    freeSubtitle: string;
+    freeBullets: string[];
+    freeCta: string;
+    paidTitle: string;
+    /** Harga dicoret kecil (promo), mis. Rp 299.000 */
+    compareAtPrice: string;
     price: string;
     label: string;
     bullets: string[];
     cta: string;
+  };
+  /** Blok scarcity / FOMO di atas #pricing */
+  scarcity: {
+    headline1: string;
+    headline2: string;
+    badge: string;
+    slotsDash: string;
+    slotsLabel: string;
+    slotsCount: string;
+    slotsDashAfter: string;
+    hargaNormalLabel: string;
+    strikeLargest: string;
+    strikeMedium: string;
+    strikeSmall: string;
+    exclusiveLine: string;
+    /** Menit countdown per pengunjung (disimpan deadline di localStorage) */
+    visitorCountdownMinutes: number;
+    /** Jika diisi dan valid ISO, dipakai menggantikan countdown per pengunjung */
+    countdownEndIso: string;
   };
   valueStack: {
     title: string;
@@ -146,6 +176,7 @@ export interface ContentData {
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   primaryColor: "#EF4444",
   secondaryColor: "#1e293b",
+  lifetime_price_idr: 173000,
   price: "Rp 173.000",
   /** Kosongkan jika belum ada gateway; checkout tetap lewat modal di halaman ini. */
   checkoutUrl: "",

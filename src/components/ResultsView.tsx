@@ -32,6 +32,7 @@ import { FilterPopover } from "./results/FilterPopover";
 import { TriStateCheckbox, categoryTriState } from "./results/TriStateCheckbox";
 import { ScanSummaryDashboard } from "./results/ScanSummaryDashboard";
 import { useI18n } from "../i18n/context";
+import { recordDemoCleanUsage, validateDemoClean } from "../lib/demoLimits";
 
 interface ResultsViewProps {
   results: ScanResult[];
@@ -54,7 +55,6 @@ interface ResultsViewProps {
   onAskAi?: (ctx: AiItemContext) => void;
 }
 
-type ReviewMode = "simple" | "advanced";
 type Stage = "summary" | "review" | "cleaning" | "done";
 
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
@@ -108,7 +108,6 @@ function RiskBadge({ risk }: { risk: RiskBand }) {
 }
 
 const SIMPLE_ROW = 88;
-const ADVANCED_ROW = 52;
 
 type ResultRowProps = {
   x: EnrichedItem;
@@ -264,78 +263,6 @@ function VirtualSimpleItemList({
   );
 }
 
-function VirtualAdvancedTableBody({
-  filtered,
-  selectedIds,
-  selectedInspectorId,
-  toggleSelected,
-  setSelectedInspectorId,
-  rowSelectable,
-}: {
-  filtered: EnrichedItem[];
-  selectedIds: Set<string>;
-  selectedInspectorId: string | null;
-  toggleSelected: (id: string) => void;
-  setSelectedInspectorId: (id: string) => void;
-  rowSelectable: (x: EnrichedItem) => boolean;
-}) {
-  const parentRef = useRef<HTMLDivElement>(null);
-  const virtualizer = useVirtualizer({
-    count: filtered.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => ADVANCED_ROW,
-    overscan: 20,
-  });
-
-  return (
-    <div ref={parentRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-      <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-        {virtualizer.getVirtualItems().map((vi) => {
-          const x = filtered[vi.index];
-          const canSel = rowSelectable(x);
-          return (
-            <div
-              key={x.item.id}
-              role="row"
-              className={cn(
-                "absolute left-0 top-0 w-full border-t border-white/5 hover:bg-white/[0.03] cursor-pointer grid grid-cols-[44px_minmax(0,1fr)_88px_104px_72px_88px] gap-2 items-center px-3 py-2 text-sm",
-                selectedInspectorId === x.item.id && "bg-white/[0.06]",
-                !canSel && "opacity-50"
-              )}
-              style={{
-                height: vi.size,
-                transform: `translateY(${vi.start}px)`,
-              }}
-              onClick={() => setSelectedInspectorId(x.item.id)}
-            >
-              <div className="flex justify-center" onClick={(e) => e.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  disabled={!canSel}
-                  checked={selectedIds.has(x.item.id)}
-                  onChange={() => toggleSelected(x.item.id)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              </div>
-              <div className="text-white/90 truncate min-w-0">
-                <DelayedTooltip text={x.item.path}>
-                  <span className="block truncate">{x.item.name}</span>
-                </DelayedTooltip>
-              </div>
-              <div className="text-white/70 tabular-nums">{formatBytes(x.item.size)}</div>
-              <div className="text-white/55 text-xs">{x.item.lastAccessed.toLocaleDateString()}</div>
-              <div className="text-white/55 text-xs">{x.item.fileType ?? "other"}</div>
-              <div>
-                <RiskBadge risk={x.risk} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 export const ResultsView = ({
   results,
   onClean,
@@ -352,7 +279,6 @@ export const ResultsView = ({
 }: ResultsViewProps) => {
   const { t } = useI18n();
   const [stage, setStage] = useState<Stage>("summary");
-  const [reviewMode, setReviewMode] = useState<ReviewMode>("simple");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [recommendedIds, setRecommendedIds] = useState<Set<string>>(() => new Set());
   const [selectedInspectorId, setSelectedInspectorId] = useState<string | null>(null);
@@ -656,6 +582,13 @@ export const ResultsView = ({
   const runClean = async (mode: DeletionModeSetting) => {
     const selected = enriched.filter((x) => cleanPendingIds.has(x.item.id));
     if (selected.length === 0) return;
+    const demoGate = validateDemoClean(selected.map((x) => ({ risk: x.risk, size: x.item.size })));
+    if (!demoGate.ok) {
+      setCleanSheetOpen(false);
+      setToast(demoGate.message);
+      window.setTimeout(() => setToast(null), 6500);
+      return;
+    }
     setCleanSheetOpen(false);
     setStage("cleaning");
     setCleanNote(null);
@@ -666,6 +599,7 @@ export const ResultsView = ({
         setCleanNote(t("done.failedSome", { n: out.failed.length }));
       }
       setCleanedBytes(out.freed_bytes);
+      recordDemoCleanUsage(out.succeeded.length, out.freed_bytes);
       onClean({
         freedBytes: out.freed_bytes,
         succeededCount: out.succeeded.length,
@@ -731,21 +665,21 @@ export const ResultsView = ({
           </p>
           {cleanNote && <p className="text-xs text-amber-300 mt-3">{cleanNote}</p>}
           <div className="mt-5 flex items-center justify-center gap-2">
-            <button
+          <button 
               type="button"
               onClick={() => openUserTrash()}
               className="btn-secondary"
-            >
+          >
               <Undo2 size={14} /> {t("done.openTrash")}
-            </button>
+          </button>
             {onBack && (
-              <button
+          <button 
                 type="button"
-                onClick={onBack}
+            onClick={onBack}
                 className="btn-primary"
-              >
+          >
                 {t("common.done")}
-              </button>
+          </button>
             )}
           </div>
         </div>
@@ -833,7 +767,7 @@ export const ResultsView = ({
               <button
                 type="button"
                 onClick={() => setReviewSafetyMode("advanced")}
-                className={cn(
+          className={cn(
                   "px-3 py-1 text-[11px] rounded-md",
                   reviewSafetyMode === "advanced" ? "bg-orange-500/20 text-orange-200 border border-orange-500/35" : "text-white/45"
                 )}
@@ -855,7 +789,7 @@ export const ResultsView = ({
               AI picks items that are safe to remove based on usage age, duplicate confidence, and known temporary locations.
             </div>
           )}
-        </div>
+      </div>
 
         {filterActive && !filterBannerDismissed && (
           <div className="px-4 py-2 flex items-start justify-between gap-2 bg-amber-500/10 border-b border-amber-500/20 text-[11px] text-amber-100/90">
@@ -874,7 +808,7 @@ export const ResultsView = ({
               >
                 Clear filter
               </button>
-              <button
+            <button 
                 type="button"
                 className="p-0.5 text-amber-200/80 hover:text-white"
                 aria-label="Dismiss banner"
@@ -882,8 +816,8 @@ export const ResultsView = ({
               >
                 <X size={14} />
               </button>
-            </div>
-          </div>
+                  </div>
+                </div>
         )}
 
         <div className="px-4 py-2 border-b border-white/5 bg-black/10">
@@ -904,7 +838,7 @@ export const ResultsView = ({
                   <X size={12} />
                 </button>
               )}
-            </div>
+              </div>
             <div className="relative">
               <button
                 type="button"
@@ -931,24 +865,8 @@ export const ResultsView = ({
                   onClose={() => setShowFilters(false)}
                 />
               )}
-            </div>
-            <div className="ml-auto bg-white/5 p-0.5 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setReviewMode("simple")}
-                className={cn("px-2.5 py-1 text-xs rounded-md", reviewMode === "simple" ? "bg-white/15 text-white" : "text-white/50")}
-              >
-                Simple
-              </button>
-              <button
-                type="button"
-                onClick={() => setReviewMode("advanced")}
-                className={cn("px-2.5 py-1 text-xs rounded-md", reviewMode === "advanced" ? "bg-white/15 text-white" : "text-white/50")}
-              >
-                Advanced
-              </button>
-            </div>
-          </div>
+                </div>
+              </div>
           {activeChips.length > 0 && (
             <div className="flex gap-1.5 mt-2 overflow-x-auto custom-scrollbar pb-0.5">
               {activeChips.map((c) => (
@@ -960,20 +878,14 @@ export const ResultsView = ({
                 >
                   {c.label}
                   <X size={10} />
-                </button>
+            </button>
               ))}
             </div>
           )}
         </div>
 
-        <div
-          className={cn(
-            "flex-1 min-h-0 p-4 pb-28 flex flex-col",
-            reviewMode === "simple" ? "overflow-y-auto custom-scrollbar" : "min-h-0 overflow-hidden"
-          )}
-        >
-          {reviewMode === "simple" && (
-            <div className="mb-3 flex items-center gap-2 flex-wrap">
+        <div className="flex-1 min-h-0 p-4 pb-28 flex flex-col overflow-y-auto custom-scrollbar">
+          <div className="mb-3 flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase tracking-[0.12em] text-white/40">Group list</span>
               <div className="bg-white/5 p-0.5 rounded-lg inline-flex">
                 <button
@@ -989,18 +901,16 @@ export const ResultsView = ({
                 <button
                   type="button"
                   onClick={() => setListGroupMode("app")}
-                  className={cn(
+                        className={cn(
                     "px-3 py-1 text-[11px] rounded-md",
                     listGroupMode === "app" ? "bg-white/15 text-white" : "text-white/45"
                   )}
                 >
                   By app
                 </button>
-              </div>
-            </div>
-          )}
-          {reviewMode === "simple" ? (
-            listGroupMode === "risk" ? (
+                          </div>
+                        </div>
+          {listGroupMode === "risk" ? (
               <div className="space-y-3">
                 {(["safe", "caution", "risky"] as const).map((risk) => {
                   const list = groupedByRisk[risk];
@@ -1026,7 +936,7 @@ export const ResultsView = ({
                           <RiskBadge risk={risk} />
                           <span className="text-xs text-white/70">
                             {list.length} items • {selN} selected • {formatBytes(selBytes)} / {formatBytes(groupBytes)}
-                          </span>
+                            </span>
                         </button>
                         <button
                           type="button"
@@ -1081,30 +991,7 @@ export const ResultsView = ({
                   </div>
                 ))}
               </div>
-            )
-          ) : (
-            <div className="surface-card flex flex-col flex-1 min-h-0 overflow-hidden">
-              <div
-                role="rowgroup"
-                className="grid grid-cols-[44px_minmax(0,1fr)_88px_104px_72px_88px] gap-2 items-center px-3 py-2 text-left text-[11px] uppercase tracking-[0.1em] text-white/45 bg-white/[0.04] shrink-0 border-b border-white/5"
-              >
-                <div>{t("results.tableSelect")}</div>
-                <div>{t("results.tableName")}</div>
-                <div>{t("results.tableSize")}</div>
-                <div>{t("results.tableLastUsed")}</div>
-                <div>{t("results.tableType")}</div>
-                <div>{t("results.tableRisk")}</div>
-              </div>
-              <VirtualAdvancedTableBody
-                filtered={filtered}
-                selectedIds={selectedIds}
-                selectedInspectorId={selectedInspectorId}
-                toggleSelected={toggleSelected}
-                setSelectedInspectorId={setSelectedInspectorId}
-                rowSelectable={(x) => reviewSafetyMode === "advanced" || x.risk === "safe"}
-              />
-            </div>
-          )}
+            )}
         </div>
 
       </div>
@@ -1149,14 +1036,14 @@ export const ResultsView = ({
             <div className="surface-card-soft p-3 space-y-2">
               <p className="text-[11px] text-white/50 uppercase tracking-[0.12em]">{t("results.inspectorWhatIs")}</p>
               <p className="text-xs text-white/70">{translateWhatIs(inspectorItem, t)}</p>
-            </div>
+                    </div>
             <div className="surface-card-soft p-3 space-y-2">
               <p className="text-[11px] text-white/50 uppercase tracking-[0.12em]">{t("results.inspectorWhy")}</p>
               <p className="text-xs text-white/70">{inspectorItem.item.reason ?? inspectorItem.categoryRecommendation}</p>
               <p className="text-[11px] text-white/45">
                 {t("results.confidencePct", { pct: (inspectorItem.categoryConfidence * 100).toFixed(0) })}
-              </p>
-            </div>
+                    </p>
+                  </div>
             <div className="surface-card-soft p-3 space-y-2">
               <p className="text-[11px] text-white/50 uppercase tracking-[0.12em]">{t("results.inspectorRiskImpact")}</p>
               <p className="text-xs text-white/70">{t(`results.riskImpact.${inspectorItem.risk}`)}</p>

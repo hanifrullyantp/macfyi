@@ -117,7 +117,7 @@ export const AIAssistant = ({
           </button>
           <button type="button" onClick={onClose} className="p-1.5 text-white/50 hover:text-white transition-colors">
             <X size={18} />
-          </button>
+        </button>
         </div>
       </div>
 
@@ -180,32 +180,32 @@ export const AIAssistant = ({
           </div>
         ) : (
           <div className="space-y-3">
-            {messages.map((m, i) => (
+        {messages.map((m, i) => (
               <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
                 <div
                   className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
                     m.role === "user"
                       ? "bg-[#007AFF] text-white rounded-tr-none"
                       : "bg-white/10 text-white/90 rounded-tl-none border border-white/10"
-                  }`}
-                >
-                  <div className="whitespace-pre-line">{m.text}</div>
-                </div>
+              }`}
+            >
+              <div className="whitespace-pre-line">{m.text}</div>
+            </div>
                 {m.role === "ai" && m.actions && m.actions.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {m.actions.map((action, idx) => (
-                      <button
-                        key={idx}
+                  <button
+                    key={idx}
                         type="button"
                         className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-[10px] text-[#007AFF] transition-all"
-                      >
-                        {action}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                  >
+                    {action}
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
+          </div>
+        ))}
             <div ref={messagesEndRef} />
           </div>
         )}
@@ -214,23 +214,23 @@ export const AIAssistant = ({
       {/* Input (chat mode only) */}
       {mode === "chat" && (
         <div className="p-3 border-t border-white/10 shrink-0">
-          <div className="relative">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+        <div className="relative">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder={t("assistant.placeholder")}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[#007AFF]/50"
-            />
-            <button
+          />
+          <button
               type="button"
-              onClick={handleSend}
+            onClick={handleSend}
               className="absolute right-2 top-1.5 p-1 text-[#007AFF] hover:text-[#007AFF]/80"
-            >
+          >
               <Send size={16} />
-            </button>
-          </div>
+          </button>
         </div>
+      </div>
       )}
     </motion.div>
   );

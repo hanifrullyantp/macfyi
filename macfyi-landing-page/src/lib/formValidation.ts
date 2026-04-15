@@ -42,3 +42,14 @@ export function validatePhoneOptional(raw: string): { ok: true; digits?: string 
   if (d.length < 8 || d.length > 15) return { ok: false, message: "Nomor HP tampak tidak valid (8–15 digit)." };
   return { ok: true, digits: d };
 }
+
+/** Minimal password rules for demo / member signup UX. */
+export function validatePassword(raw: string): { ok: true; value: string } | { ok: false; message: string } {
+  const s = raw;
+  if (s.length < 8) return { ok: false, message: "Password minimal 8 karakter." };
+  if (s.length > 128) return { ok: false, message: "Password terlalu panjang." };
+  if (!/[a-z]/i.test(s) || !/[0-9]/.test(s)) {
+    return { ok: false, message: "Password harus memuat huruf dan angka." };
+  }
+  return { ok: true, value: s };
+}

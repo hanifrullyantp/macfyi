@@ -8,7 +8,7 @@
 
 1. Host these files on any static host (S3, Cloudflare Pages, Netlify).
 2. Point the checkout form `action` to your gateway’s hosted payment or API.
-3. Configure the **payment webhook** Edge Function (`supabase/functions/payment-webhook`) with `RESEND_API_KEY` and `EMAIL_FROM` so buyers receive the DMG link and license key.
+3. Configure the **payment webhook** Edge Function (`supabase/functions/payment-webhook`) with `SMTP_*` secrets and `EMAIL_FROM` so buyers receive the DMG link and license key.
 4. Set **`download_base_url`** in Supabase `app_settings` (via admin UI or SQL) to your signed DMG URL.
 
 ## Activation in the app

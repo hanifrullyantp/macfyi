@@ -9,10 +9,17 @@
 
 ## Secrets (hosted)
 
+**Email:** Edge Functions **tidak** memakai API pihak ketiga (mis. Resend HTTP); pengiriman transaksional hanya lewat **SMTP** (`SMTP_*` + `EMAIL_FROM`). Supabase **bukan** penyedia SMTP—hanya menyimpan secret. Isi **Authentication → SMTP** di Dashboard bila Anda pakai custom SMTP untuk Auth; untuk Edge, **salin host/user/password yang sama** ke `supabase secrets set` (atau SMTP transaksional terpisah). Tanpa `SMTP_*` yang valid, email tidak terkirim.
+
 ```bash
-# Email setelah bayar (Resend)
-supabase secrets set RESEND_API_KEY=re_...
-supabase secrets set EMAIL_FROM=notifications@yourdomain.com
+# Email transaksional (SMTP — salin dari Authentication → SMTP di Dashboard, atau SMTP host Anda)
+supabase secrets set SMTP_HOST=smtp.yourprovider.com
+supabase secrets set SMTP_PORT=587
+# Port 465 + TLS implisit: set SMTP_TLS=true dan SMTP_PORT=465
+# supabase secrets set SMTP_TLS=true
+supabase secrets set SMTP_USER=apikey_or_user
+supabase secrets set SMTP_PASS=secret
+supabase secrets set EMAIL_FROM="Macfyi <notifications@yourdomain.com>"
 
 # Midtrans (Snap + notification verification)
 supabase secrets set MIDTRANS_SERVER_KEY=SB-Mid-server-...
@@ -33,6 +40,11 @@ supabase secrets set CRON_SECRET=random-long-string
 supabase functions deploy activate-license --no-verify-jwt
 supabase functions deploy payment-webhook --no-verify-jwt
 supabase functions deploy create-midtrans-snap --no-verify-jwt
+supabase functions deploy demo-request --no-verify-jwt
+supabase functions deploy demo-download-verify --no-verify-jwt
+supabase functions deploy demo-verify --no-verify-jwt
+supabase functions deploy public-config --no-verify-jwt
+supabase functions deploy client-telemetry --no-verify-jwt
 supabase functions deploy track-event --no-verify-jwt
 supabase functions deploy submit-withdrawal --no-verify-jwt
 supabase functions deploy admin-withdrawal --no-verify-jwt
@@ -44,7 +56,12 @@ supabase functions deploy ai-proxy
 |----------|------|
 | **activate-license** | Mac app: `email`, `license_key`, `device_fingerprint`. |
 | **create-midtrans-snap** | Landing/checkout: body `{ email, name, phone, referral_slug? }` + user JWT opsional (anti self-referral). |
-| **payment-webhook** | Midtrans HTTP notification URL: verify `signature_key` (SHA512), update `payment_transactions`, issue license + Resend email; komisi affiliate idempotent. |
+| **payment-webhook** | Midtrans HTTP notification URL: verify `signature_key` (SHA512), update `payment_transactions`, issue license + email SMTP; komisi affiliate idempotent. |
+| **demo-request** | Landing/desktop: header `Authorization: Bearer <user JWT>` (wajib jika `demo.allow_anonymous_demo_request=false`). Body opsional `{ name, phone?, … }`. Upsert `crm_contacts` by `user_id`, buat `demo_tokens`, return `download_url`. |
+| **demo-download-verify** | Landing `/download`: JWT + body `{ token }` — token harus milik kontak dengan `user_id` yang sama (atau klaim email cocok untuk token lama). |
+| **demo-verify** | Desktop: body `{ token }` → valid + `rules_snapshot` untuk gating demo. |
+| **public-config** | GET — harga, URL unduhan, rules demo/AI/marketing/SEO (tanpa rahasia). |
+| **client-telemetry** | Desktop/web: event whitelist + `ErrorReport` (wajib `consent: true`). |
 | **track-event** | Landing analytics batch → CRM (`crm_contacts` / `crm_events`) + klik referral. |
 | **submit-withdrawal** | Member: header `Authorization: Bearer <user JWT>`, body `{ amount_idr, method, account_details }`. |
 | **admin-withdrawal** | Admin JWT: `{ id, status, admin_note?, proof_url? }`. |

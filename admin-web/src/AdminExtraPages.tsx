@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
-const STAGES = ["lead", "interested", "payment_pending", "paid", "affiliate_customer"] as const;
+export { CrmHubAdmin } from "./CrmHub";
 
 async function edgeFetch(path: string, session: Session, body: Record<string, unknown>) {
   const base = import.meta.env.VITE_SUPABASE_URL?.replace(/\/$/, "") ?? "";
@@ -162,70 +162,6 @@ export function TransactionsAdmin() {
             ))}
           </tbody>
         </table>
-      </div>
-    </div>
-  );
-}
-
-export function CrmKanbanAdmin() {
-  const [contacts, setContacts] = useState<
-    { id: string; stage: string; display_name: string | null; email: string | null; visitor_id: string | null; last_activity_at: string | null }[]
-  >([]);
-  const [err, setErr] = useState<string | null>(null);
-
-  const load = useCallback(async () => {
-    const { data, error } = await supabase
-      .from("crm_contacts")
-      .select("id, stage, display_name, email, visitor_id, last_activity_at")
-      .order("last_activity_at", { ascending: false })
-      .limit(200);
-    if (error) setErr(error.message);
-    else {
-      setErr(null);
-      setContacts((data ?? []) as typeof contacts);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const setStage = async (id: string, stage: string) => {
-    const { error } = await supabase.from("crm_contacts").update({ stage, updated_at: new Date().toISOString() }).eq("id", id);
-    if (error) setErr(error.message);
-    else void load();
-  };
-
-  return (
-    <div className="space-y-4">
-      <h2 className="text-lg font-medium text-white">CRM — alur (kolom per tahap)</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-        {STAGES.map((st) => (
-          <div key={st} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 min-h-[200px]">
-            <h3 className="text-xs font-bold text-zinc-500 uppercase mb-2">{st}</h3>
-            <ul className="space-y-2">
-              {contacts
-                .filter((c) => c.stage === st)
-                .map((c) => (
-                  <li key={c.id} className="rounded-lg bg-zinc-950 border border-zinc-800 p-2 text-xs">
-                    <div className="font-medium">{c.display_name || c.email || c.visitor_id?.slice(0, 12) || "Tanpa nama"}</div>
-                    <select
-                      className="mt-2 w-full bg-zinc-900 border border-zinc-700 rounded px-1 py-1"
-                      value={c.stage}
-                      onChange={(e) => void setStage(c.id, e.target.value)}
-                    >
-                      {STAGES.map((s) => (
-                        <option key={s} value={s}>
-                          {s}
-                        </option>
-                      ))}
-                    </select>
-                  </li>
-                ))}
-            </ul>
-          </div>
-        ))}
       </div>
     </div>
   );

@@ -1,9 +1,10 @@
 // Midtrans HTTP notification + generic fallback. Deploy: supabase functions deploy payment-webhook --no-verify-jwt
 // Dashboard: set Notification URL to https://<ref>.supabase.co/functions/v1/payment-webhook
-// Secrets: MIDTRANS_SERVER_KEY (for SHA512 verification), RESEND_API_KEY, EMAIL_FROM (optional email)
+// Secrets: MIDTRANS_SERVER_KEY (for SHA512 verification), SMTP_*, EMAIL_FROM (optional license email)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { processAffiliateCommission } from "../_shared/affiliateCommission.ts";
+import { sendResendHtml } from "../_shared/resendHtml.ts";
 
 async function sha256hex(plain: string): Promise<string> {
   const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(plain));
@@ -40,38 +41,6 @@ function isMidtransPaymentComplete(payload: Record<string, unknown>): boolean {
   if (ts === "settlement") return true;
   if (ts === "capture" && fraud === "accept") return true;
   return false;
-}
-
-async function sendLicenseEmail(opts: {
-  to: string;
-  licenseKey: string;
-  downloadUrl: string;
-  from: string;
-  resendKey: string;
-}): Promise<{ ok: boolean; status: number; body: string }> {
-  const { to, licenseKey, downloadUrl, from, resendKey } = opts;
-  const html = `
-    <p>Thank you for purchasing Macfyi.</p>
-    <p><strong>Your license key:</strong> <code>${licenseKey}</code></p>
-    <p>Use the <strong>same email address</strong> as at checkout when activating the app.</p>
-    <p><a href="${downloadUrl}">Download Macfyi (DMG)</a></p>
-    <p>Activation: open Macfyi and enter your email + license key on the first screen.</p>
-  `;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${resendKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from,
-      to: [to],
-      subject: "Your Macfyi license and download",
-      html,
-    }),
-  });
-  const body = await res.text();
-  return { ok: res.ok, status: res.status, body };
 }
 
 Deno.serve(async (req) => {
@@ -206,12 +175,67 @@ Deno.serve(async (req) => {
       status: "active",
     });
 
+    const tsNow = new Date().toISOString();
+    let crmCid: string | null = null;
+    if (orderId) {
+      const { data: ptRow } = await supabase
+        .from("payment_transactions")
+        .select("crm_contact_id")
+        .eq("order_id", orderId)
+        .maybeSingle();
+      crmCid = (ptRow?.crm_contact_id as string) ?? null;
+    }
+    if (!crmCid) {
+      const { data: lead } = await supabase
+        .from("crm_contacts")
+        .select("id")
+        .eq("email", email)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      crmCid = (lead?.id as string) ?? null;
+    }
+    if (crmCid) {
+      await supabase
+        .from("crm_contacts")
+        .update({ stage: "PAID", last_activity_at: tsNow, updated_at: tsNow })
+        .eq("id", crmCid);
+      await supabase.from("crm_events").insert({
+        contact_id: crmCid,
+        event_type: "purchase_completed",
+        payload: { order_id: orderId || null, email },
+      });
+    }
+
     await supabase.from("payment_events").insert({
       id: eventId,
       provider: isMidtrans ? "midtrans" : "generic",
       payload,
       processed: true,
     });
+
+    if (orderId) {
+      const { error: logIns } = await supabase.from("promo_slot_decrement_log").insert({ order_id: orderId });
+      if (!logIns) {
+        const { data: aset } = await supabase
+          .from("app_settings")
+          .select("promo_slots_remaining")
+          .eq("id", "default")
+          .maybeSingle();
+        const cur = aset?.promo_slots_remaining;
+        if (cur != null && Number.isFinite(Number(cur)) && Math.round(Number(cur)) > 0) {
+          await supabase
+            .from("app_settings")
+            .update({
+              promo_slots_remaining: Math.max(0, Math.round(Number(cur)) - 1),
+              promo_updated_at: new Date().toISOString(),
+            })
+            .eq("id", "default");
+        }
+      } else if (logIns.code !== "23505") {
+        console.error("promo_slot_decrement_log_insert", logIns);
+      }
+    }
 
     try {
       await processAffiliateCommission(supabase, orderId, pricePaid);
@@ -227,22 +251,34 @@ Deno.serve(async (req) => {
 
     const downloadUrl =
       settings?.download_base_url?.trim() || "https://YOUR_CDN/macfyi.dmg";
-    const resendKey = Deno.env.get("RESEND_API_KEY");
-    const emailFrom = Deno.env.get("EMAIL_FROM");
+    const emailFrom = Deno.env.get("EMAIL_FROM")?.trim();
+    const smtpReady =
+      Boolean(Deno.env.get("SMTP_HOST")?.trim()) &&
+      Boolean(Deno.env.get("SMTP_USER")?.trim()) &&
+      Boolean(Deno.env.get("SMTP_PASS")?.trim());
+
+    const activateDeep = `macfyi://activate?email=${encodeURIComponent(email)}&license=${encodeURIComponent(rawLicense)}`;
 
     let emailSent: boolean | null = null;
-    if (email && resendKey && emailFrom) {
+    if (email && smtpReady && emailFrom) {
       const fromLabel = settings?.email_from_name?.trim() || "Macfyi";
-      const r = await sendLicenseEmail({
-        to: email,
-        licenseKey: rawLicense,
-        downloadUrl,
-        from: `${fromLabel} <${emailFrom}>`,
-        resendKey,
+      const html = `
+    <p>Thank you for purchasing Macfyi.</p>
+    <p><strong>Your license key:</strong> <code>${rawLicense}</code></p>
+    <p>Use the <strong>same email address</strong> as at checkout when activating the app.</p>
+    <p><a href="${activateDeep}">Activate in Macfyi (app)</a> — if the link does not open, copy the key above and paste it in the app.</p>
+    <p><a href="${downloadUrl}">Download Macfyi (DMG)</a></p>
+  `;
+      const r = await sendResendHtml({
+        supabase,
+        to: [email],
+        subject: "Your Macfyi license and download",
+        html,
+        fromOverride: `${fromLabel} <${emailFrom}>`,
       });
       emailSent = r.ok;
       if (!r.ok) {
-        console.error("resend_failed", r.status, r.body);
+        console.error("license_email_failed", r.status, r.error ?? "");
       }
     }
 

@@ -1,4 +1,4 @@
-/** Template HTML email (Bahasa Indonesia) — dipakai Edge + Resend. */
+/** Template HTML email (Bahasa Indonesia) — dipakai Edge Functions (SMTP). */
 
 export function withdrawalRequestAdminEmail(opts: {
   amountIdr: number;

@@ -5,6 +5,8 @@ import type { ContentData, SiteSettings } from "../types/content";
 import { DEFAULT_SITE_SETTINGS } from "../types/content";
 import { deepMerge } from "../lib/mergeData";
 import { loadLeads, saveLeads, updateLeadStage, type CrmLead, type LeadStage } from "../lib/leads";
+import { getSupabaseBrowserClient, isSupabaseUserAdmin } from "../lib/supabase";
+import { formatIdr } from "../lib/formatIdr";
 
 const TABS = [
   { id: "brand", label: "Global & merek" },
@@ -13,10 +15,23 @@ const TABS = [
   { id: "track", label: "Pixel & Analytics" },
   { id: "ui", label: "Banner & FAQ" },
   { id: "checkout", label: "Checkout" },
+  { id: "promo", label: "Promo & scarcity" },
   { id: "legal", label: "Footer & privasi" },
   { id: "content", label: "Konten JSON" },
   { id: "crm", label: "CRM & WA" },
 ] as const;
+
+type PromoPhaseRow = {
+  starts_at: string;
+  ends_at: string;
+  lifetime_price_idr: string;
+  compare_at_idr: string;
+  slots_initial: string;
+};
+
+function emptyPromoPhaseRow(): PromoPhaseRow {
+  return { starts_at: "", ends_at: "", lifetime_price_idr: "173000", compare_at_idr: "", slots_initial: "" };
+}
 
 type TabId = (typeof TABS)[number]["id"];
 
@@ -29,6 +44,8 @@ export function AdminSettingsModal({
   replaceData,
   toast,
   onTestToast,
+  onApplyServerLifetimePrice,
+  onAfterPromoSave,
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,14 +55,25 @@ export function AdminSettingsModal({
   replaceData: (d: ContentData) => void;
   toast: (msg: string, type?: "info" | "success" | "error") => void;
   onTestToast: () => void;
+  /** Setelah upsert `app_settings.lifetime_price_idr` berhasil */
+  onApplyServerLifetimePrice?: (idr: number) => void;
+  /** Setelah simpan jadwal promo + fetch public-config */
+  onAfterPromoSave?: (p: { lifetime_price_idr: number; compare_at_idr: number | null }) => void;
 }) {
   const [tab, setTab] = useState<TabId>("brand");
   const [jsonText, setJsonText] = useState("");
   const [leads, setLeads] = useState<CrmLead[]>(() => loadLeads());
+  const [priceSaveBusy, setPriceSaveBusy] = useState(false);
+  const [promoPhases, setPromoPhases] = useState<PromoPhaseRow[]>([emptyPromoPhaseRow()]);
+  const [promoSlotsRemaining, setPromoSlotsRemaining] = useState("");
+  const [promoBlockZero, setPromoBlockZero] = useState(false);
+  const [promoLoadBusy, setPromoLoadBusy] = useState(false);
+  const [promoSaveBusy, setPromoSaveBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const wpRef = useRef<HTMLInputElement>(null);
 
   const s = data.settings;
+  const lifetimeIdr = typeof s.lifetime_price_idr === "number" && Number.isFinite(s.lifetime_price_idr) ? s.lifetime_price_idr : 173000;
 
   const waByCat = useMemo(() => {
     const m = new Map<string, typeof s.waTemplates>();
@@ -62,6 +90,59 @@ export function AdminSettingsModal({
     if (open && tab === "content") {
       setJsonText(JSON.stringify(data, null, 2));
     }
+  }, [open, tab]);
+
+  useEffect(() => {
+    if (!open || tab !== "promo") return;
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setPromoLoadBusy(true);
+      try {
+        const { data: row, error } = await client
+          .from("app_settings")
+          .select("promo_plan, promo_slots_remaining")
+          .eq("id", "default")
+          .maybeSingle();
+        if (error) throw error;
+        if (cancelled) return;
+        const plan = row?.promo_plan as { phases?: unknown[]; block_checkout_when_slots_zero?: boolean } | null;
+        if (plan && Array.isArray(plan.phases) && plan.phases.length > 0) {
+          setPromoPhases(
+            plan.phases.map((p: unknown) => {
+              const o = (p ?? {}) as Record<string, unknown>;
+              return {
+                starts_at: String(o.starts_at ?? ""),
+                ends_at: String(o.ends_at ?? ""),
+                lifetime_price_idr: String(o.lifetime_price_idr ?? ""),
+                compare_at_idr:
+                  o.compare_at_idr != null && o.compare_at_idr !== "" ? String(o.compare_at_idr) : "",
+                slots_initial: o.slots_initial != null && o.slots_initial !== "" ? String(o.slots_initial) : "",
+              };
+            })
+          );
+          setPromoBlockZero(Boolean(plan.block_checkout_when_slots_zero));
+        } else {
+          setPromoPhases([emptyPromoPhaseRow()]);
+          setPromoBlockZero(false);
+        }
+        const rem = row?.promo_slots_remaining;
+        setPromoSlotsRemaining(
+          rem != null && rem !== undefined && Number.isFinite(Number(rem)) ? String(Math.max(0, Math.round(Number(rem)))) : ""
+        );
+      } catch (e) {
+        if (!cancelled) toast(e instanceof Error ? e.message : String(e), "error");
+      } finally {
+        if (!cancelled) setPromoLoadBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, tab]);
 
   if (!open) return null;
@@ -122,6 +203,124 @@ export function AdminSettingsModal({
   };
 
   const categoriesStr = s.waCategories.join(", ");
+
+  const savePromoPlanToServer = async () => {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi.", "error");
+      return;
+    }
+    const { data: sess } = await client.auth.getSession();
+    if (!sess.session?.user || !isSupabaseUserAdmin(sess.session.user)) {
+      toast("Masuk sebagai admin Supabase untuk menyimpan jadwal promo.", "error");
+      return;
+    }
+    const phases = promoPhases
+      .map((row) => {
+        const idr = Math.round(Number(row.lifetime_price_idr));
+        const st = row.starts_at.trim();
+        const en = row.ends_at.trim();
+        if (!st || !en || !Number.isFinite(idr) || idr <= 0) return null;
+        const phase: Record<string, unknown> = {
+          starts_at: st,
+          ends_at: en,
+          lifetime_price_idr: idr,
+        };
+        if (row.compare_at_idr.trim()) {
+          const c = Math.round(Number(row.compare_at_idr));
+          if (Number.isFinite(c) && c > 0) phase.compare_at_idr = c;
+        }
+        if (row.slots_initial.trim()) {
+          const si = Math.round(Number(row.slots_initial));
+          if (Number.isFinite(si) && si >= 0) phase.slots_initial = si;
+        }
+        return phase;
+      })
+      .filter(Boolean) as Record<string, unknown>[];
+
+    const planObj =
+      phases.length === 0
+        ? null
+        : { phases, block_checkout_when_slots_zero: promoBlockZero };
+
+    const slotsParsed =
+      promoSlotsRemaining.trim() === "" ? null : Math.max(0, Math.round(Number(promoSlotsRemaining)));
+
+    if (promoSlotsRemaining.trim() !== "" && !Number.isFinite(Number(promoSlotsRemaining))) {
+      toast("Sisa slot harus angka atau kosong.", "error");
+      return;
+    }
+
+    setPromoSaveBusy(true);
+    try {
+      const { data: cur, error: readErr } = await client
+        .from("app_settings")
+        .select("config_version")
+        .eq("id", "default")
+        .maybeSingle();
+      if (readErr) throw readErr;
+      const nextVer = (Number(cur?.config_version) || 1) + 1;
+      const { error } = await client
+        .from("app_settings")
+        .update({
+          promo_plan: planObj,
+          promo_slots_remaining: slotsParsed,
+          promo_updated_at: new Date().toISOString(),
+          config_version: nextVer,
+        })
+        .eq("id", "default");
+      if (error) throw error;
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
+      const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+      if (supabaseUrl && anon) {
+        const res = await fetch(`${supabaseUrl}/functions/v1/public-config`, {
+          headers: { apikey: anon, Authorization: `Bearer ${anon}` },
+        });
+        if (res.ok) {
+          const j = (await res.json()) as {
+            pricing?: { lifetime_price_idr?: number };
+            promo?: { compare_at_idr?: number | null };
+          };
+          const idr = j.pricing?.lifetime_price_idr;
+          const cmp = j.promo?.compare_at_idr ?? null;
+          if (typeof idr === "number" && idr > 0) {
+            onAfterPromoSave?.({ lifetime_price_idr: idr, compare_at_idr: cmp ?? null });
+          }
+        }
+      }
+      toast("Jadwal promo disimpan. public-config & checkout memakai harga fase aktif.", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setPromoSaveBusy(false);
+    }
+  };
+
+  const resetPromoSlotsFromActivePhase = async () => {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
+    const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
+    if (!supabaseUrl || !anon) {
+      toast("Variabel VITE_SUPABASE_* kurang.", "error");
+      return;
+    }
+    try {
+      const res = await fetch(`${supabaseUrl}/functions/v1/public-config`, {
+        headers: { apikey: anon, Authorization: `Bearer ${anon}` },
+      });
+      if (!res.ok) throw new Error("Gagal memuat public-config");
+      const j = (await res.json()) as { promo?: { slots_initial_active?: number | null } };
+      const n = j.promo?.slots_initial_active;
+      if (n != null && Number.isFinite(Number(n))) {
+        setPromoSlotsRemaining(String(Math.max(0, Math.round(Number(n)))));
+        toast("Sisa slot diisi dari slots_initial fase aktif.", "success");
+      } else {
+        toast("Tidak ada fase aktif dengan slots_initial.", "info");
+      }
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
@@ -203,7 +402,71 @@ export function AdminSettingsModal({
                   </div>
                 </Field>
               </div>
-              <Field label="Harga (tampilan)">
+              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
+                <p className="text-white/50 text-xs leading-relaxed">
+                  <strong className="text-white/80">Harga lifetime (IDR)</strong> disimpan di tabel{" "}
+                  <code className="text-white/70">app_settings</code> — sama dengan nominal Midtrans, nilai di app (public-config),
+                  dan teks harga di halaman ini setelah disimpan.
+                </p>
+                <Field label="Nominal lifetime (IDR, angka bulat)">
+                  <input
+                    type="number"
+                    min={1000}
+                    step={1000}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 tabular-nums"
+                    value={lifetimeIdr}
+                    onChange={(e) => {
+                      const n = Math.round(Number(e.target.value));
+                      if (!Number.isFinite(n)) return;
+                      patchSettings({ lifetime_price_idr: n, price: formatIdr(n) });
+                    }}
+                  />
+                </Field>
+                <p className="text-xs text-white/40">Pratinjau tampilan: {formatIdr(lifetimeIdr)}</p>
+                <button
+                  type="button"
+                  disabled={priceSaveBusy}
+                  onClick={async () => {
+                    const client = getSupabaseBrowserClient();
+                    if (!client) {
+                      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+                      return;
+                    }
+                    const { data: sess } = await client.auth.getSession();
+                    if (!sess.session?.user || !isSupabaseUserAdmin(sess.session.user)) {
+                      toast("Masuk dengan akun Supabase yang memiliki role admin untuk menyimpan harga ke server.", "error");
+                      return;
+                    }
+                    setPriceSaveBusy(true);
+                    try {
+                      const idr = Math.round(lifetimeIdr);
+                      const { data: cur, error: readErr } = await client
+                        .from("app_settings")
+                        .select("config_version")
+                        .eq("id", "default")
+                        .maybeSingle();
+                      if (readErr) throw readErr;
+                      const nextVer = (Number(cur?.config_version) || 1) + 1;
+                      const { error } = await client
+                        .from("app_settings")
+                        .update({ lifetime_price_idr: idr, config_version: nextVer })
+                        .eq("id", "default");
+                      if (error) throw error;
+                      patchSettings({ lifetime_price_idr: idr, price: formatIdr(idr) });
+                      onApplyServerLifetimePrice?.(idr);
+                      toast("Harga disimpan ke database. Landing & app akan memakai angka ini (setelah cache public-config).", "success");
+                    } catch (e) {
+                      toast(e instanceof Error ? e.message : String(e), "error");
+                    } finally {
+                      setPriceSaveBusy(false);
+                    }
+                  }}
+                  className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm"
+                >
+                  {priceSaveBusy ? "Menyimpan…" : "Simpan harga ke server (app + checkout)"}
+                </button>
+              </div>
+              <Field label="Harga (tampilan, opsional override teks)">
                 <input
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
                   value={s.price}
@@ -575,6 +838,145 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ checkoutFooterNoGateway: e.target.value })}
                 />
               </Field>
+            </>
+          )}
+
+          {tab === "promo" && (
+            <>
+              <p className="text-white/45 text-xs leading-relaxed">
+                Jadwal fase menentukan <strong className="text-white/80">harga lifetime</strong> yang dipakai{" "}
+                <code className="text-white/70">public-config</code>, <strong>Midtrans Snap</strong>, dan blok scarcity di landing.
+                Isi <strong>sisa slot</strong> dengan angka untuk mengaktifkan penurunan otomatis saat pembayaran sukses (webhook). Kosongkan
+                sisa slot untuk hanya menampilkan <code className="text-white/70">slots_initial</code> per fase (tanpa decrement).
+              </p>
+              {promoLoadBusy && <p className="text-white/40 text-xs">Memuat dari server…</p>}
+              <div className="space-y-4">
+                {promoPhases.map((row, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+                  >
+                    <Field label={`Fase ${idx + 1} — mulai (ISO)`}>
+                      <input
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 text-xs"
+                        placeholder="2026-04-20T00:00:00+07:00"
+                        value={row.starts_at}
+                        onChange={(e) => {
+                          const next = [...promoPhases];
+                          next[idx] = { ...next[idx], starts_at: e.target.value };
+                          setPromoPhases(next);
+                        }}
+                      />
+                    </Field>
+                    <Field label="selesai (ISO)">
+                      <input
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 text-xs"
+                        placeholder="2026-04-30T23:59:59+07:00"
+                        value={row.ends_at}
+                        onChange={(e) => {
+                          const next = [...promoPhases];
+                          next[idx] = { ...next[idx], ends_at: e.target.value };
+                          setPromoPhases(next);
+                        }}
+                      />
+                    </Field>
+                    <Field label="Harga IDR (fase)">
+                      <input
+                        type="number"
+                        min={1000}
+                        step={1000}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 tabular-nums"
+                        value={row.lifetime_price_idr}
+                        onChange={(e) => {
+                          const next = [...promoPhases];
+                          next[idx] = { ...next[idx], lifetime_price_idr: e.target.value };
+                          setPromoPhases(next);
+                        }}
+                      />
+                    </Field>
+                    <Field label="Compare-at IDR (opsional)">
+                      <input
+                        type="number"
+                        min={0}
+                        step={1000}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 tabular-nums"
+                        placeholder="299000"
+                        value={row.compare_at_idr}
+                        onChange={(e) => {
+                          const next = [...promoPhases];
+                          next[idx] = { ...next[idx], compare_at_idr: e.target.value };
+                          setPromoPhases(next);
+                        }}
+                      />
+                    </Field>
+                    <Field label="slots_initial (opsional)">
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 tabular-nums"
+                        placeholder="10"
+                        value={row.slots_initial}
+                        onChange={(e) => {
+                          const next = [...promoPhases];
+                          next[idx] = { ...next[idx], slots_initial: e.target.value };
+                          setPromoPhases(next);
+                        }}
+                      />
+                    </Field>
+                    <div className="flex items-end">
+                      <button
+                        type="button"
+                        onClick={() => setPromoPhases(promoPhases.filter((_, i) => i !== idx))}
+                        className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                      >
+                        <Trash2 size={14} /> Hapus fase
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPromoPhases([...promoPhases, emptyPromoPhaseRow()])}
+                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs"
+                >
+                  <Plus size={14} /> Tambah fase
+                </button>
+              </div>
+              <label className="flex items-center gap-2 text-white/70 text-xs cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={promoBlockZero}
+                  onChange={(e) => setPromoBlockZero(e.target.checked)}
+                />
+                Blok checkout Midtrans jika sisa slot (counter) = 0
+              </label>
+              <Field label="Sisa slot (counter live; kosong = tidak decrement)">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <input
+                    type="number"
+                    min={0}
+                    className="flex-1 min-w-[120px] bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 tabular-nums"
+                    placeholder="mis. 10"
+                    value={promoSlotsRemaining}
+                    onChange={(e) => setPromoSlotsRemaining(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void resetPromoSlotsFromActivePhase()}
+                    className="text-xs bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl shrink-0"
+                  >
+                    Reset dari fase aktif
+                  </button>
+                </div>
+              </Field>
+              <button
+                type="button"
+                disabled={promoSaveBusy || promoLoadBusy}
+                onClick={() => void savePromoPlanToServer()}
+                className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm"
+              >
+                {promoSaveBusy ? "Menyimpan…" : "Simpan jadwal promo ke server"}
+              </button>
             </>
           )}
 

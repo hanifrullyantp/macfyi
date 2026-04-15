@@ -10,7 +10,7 @@ import {
   validatePhoneRequired,
 } from "../lib/formValidation";
 import { loadMidtransSnapScript, payWithSnap } from "../lib/midtransSnap";
-import { getReferralSlugFromCookie, queueSiteEvent } from "../lib/siteAnalytics";
+import { getMacfyiVisitorId, getReferralSlugFromCookie, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient } from "../lib/supabase";
 
 function buildCheckoutLink(base: string, email: string, name: string, phoneDigits: string): string | null {
@@ -138,6 +138,7 @@ export function CheckoutModal({
             email: normalizeEmail(email),
             name: nameRes.value,
             phone: phoneRes.digits,
+            visitor_id: getMacfyiVisitorId(),
             ...(referral_slug ? { referral_slug } : {}),
           }),
         });
@@ -145,6 +146,7 @@ export function CheckoutModal({
           snap_token?: string;
           client_key?: string;
           is_production?: boolean;
+          order_id?: string;
           error?: string;
         };
 
@@ -157,11 +159,16 @@ export function CheckoutModal({
             return;
           }
           setSubmitting(false);
+          const orderIdSnap = data.order_id;
           payWithSnap(data.snap_token, {
             onSuccess: () => {
               queueSiteEvent("payment_success", { channel: "midtrans_snap" });
-              toast("Pembayaran berhasil. Cek email Anda untuk kunci lisensi.", "success");
+              queueSiteEvent("purchase_completed", { order_id: orderIdSnap });
+              toast("Pembayaran berhasil.", "success");
               onClose();
+              if (orderIdSnap) {
+                window.location.href = `/checkout/success?order_id=${encodeURIComponent(orderIdSnap)}`;
+              }
             },
             onPending: () => {
               toast("Menunggu konfirmasi pembayaran dari bank / e-wallet.", "info");

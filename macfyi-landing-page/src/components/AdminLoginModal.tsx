@@ -11,7 +11,7 @@ export function AdminLoginModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (info: { role: 'admin' | 'member' }) => void;
 }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,12 +41,8 @@ export function AdminLoginModal({
         }
         const { data: userData } = await client.auth.getUser();
         const user = userData.user;
-        if (!isSupabaseUserAdmin(user)) {
-          await client.auth.signOut();
-          setErr("Akun ini tidak memiliki hak penyunting. Hubungi pemilik proyek Supabase.");
-          return;
-        }
-        onSuccess();
+        const role = isSupabaseUserAdmin(user) ? 'admin' : 'member';
+        onSuccess({ role });
         setEmail("");
         setPassword("");
         onClose();
@@ -54,7 +50,7 @@ export function AdminLoginModal({
       }
 
       if (tryLegacyLogin(email, password)) {
-        onSuccess();
+        onSuccess({ role: 'admin' });
         setEmail("");
         setPassword("");
         onClose();
@@ -91,11 +87,11 @@ export function AdminLoginModal({
         >
           <X size={20} />
         </button>
-        <h2 className="text-xl font-bold mb-1">Masuk penyunting</h2>
+        <h2 className="text-xl font-bold mb-1">Masuk</h2>
         <p className="text-white/45 text-sm mb-6">
           {isSupabaseBrowserConfigured()
-            ? "Gunakan akun Supabase Auth dengan peran admin (App metadata: role = admin). Sesi Anda hanya dipakai untuk mengelola konten situs."
-            : "Mode lokal: kredensial diatur lewat variabel lingkungan. Konten disimpan sebagai draft di perangkat ini."}
+            ? "Akun admin dapat menyunting konten landing di halaman ini. Akun anggota tetap di halaman ini dan dapat membuka aplikasi lewat tombol Member."
+            : "Mode lokal: kredensial diatur lewat variabel lingkungan. Hanya admin yang dapat menyunting; konten disimpan sebagai draft di perangkat ini."}
         </p>
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Email</label>
         <input

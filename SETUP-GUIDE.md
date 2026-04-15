@@ -7,7 +7,7 @@ Dokumen ini merangkai alur **Supabase (Postgres + Auth + Edge Functions + RLS)**
 - Proyek Supabase dengan migrasi di `supabase/migrations/` sudah diterapkan (`supabase db push` atau SQL Editor).
 - Secret Edge (Dashboard → Edge Functions → Secrets):
   - `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION` (checkout)
-  - `RESEND_API_KEY`, `EMAIL_FROM` (email pembeli + affiliate)
+  - `SMTP_HOST`, `SMTP_PORT` (default 587), `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM` — email transaksional Edge (boleh sama dengan **Authentication → SMTP** di Dashboard, disalin manual ke secrets; Edge tidak membaca pengaturan Auth otomatis)
   - `OPS_ALERT_EMAIL` — alamat email admin untuk alert penarikan (pisahkan koma jika banyak)
   - `CRON_SECRET` — string acak untuk memanggil `scheduled-ops`
 - Variabel bawaan Supabase pada fungsi: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -93,5 +93,5 @@ Setelah punya alamat email admin yang dipakai:
 ## 8. Catatan produksi
 
 - Jangan commit service role key atau `CRON_SECRET`.
-- Resend: verifikasi domain pengirim; `EMAIL_FROM` harus domain yang sah.
+- SMTP: verifikasi domain pengirim (SPF/DKIM) di penyedia Anda; `EMAIL_FROM` harus alamat yang sah.
 - `OPS_ALERT_EMAIL` opsional jika Anda hanya mengandalkan notifikasi in-app admin.
