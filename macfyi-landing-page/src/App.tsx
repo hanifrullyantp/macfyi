@@ -42,7 +42,7 @@ import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytic
 import { applyLifetimePriceIdrToContent, normalizePricingContent } from './lib/pricingContent';
 import { formatIdr } from './lib/formatIdr';
 import { ScarcityBand } from './components/ScarcityBand';
-import { HeroStorageAnimation } from './components/HeroStorageAnimation';
+import { StorageImpactAnimation } from './components/StorageImpactAnimation';
 
 type MacfyiPublicPromo = {
   active: boolean;
@@ -873,7 +873,7 @@ export function LandingApp() {
               className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-7" 
             />
 
-            <HeroStorageAnimation />
+            <StorageImpactAnimation />
 
             <div className="flex flex-wrap justify-center gap-2 text-[11px] md:text-xs font-bold text-white/40">
               {data.hero.features.map((feat, i) => (
