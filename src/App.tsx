@@ -274,13 +274,12 @@ export default function App() {
   const [diskTotalGb, setDiskTotalGb] = useState(0);
   const [storageEntries, setStorageEntries] = useState<StorageEntry[]>([]);
   const [perfRefreshTick, setPerfRefreshTick] = useState(0);
+  const [monitorRefreshNonce, setMonitorRefreshNonce] = useState(0);
   const [perfLoading, setPerfLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
   const [licenseGatePassed, setLicenseGatePassed] = useState(
     () => shouldSkipLicenseGate() || !!getStoredLicenseToken() || isDemoMode()
   );
-  const [activatePrefill, setActivatePrefill] = useState<{ email?: string; license?: string }>({});
-  const [marketingSiteUrl, setMarketingSiteUrl] = useState<string | null>(null);
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
   const [trashItems, setTrashItems] = useState<TrashListItem[] | null>(null);
   const [trashLoading, setTrashLoading] = useState(false);
@@ -352,7 +351,7 @@ export default function App() {
       void prefetchSmartCareOverview(false);
     };
     let idleId: number | undefined;
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let timeoutId: number | undefined;
     if (typeof window.requestIdleCallback === "function") {
       idleId = window.requestIdleCallback(run, { timeout: 2500 });
     } else {
@@ -398,20 +397,16 @@ export default function App() {
     });
   }, []);
 
-  const monitorBreakdownAttemptedRef = useRef(false);
-
-  /** Folder breakdown is deferred until Monitor or Smart Scan — avoids long startup / TCC work on cold open. */
+  /** Keep header disk stats in sync while Monitor is active (Monitor panel fetches its own detail). */
   useEffect(() => {
-    if (activeFeature !== "monitor") {
-      monitorBreakdownAttemptedRef.current = false;
-      return;
-    }
-    if (!licenseGatePassed) return;
-    if (monitorBreakdownAttemptedRef.current) return;
-    monitorBreakdownAttemptedRef.current = true;
-    if (storageEntries.length > 0) return;
-    getStorageBreakdown().then(setStorageEntries).catch(() => {});
-  }, [activeFeature, licenseGatePassed, storageEntries.length]);
+    if (activeFeature !== "monitor") return;
+    void getDiskStats()
+      .then((s) => {
+        setFreeSpace(s.free_gb);
+        setDiskTotalGb(s.total_gb);
+      })
+      .catch(() => {});
+  }, [activeFeature, licenseGatePassed, monitorRefreshNonce]);
 
   useEffect(() => {
     if (appState !== "results") setShellCleaning(false);
@@ -715,13 +710,7 @@ export default function App() {
       return;
     }
     if (activeFeature === "monitor") {
-      getStorageBreakdown().then(setStorageEntries).catch(() => {});
-      getDiskStats()
-        .then((s) => {
-          setFreeSpace(s.free_gb);
-          setDiskTotalGb(s.total_gb);
-        })
-        .catch(() => {});
+      setMonitorRefreshNonce((n) => n + 1);
       return;
     }
     if (activeFeature === "history" || activeFeature === "settings") {
@@ -739,7 +728,15 @@ export default function App() {
   }, [activeFeature, appState, reviewOrbIntent, handleStartScan, refreshTrash, refreshUninstaller]);
 
   if (!licenseGatePassed) {
-    return <ActivationScreen onActivated={() => setLicenseGatePassed(true)} />;
+    return (
+      <ActivationScreen
+        onActivated={() => setLicenseGatePassed(true)}
+        onDemoStart={(token, rules) => {
+          setDemoSession(token, rules);
+          setLicenseGatePassed(true);
+        }}
+      />
+    );
   }
 
   const featuredResults = filterByFeature(scanResults, activeFeature);
@@ -873,7 +870,7 @@ export default function App() {
     );
   } else if (activeFeature === "monitor") {
     content = (
-      <MonitorDashboard freeGb={freeSpace} totalGb={diskTotalGb} storageEntries={storageEntries} />
+      <MonitorDashboard refreshSignal={monitorRefreshNonce} />
     );
   } else if (activeFeature === "performance") {
     content = (
@@ -1050,7 +1047,7 @@ export default function App() {
                 void sendClientTelemetry("UpgradeClicked", {});
                 setIsUpgradeOpen(false);
                 const envUrl = import.meta.env.VITE_MARKETING_SITE_URL?.trim().replace(/\/$/, "");
-                const target = marketingSiteUrl || envUrl || "https://macfyi.com";
+                const target = envUrl || "https://macfyi.com";
                 window.open(target, "_blank", "noopener,noreferrer");
               }}
               onMaybeLater={() => setIsUpgradeOpen(false)}

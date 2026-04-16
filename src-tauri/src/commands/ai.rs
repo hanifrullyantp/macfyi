@@ -150,6 +150,35 @@ pub fn ai_delete_model(state: State<'_, AiState>, model_id: Option<String>) -> R
     Ok(())
 }
 
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AiVerifyResultDto {
+    pub model_id: String,
+    pub ok: bool,
+}
+
+#[tauri::command]
+pub fn ai_models_dir() -> Result<String, String> {
+    model_manager::models_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn ai_verify_model(model_id: String) -> Result<AiVerifyResultDto, String> {
+    let m = ModelId::try_from(model_id)?;
+    let catalog = model_manager::load_catalog()?;
+    let spec = catalog
+        .models
+        .get(m.as_str())
+        .ok_or_else(|| "Unknown model spec".to_string())?;
+    let ok = model_manager::verify_model_files(spec)?;
+    Ok(AiVerifyResultDto {
+        model_id: m.as_str().to_string(),
+        ok,
+    })
+}
+
 #[tauri::command]
 pub async fn ai_open_panel(app: tauri::AppHandle, state: State<'_, AiState>) -> Result<(), String> {
     *state.panel_open.lock().unwrap() = true;

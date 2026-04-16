@@ -115,7 +115,7 @@ export const AppShell = ({
   contentBackgroundClass = "from-[#1c1e26] via-[#181a22] to-[#13151c]",
   orbSubLabel = "Smart + Safe",
   showScanOrb = true,
-  deletionMode = "trash",
+  deletionMode: _deletionMode = "trash",
   onDeletionModeClick,
   hideMainGlow = false,
   onUpgradeClick,

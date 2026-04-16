@@ -53,6 +53,11 @@ export type AiRuntimeStatus = {
   port?: number | null;
 };
 
+export type AiVerifyResult = {
+  modelId: AiModelId;
+  ok: boolean;
+};
+
 interface FileItemRaw {
   id: string;
   name: string;
@@ -173,6 +178,14 @@ export async function aiCancelDownload(): Promise<void> {
 
 export async function aiDeleteModel(modelId?: AiModelId): Promise<void> {
   await invoke<void>("ai_delete_model", { modelId });
+}
+
+export async function aiModelsDir(): Promise<string> {
+  return await invoke<string>("ai_models_dir");
+}
+
+export async function aiVerifyModel(modelId: AiModelId): Promise<AiVerifyResult> {
+  return await invoke<AiVerifyResult>("ai_verify_model", { modelId });
 }
 
 export async function aiOpenPanel(): Promise<void> {

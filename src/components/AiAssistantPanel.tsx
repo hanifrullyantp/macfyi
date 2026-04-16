@@ -9,10 +9,12 @@ import {
   aiDownloadModel,
   aiEnable,
   aiGenerate,
+  aiModelsDir,
   aiOpenPanel,
   aiRuntimeStatus,
   aiSetModel,
   aiStatus,
+  aiVerifyModel,
   onAiDownloadProgress,
   onAiToken,
   type AiModelId,
@@ -61,6 +63,8 @@ export function AiAssistantPanel({
   const [runtimeState, setRuntimeState] = useState<string>("Unloaded");
   const [downloadPct, setDownloadPct] = useState<number | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [modelsDir, setModelsDir] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -105,6 +109,7 @@ export function AiAssistantPanel({
   useEffect(() => {
     void refreshStatus();
     void aiOpenPanel().catch(() => {});
+    void aiModelsDir().then(setModelsDir).catch(() => {});
     const id = window.setInterval(() => void refreshStatus(), 3000);
     return () => window.clearInterval(id);
   }, []);
@@ -186,14 +191,31 @@ export function AiAssistantPanel({
   const download = async (modelId: AiModelId) => {
     setDownloadPct(0);
     setDownloading(true);
+    setVerifying(false);
     try {
       await aiDownloadModel(modelId);
+      setVerifying(true);
     } finally {
       setDownloading(false);
       setDownloadPct(null);
       void refreshStatus();
     }
   };
+
+  const verify = async (modelId: AiModelId) => {
+    setVerifying(true);
+    try {
+      await aiVerifyModel(modelId);
+    } finally {
+      void refreshStatus();
+      // Let the UI show "verifying" briefly; it will clear via effect below once installed is true.
+    }
+  };
+
+  const isInstalled = activeModel === "lite" ? Boolean(status?.liteInstalled) : Boolean(status?.betterInstalled);
+  useEffect(() => {
+    if (verifying && isInstalled) setVerifying(false);
+  }, [verifying, isInstalled]);
 
   return (
     <motion.div
@@ -220,8 +242,13 @@ export function AiAssistantPanel({
           </span>
         </div>
         <p className="text-[10px] text-white/45 leading-snug">
-          AI lokal membutuhkan RAM. Mode <b>Lite</b> disarankan untuk Mac 8GB. Tidak ada path file penuh yang dikirim.
+          AI lokal membutuhkan RAM. Mode <b>Lite</b> disarankan untuk Mac 8GB. Model disimpan di komputer Anda (sekali download, bisa dipakai lagi).
         </p>
+        {modelsDir ? (
+          <p className="text-[10px] text-white/35 leading-snug font-mono truncate" title={modelsDir}>
+            {modelsDir}
+          </p>
+        ) : null}
         {status?.memoryPressureHigh && (
           <p className="text-[10px] text-amber-300/90">
             AI dimatikan sementara untuk menjaga performa (memory pressure tinggi). Jawaban memakai Quick Answer.
@@ -274,7 +301,7 @@ export function AiAssistantPanel({
               type="button"
               onClick={() => void download("lite")}
               className="btn-secondary text-xs inline-flex items-center gap-2"
-              disabled={downloading}
+              disabled={downloading || verifying}
             >
               <Download size={14} /> Download Lite
             </button>
@@ -284,7 +311,7 @@ export function AiAssistantPanel({
               type="button"
               onClick={() => void download("better")}
               className="btn-secondary text-xs inline-flex items-center gap-2"
-              disabled={downloading}
+              disabled={downloading || verifying}
             >
               <Download size={14} /> Download Better
             </button>
@@ -298,7 +325,27 @@ export function AiAssistantPanel({
               Cancel
             </button>
           )}
-          {downloading && downloadPct != null && <span className="text-[11px] text-white/55">{downloadPct.toFixed(0)}%</span>}
+          {downloading && downloadPct != null && (
+            <span className="text-[11px] text-white/55 inline-flex items-center gap-1">
+              <Loader2 size={12} className="animate-spin" /> {downloadPct.toFixed(0)}%
+            </span>
+          )}
+          {verifying && (
+            <span className="text-[11px] text-white/55 inline-flex items-center gap-1">
+              <Loader2 size={12} className="animate-spin" /> Verifying…
+            </span>
+          )}
+          {!downloading && !isInstalled && !status?.downloadInProgress && (
+            <button
+              type="button"
+              onClick={() => void verify(activeModel)}
+              className="text-xs text-white/60 underline"
+              disabled={verifying}
+              title="Verify local model files (no re-download if valid)"
+            >
+              Verify local files
+            </button>
+          )}
         </div>
       </div>
 

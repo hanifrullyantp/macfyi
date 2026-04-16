@@ -42,6 +42,7 @@ import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytic
 import { applyLifetimePriceIdrToContent, normalizePricingContent } from './lib/pricingContent';
 import { formatIdr } from './lib/formatIdr';
 import { ScarcityBand } from './components/ScarcityBand';
+import { HeroStorageAnimation } from './components/HeroStorageAnimation';
 
 type MacfyiPublicPromo = {
   active: boolean;
@@ -872,50 +873,7 @@ export function LandingApp() {
               className="text-lg md:text-xl text-white/60 max-w-2xl mx-auto mb-7" 
             />
 
-            <div className="max-w-xl mx-auto mb-12 p-4 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm">
-              <div className="flex justify-between items-end mb-3">
-                <div className="text-left">
-                  <div className="text-sm text-white/40 mb-1 font-medium">Macintosh HD</div>
-                  <div className="text-lg font-bold">Storage Status</div>
-                </div>
-                <div className="text-right">
-                  <motion.div 
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 2 }}
-                    className="text-xs text-green-500 font-bold bg-green-500/10 px-2 py-0.5 rounded"
-                  >
-                    Optimized by Macfyi
-                  </motion.div>
-                </div>
-              </div>
-              
-              <div className="h-[18px] w-full bg-white/10 rounded-full overflow-hidden flex">
-                <motion.div 
-                  initial={{ width: '98%' }}
-                  animate={{ width: '30%' }}
-                  transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
-                  className="h-full bg-red-600"
-                />
-                <motion.div 
-                  initial={{ width: '2%' }}
-                  animate={{ width: '70%' }}
-                  transition={{ duration: 1.5, delay: 0.5, ease: "easeInOut" }}
-                  className="h-full bg-white/10"
-                />
-              </div>
-              
-              <div className="flex justify-between mt-3 text-[10px] font-bold tracking-wider uppercase text-white/40">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-red-600" />
-                  <span>Used Space</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-white/20" />
-                  <span>Free Space</span>
-                </div>
-              </div>
-            </div>
+            <HeroStorageAnimation />
 
             <div className="flex flex-wrap justify-center gap-2 text-[11px] md:text-xs font-bold text-white/40">
               {data.hero.features.map((feat, i) => (

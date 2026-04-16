@@ -51,6 +51,8 @@ pub fn run() {
       commands::ai::ai_download_model,
       commands::ai::ai_cancel_download,
       commands::ai::ai_delete_model,
+      commands::ai::ai_models_dir,
+      commands::ai::ai_verify_model,
       commands::ai::ai_open_panel,
       commands::ai::ai_close_panel,
       commands::ai::ai_runtime_status,

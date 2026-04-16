@@ -100,28 +100,35 @@ export function ScarcityBand({
   return (
     <section
       id="scarcity"
-      className="relative py-14 md:py-20 overflow-hidden border-y-[6px] border-red-600 shadow-[0_0_80px_rgba(220,38,38,0.45)]"
+      className="relative py-12 md:py-16 overflow-hidden border-y-[6px] border-red-600 shadow-[0_0_80px_rgba(220,38,38,0.35)]"
       style={{
-        background: "linear-gradient(165deg, #FFF8EE 0%, #FFE4C4 35%, #FFF5E8 70%, #FFECD8 100%)",
+        background:
+          "linear-gradient(165deg, #050812 0%, #070B14 28%, #0B1022 46%, #090C16 62%, #050812 100%)",
       }}
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_90%_50%_at_50%_-10%,rgba(239,68,68,0.35),transparent_50%)]" />
-      <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-45deg,transparent,transparent_12px,rgba(239,68,68,0.04)_12px,rgba(239,68,68,0.04)_24px)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_85%_55%_at_50%_0%,rgba(220,38,38,0.30),transparent_58%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_45%_at_50%_100%,rgba(239,68,68,0.12),transparent_55%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(-52deg,transparent,transparent_14px,rgba(239,68,68,0.03)_14px,rgba(239,68,68,0.03)_28px)]" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-red-500/50 to-transparent" />
 
       <div className="container relative z-10 mx-auto px-4 max-w-3xl text-center">
+        <div className="relative rounded-[2rem] border border-white/10 bg-gradient-to-b from-white/[0.06] via-black/60 to-black/55 px-4 py-10 md:px-10 md:py-12 shadow-[0_24px_90px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.10)] backdrop-blur-md">
+          <div className="pointer-events-none absolute -inset-px rounded-[2rem] bg-gradient-to-b from-red-500/12 via-transparent to-red-950/25 opacity-90" />
+
+          <div className="relative">
         <EditableText
           as="h2"
           value={scarcity.headline1}
           onSave={(v) => updateData("scarcity.headline1", v)}
           isAdmin={canEdit}
-          className="text-[clamp(1.85rem,5.5vw,3.25rem)] font-black text-[#071022] leading-[1.1] tracking-tight drop-shadow-sm block"
+          className="text-[clamp(1.85rem,5.5vw,3.25rem)] font-black text-white leading-[1.1] tracking-tight [text-shadow:0_2px_28px_rgba(0,0,0,0.75),0_0_40px_rgba(220,38,38,0.16)] block"
         />
         <EditableText
           as="p"
           value={scarcity.headline2}
           onSave={(v) => updateData("scarcity.headline2", v)}
           isAdmin={canEdit}
-          className="text-[clamp(1.55rem,4.5vw,2.65rem)] font-black text-[#071022] mt-2 leading-tight block"
+          className="text-[clamp(1.55rem,4.5vw,2.65rem)] font-black text-white/90 mt-2 leading-tight [text-shadow:0_2px_22px_rgba(0,0,0,0.70)] block"
         />
 
         <motion.div
@@ -129,7 +136,7 @@ export function ScarcityBand({
           animate={{ scale: [1, 1.04, 1] }}
           transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
         >
-          <div className="rounded-full bg-[#E70000] px-5 py-2.5 md:px-8 md:py-3.5 text-xs md:text-sm font-extrabold text-white shadow-xl shadow-red-600/60 ring-2 ring-white/90">
+          <div className="rounded-full bg-gradient-to-b from-red-600 to-[#b91c1c] px-5 py-2.5 md:px-8 md:py-3.5 text-xs md:text-sm font-extrabold text-white shadow-xl shadow-red-900/70 ring-2 ring-amber-400/35">
             <EditableText
               value={scarcity.badge}
               onSave={(v) => updateData("scarcity.badge", v)}
@@ -138,7 +145,7 @@ export function ScarcityBand({
           </div>
         </motion.div>
 
-        <div className="mt-8 flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1 text-[#071022] text-lg md:text-xl font-bold">
+        <div className="mt-8 flex flex-wrap items-baseline justify-center gap-x-2 gap-y-1 text-white/85 text-lg md:text-xl font-bold">
           <EditableText
             value={scarcity.slotsDash}
             onSave={(v) => updateData("scarcity.slotsDash", v)}
@@ -177,28 +184,28 @@ export function ScarcityBand({
             value={scarcity.hargaNormalLabel}
             onSave={(v) => updateData("scarcity.hargaNormalLabel", v)}
             isAdmin={canEdit}
-            className="text-sm font-extrabold uppercase tracking-[0.2em] text-[#071022]/70 block"
+            className="text-sm font-extrabold uppercase tracking-[0.2em] text-white/50 block"
           />
           <EditableText
             as="p"
             value={scarcity.strikeLargest}
             onSave={(v) => updateData("scarcity.strikeLargest", v)}
             isAdmin={canEdit}
-            className="text-3xl md:text-5xl font-black text-red-500/85 line-through decoration-red-600 decoration-4 block"
+            className="text-3xl md:text-5xl font-black text-orange-400/95 line-through decoration-red-500 decoration-[3px] [text-shadow:0_0_28px_rgba(239,68,68,0.25)] block"
           />
           <EditableText
             as="p"
             value={scarcity.strikeMedium}
             onSave={(v) => updateData("scarcity.strikeMedium", v)}
             isAdmin={canEdit}
-            className="text-2xl md:text-3xl font-bold text-red-600 line-through decoration-2 block"
+            className="text-2xl md:text-3xl font-bold text-red-400 line-through decoration-red-500/90 decoration-2 block"
           />
           <EditableText
             as="p"
             value={scarcity.strikeSmall}
             onSave={(v) => updateData("scarcity.strikeSmall", v)}
             isAdmin={canEdit}
-            className="text-lg md:text-xl font-semibold text-red-500/90 line-through block"
+            className="text-lg md:text-xl font-semibold text-red-400/85 line-through block"
           />
         </div>
 
@@ -210,10 +217,10 @@ export function ScarcityBand({
           ].map((u) => (
             <div
               key={u.label}
-              className="rounded-2xl bg-[#0a1628] text-white py-4 md:py-5 px-2 shadow-lg border-2 border-[#071022]/20"
+              className="rounded-2xl bg-gradient-to-b from-[#0f172a] to-[#020617] text-white py-4 md:py-5 px-2 shadow-[0_12px_32px_rgba(0,0,0,0.5)] border border-amber-500/20 ring-1 ring-red-500/15"
             >
-              <div className="text-3xl md:text-4xl font-black tabular-nums leading-none">{u.val}</div>
-              <div className="text-[10px] md:text-xs font-bold text-white/55 uppercase tracking-widest mt-2">{u.label}</div>
+              <div className="text-3xl md:text-4xl font-black tabular-nums leading-none [text-shadow:0_0_20px_rgba(251,146,60,0.2)]">{u.val}</div>
+              <div className="text-[10px] md:text-xs font-bold text-amber-200/50 uppercase tracking-widest mt-2">{u.label}</div>
             </div>
           ))}
         </div>
@@ -224,23 +231,23 @@ export function ScarcityBand({
           onSave={(v) => updateData("scarcity.exclusiveLine", v)}
           isAdmin={canEdit}
           multiline
-          className="mt-10 text-base md:text-lg font-bold text-[#071022] max-w-xl mx-auto leading-snug block"
+          className="mt-10 text-base md:text-lg font-bold text-amber-50/95 max-w-xl mx-auto leading-snug block"
         />
 
         {canEdit && promoSlotsDisplay != null && (
-          <p className="mt-4 text-center text-[11px] text-[#071022]/60">
+          <p className="mt-4 text-center text-[11px] text-amber-200/55">
             Angka slot di atas disinkron dari server (jadwal promo). Sunting di Pengaturan → Promo &amp; scarcity.
           </p>
         )}
 
         {canEdit && !useServerCountdown && (
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center text-xs text-[#071022]/70">
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center items-center text-xs text-amber-200/70">
             <label className="flex items-center gap-2">
               <span>Menit timer (per pengunjung, jika tanggal kosong):</span>
               <input
                 type="number"
                 min={1}
-                className="w-20 rounded border border-[#071022]/30 bg-white px-2 py-1 text-[#071022]"
+                className="w-20 rounded border border-white/15 bg-white/10 px-2 py-1 text-amber-50"
                 defaultValue={scarcity.visitorCountdownMinutes}
                 onBlur={(e) => {
                   const n = parseInt(e.target.value, 10);
@@ -253,7 +260,7 @@ export function ScarcityBand({
               <input
                 type="text"
                 placeholder="2026-12-31T23:59:59+07:00"
-                className="flex-1 rounded border border-[#071022]/30 bg-white px-2 py-1 text-[#071022] text-[11px] w-full"
+                className="flex-1 rounded border border-white/15 bg-white/10 px-2 py-1 text-amber-50 text-[11px] w-full placeholder:text-amber-200/40"
                 defaultValue={scarcity.countdownEndIso}
                 onBlur={(e) => updateData("scarcity.countdownEndIso", e.target.value.trim())}
               />
@@ -262,20 +269,22 @@ export function ScarcityBand({
         )}
 
         <div className="mt-10 flex flex-col items-center gap-2">
-          <p className="text-xs font-bold uppercase tracking-widest text-[#E70000]">Ke harga promo di bawah</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-red-400 [text-shadow:0_0_20px_rgba(248,113,113,0.35)]">Ke harga promo di bawah</p>
           <button
             type="button"
             onClick={scrollToPricing}
-            className="rounded-full p-2 text-[#E70000] hover:bg-red-600/10 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600"
+            className="rounded-full p-2 text-red-400 hover:bg-red-500/15 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
             aria-label="Scroll ke daftar harga"
           >
             <motion.div
               animate={{ y: [0, 10, 0] }}
               transition={{ repeat: Infinity, duration: 1.15, ease: "easeInOut" }}
             >
-              <ChevronDown size={48} strokeWidth={3} className="drop-shadow-[0_4px_12px_rgba(231,0,0,0.65)]" />
+              <ChevronDown size={48} strokeWidth={3} className="drop-shadow-[0_4px_16px_rgba(248,113,113,0.55)]" />
             </motion.div>
           </button>
+        </div>
+          </div>
         </div>
       </div>
     </section>
