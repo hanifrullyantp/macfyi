@@ -222,7 +222,7 @@ export function AiAssistantPanel({
       initial={{ x: 300, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       exit={{ x: 300, opacity: 0 }}
-      className="fixed top-4 right-4 bottom-4 w-[360px] bg-[#12141a]/95 backdrop-blur-sm border border-white/20 rounded-2xl flex flex-col z-50 shadow-2xl overflow-hidden"
+      className="fixed top-4 right-4 bottom-4 w-[360px] bg-[#12141a]/95 backdrop-blur-sm border border-white/20 rounded-2xl flex flex-col z-[320] shadow-2xl overflow-hidden"
     >
       <div className="flex items-center justify-between p-3 border-b border-white/10 shrink-0">
         <div className="flex items-center gap-2">

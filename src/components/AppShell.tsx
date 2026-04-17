@@ -33,6 +33,8 @@ export type FeatureId =
 interface AppShellProps {
   children: ReactNode;
   title?: string;
+  /** Logo dari landing (public-config); ikon dock macOS tetap dari build Tauri. */
+  brandLogoUrl?: string | null;
   activeFeature: FeatureId;
   onFeatureChange: (feature: FeatureId) => void;
   orbMode: OrbDisplayMode;
@@ -98,6 +100,7 @@ function Badge({ count }: { count?: number }) {
 export const AppShell = ({
   children,
   title,
+  brandLogoUrl = null,
   activeFeature,
   onFeatureChange,
   orbMode,
@@ -174,17 +177,34 @@ export const AppShell = ({
           collapsed ? "w-[72px]" : "w-56"
         } bg-[var(--color-bg-sidebar)]/90 border-r border-white/5 flex flex-col p-3 shrink-0 overflow-y-auto custom-scrollbar transition-all duration-200`}
       >
-        <div className="flex items-center justify-between mb-2 px-1">
+        <div className={`flex items-center mb-2 px-1 ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
           {!collapsed && (
-            <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[var(--color-brand-glow)]/80 shadow-[0_0_10px_rgba(199,92,82,0.28)]" />
-              <span className="text-[11px] font-semibold text-white/80 tracking-wide">{t("appName")}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              {brandLogoUrl ? (
+                <img
+                  src={brandLogoUrl}
+                  alt=""
+                  className="h-7 w-7 rounded-lg object-contain bg-white/5 border border-white/10 shrink-0"
+                />
+              ) : (
+                <span className="h-2 w-2 rounded-full bg-[var(--color-brand-glow)]/80 shadow-[0_0_10px_rgba(199,92,82,0.28)] shrink-0" />
+              )}
+              <span className="text-[11px] font-semibold text-white/80 tracking-wide truncate">{t("appName")}</span>
             </div>
           )}
+          {collapsed && brandLogoUrl ? (
+            <img
+              src={brandLogoUrl}
+              alt=""
+              className="h-9 w-9 rounded-lg object-contain bg-white/5 border border-white/10"
+            />
+          ) : null}
           <button
             type="button"
             onClick={() => setCollapsed((v) => !v)}
-            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            className={`p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors shrink-0 ${
+              collapsed ? "" : "ml-auto"
+            }`}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}

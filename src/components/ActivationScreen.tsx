@@ -5,6 +5,7 @@ import { licenseActivateUrl, setLicenseSession, tryDevLicenseBypass } from "../l
 type Mode = "license" | "demo";
 
 type ActivationScreenProps = {
+  brandLogoUrl?: string | null;
   onActivated: () => void;
   onDemoStart: (token: string, rules: Record<string, unknown>) => void;
   prefillEmail?: string | null;
@@ -12,6 +13,7 @@ type ActivationScreenProps = {
 };
 
 export function ActivationScreen({
+  brandLogoUrl,
   onActivated,
   onDemoStart,
   prefillEmail,
@@ -117,6 +119,15 @@ export function ActivationScreen({
   return (
     <div className="h-screen w-screen flex items-center justify-center bg-[var(--color-bg)] px-6">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#141414] p-8 shadow-2xl">
+        {brandLogoUrl ? (
+          <div className="flex justify-center mb-6">
+            <img
+              src={brandLogoUrl}
+              alt=""
+              className="h-16 w-16 object-contain rounded-2xl bg-white/5 border border-white/10"
+            />
+          </div>
+        ) : null}
         <div className="flex rounded-lg border border-white/10 p-0.5 mb-6">
           <button
             type="button"

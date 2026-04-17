@@ -7,6 +7,7 @@ import { deepMerge } from "../lib/mergeData";
 import { loadLeads, saveLeads, updateLeadStage, type CrmLead, type LeadStage } from "../lib/leads";
 import { getSupabaseBrowserClient, isSupabaseUserAdmin } from "../lib/supabase";
 import { formatIdr } from "../lib/formatIdr";
+import { uploadBrandLogoFromAdmin } from "../lib/brandAssetUpload";
 
 const TABS = [
   { id: "brand", label: "Global & merek" },
@@ -69,8 +70,10 @@ export function AdminSettingsModal({
   const [promoBlockZero, setPromoBlockZero] = useState(false);
   const [promoLoadBusy, setPromoLoadBusy] = useState(false);
   const [promoSaveBusy, setPromoSaveBusy] = useState(false);
+  const [logoUploadBusy, setLogoUploadBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const wpRef = useRef<HTMLInputElement>(null);
+  const logoUploadRef = useRef<HTMLInputElement>(null);
 
   const s = data.settings;
   const lifetimeIdr = typeof s.lifetime_price_idr === "number" && Number.isFinite(s.lifetime_price_idr) ? s.lifetime_price_idr : 173000;
@@ -372,13 +375,72 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ siteName: e.target.value })}
                 />
               </Field>
-              <Field label="Logo URL">
+              <Field label="Logo / ikon merek (favicon, landing, app)">
                 <input
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
-                  placeholder="https://..."
+                  placeholder="https://… atau unggah ke Supabase Storage"
                   value={s.brandLogoUrl}
                   onChange={(e) => patchSettings({ brandLogoUrl: e.target.value })}
                 />
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={logoUploadBusy}
+                    onClick={() => logoUploadRef.current?.click()}
+                    className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 disabled:opacity-40 px-3 py-2 rounded-xl text-xs"
+                  >
+                    <Upload size={14} /> Unggah PNG / JPG / WebP / SVG
+                  </button>
+                  {s.brandLogoUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => patchSettings({ brandLogoUrl: "/brand-logo-default.png" })}
+                      className="inline-flex items-center gap-2 text-white/40 hover:text-white text-xs px-2"
+                    >
+                      <Trash2 size={14} /> Reset default
+                    </button>
+                  ) : null}
+                  <input
+                    ref={logoUploadRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = "";
+                      if (!f) return;
+                      void (async () => {
+                        setLogoUploadBusy(true);
+                        const r = await uploadBrandLogoFromAdmin(f);
+                        setLogoUploadBusy(false);
+                        if ("error" in r) {
+                          toast(r.error, "error");
+                          return;
+                        }
+                        patchSettings({ brandLogoUrl: r.publicUrl });
+                        toast("Logo diunggah. Klik Publikasikan agar URL ikut tersimpan di database & app.", "success");
+                      })();
+                    }}
+                  />
+                </div>
+                {s.brandLogoUrl ? (
+                  <div className="mt-3 flex items-start gap-3">
+                    <img
+                      src={s.brandLogoUrl}
+                      alt=""
+                      className="h-16 w-16 rounded-xl object-contain bg-white/5 border border-white/10 shrink-0"
+                    />
+                    <p className="text-[11px] text-white/40 leading-relaxed pt-1">
+                      Ikon aplikasi di Dock/Finder mengikuti file di <code className="text-white/55">src-tauri/icons</code> pada
+                      saat build. Logo ini dipakai di UI aplikasi, tab browser, dan halaman landing setelah konten dipublikasikan.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[11px] text-white/40 leading-relaxed">
+                    Unggah membutuhkan bucket <code className="text-white/55">macfyi_brand</code> (migrasi Supabase) dan masuk sebagai
+                    admin. Tanpa itu, tempel URL gambar yang sudah di-host.
+                  </p>
+                )}
               </Field>
               <div className="grid md:grid-cols-2 gap-4">
                 <Field label="Warna primer">

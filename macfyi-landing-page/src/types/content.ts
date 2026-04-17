@@ -183,7 +183,8 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   loginUrl: "https://app.macfyi.com/login",
   videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
   siteName: "Macfyi",
-  brandLogoUrl: "",
+  /** Default file di `public/`; ganti lewat admin (unggah atau URL). */
+  brandLogoUrl: "/brand-logo-default.png",
   contactEmail: "support@macfyi.com",
   whatsapp: "",
   instagramUrl: "",

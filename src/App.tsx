@@ -40,6 +40,7 @@ import { ActivationScreen } from "./components/ActivationScreen";
 import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
 import { isDemoMode, setDemoSession } from "./lib/demoSession";
 import { fetchPublicConfig } from "./lib/publicConfig";
+import { syncAppWebBrandingIcons } from "./lib/brandingHead";
 import { formatIdrShort } from "./lib/formatIdr";
 import { sendClientTelemetry } from "./lib/telemetry";
 import { MonitorDashboard } from "./components/MonitorDashboard";
@@ -281,6 +282,7 @@ export default function App() {
     () => shouldSkipLicenseGate() || !!getStoredLicenseToken() || isDemoMode()
   );
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
+  const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
   const [trashItems, setTrashItems] = useState<TrashListItem[] | null>(null);
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashLoadError, setTrashLoadError] = useState<string | null>(null);
@@ -389,13 +391,19 @@ export default function App() {
     });
   }, []);
 
-  /** Harga lifetime untuk CTA upgrade — mengikuti admin (`app_settings` → public-config). */
+  /** Harga lifetime + logo merek — dari `public-config` (landing yang dipublikasikan). */
   useEffect(() => {
     void fetchPublicConfig(false).then((cfg) => {
       const idr = cfg?.pricing?.lifetime_price_idr;
       if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
+      const logo = cfg?.brand?.logo_url?.trim();
+      setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
     });
   }, []);
+
+  useEffect(() => {
+    syncAppWebBrandingIcons(brandLogoUrl);
+  }, [brandLogoUrl]);
 
   /** Keep header disk stats in sync while Monitor is active (Monitor panel fetches its own detail). */
   useEffect(() => {
@@ -730,6 +738,7 @@ export default function App() {
   if (!licenseGatePassed) {
     return (
       <ActivationScreen
+        brandLogoUrl={brandLogoUrl}
         onActivated={() => setLicenseGatePassed(true)}
         onDemoStart={(token, rules) => {
           setDemoSession(token, rules);
@@ -912,6 +921,7 @@ export default function App() {
     <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)]">
       <AppShell
         title={t(activeTheme.shellTitleKey)}
+        brandLogoUrl={brandLogoUrl}
         activeFeature={activeFeature}
         onFeatureChange={(feature) => {
           setActiveFeature(feature);

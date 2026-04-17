@@ -1,5 +1,6 @@
 export type PublicConfig = {
   version: number;
+  brand?: { logo_url: string | null };
   pricing: { lifetime_price_idr: number; currency: string };
   download_url: string | null;
   checkout_success_base_url: string | null;

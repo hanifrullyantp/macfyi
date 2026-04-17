@@ -43,6 +43,7 @@ import { applyLifetimePriceIdrToContent, normalizePricingContent } from './lib/p
 import { formatIdr } from './lib/formatIdr';
 import { ScarcityBand } from './components/ScarcityBand';
 import { StorageImpactAnimation } from './components/StorageImpactAnimation';
+import { syncLandingBrandingTags } from './lib/brandingHead';
 
 type MacfyiPublicPromo = {
   active: boolean;
@@ -441,6 +442,10 @@ export function LandingApp() {
     }
     meta.setAttribute('content', data.settings.seoDescription);
   }, [data.settings.seoTitle, data.settings.seoDescription]);
+
+  useEffect(() => {
+    syncLandingBrandingTags(data.settings.brandLogoUrl ?? '', data.settings.ogImageUrl ?? '');
+  }, [data.settings.brandLogoUrl, data.settings.ogImageUrl]);
 
   useEffect(() => {
     if (data.settings.facebookPixelId?.trim()) injectFacebookPixel(data.settings.facebookPixelId);

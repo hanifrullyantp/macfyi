@@ -36,6 +36,18 @@ Deno.serve(async (req) => {
     .eq("id", "default")
     .maybeSingle();
 
+  const { data: landingRow } = await supabase.from("landing_site_content").select("content").eq("id", "default").maybeSingle();
+
+  let brand_logo_url: string | null = null;
+  try {
+    const c = landingRow?.content as Record<string, unknown> | null | undefined;
+    const settings = c?.settings as Record<string, unknown> | undefined;
+    const raw = typeof settings?.brandLogoUrl === "string" ? settings.brandLogoUrl.trim() : "";
+    brand_logo_url = raw.length > 0 ? raw : null;
+  } catch {
+    brand_logo_url = null;
+  }
+
   const cfgVersion = Number(app?.config_version ?? 1) || 1;
   const baseIdr = Number(app?.lifetime_price_idr) > 0 ? Number(app?.lifetime_price_idr) : 173000;
   const serverNow = new Date();
@@ -76,6 +88,9 @@ Deno.serve(async (req) => {
   const body = {
     version: cfgVersion,
     server_time: serverNow.toISOString(),
+    brand: {
+      logo_url: brand_logo_url,
+    },
     pricing: {
       lifetime_price_idr: effectiveIdr,
       currency: "IDR",
