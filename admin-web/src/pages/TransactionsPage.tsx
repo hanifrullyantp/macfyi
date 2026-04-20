@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { DataTable } from "../components/ui/DataTable";
 import { Button } from "../components/ui/Button";
 import { Card } from "../components/ui/Card";
+import { Skeleton } from "../components/ui/Skeleton";
+import { StatusBadge } from "../components/ui/StatusBadge";
 import { Drawer } from "../components/ui/Drawer";
 import { EmptyState } from "../components/shared/EmptyState";
 import { supabase } from "../supabase";
@@ -75,6 +77,33 @@ export default function TransactionsPage() {
     return { count: rows.length, paidCount: paid.length, paidSum: sum };
   }, [listQuery.data]);
 
+  const exportJson = () => {
+    const rows = listQuery.data ?? [];
+    const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), rows }, null, 2)], { type: "application/json;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `transactions-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.message("Exported current list as JSON");
+  };
+
+  const exportDrawerJson = () => {
+    if (!sel) return;
+    const snap = {
+      exportedAt: new Date().toISOString(),
+      transaction: sel,
+      payment_events: eventsQuery.data ?? [],
+    };
+    const blob = new Blob([JSON.stringify(snap, null, 2)], { type: "application/json;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `transaction-${sel.order_id.slice(0, 24)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.message("Exported drawer snapshot");
+  };
+
   const exportCsv = () => {
     const rows = listQuery.data ?? [];
     const h = ["id", "order_id", "email", "gross_amount_idr", "status", "affiliate_id", "created_at", "coupon_code", "discount_idr"];
@@ -108,7 +137,11 @@ export default function TransactionsPage() {
       },
       { accessorKey: "email", header: "Email", cell: (c) => <span className="text-[11px]">{c.getValue() as string}</span> },
       { accessorKey: "gross_amount_idr", header: "Gross", cell: (c) => formatIdr(c.getValue() as number) },
-      { accessorKey: "status", header: "Status" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: (c) => <StatusBadge status={String(c.getValue())} />,
+      },
       { accessorKey: "created_at", header: "Created", cell: (c) => <span className="text-[11px] text-zinc-500">{(c.getValue() as string).slice(0, 19)}</span> },
     ],
     [],
@@ -166,15 +199,29 @@ export default function TransactionsPage() {
         <Button variant="ghost" size="sm" onClick={() => exportCsv()}>
           Export CSV
         </Button>
+        <Button variant="ghost" size="sm" onClick={() => exportJson()}>
+          Export JSON
+        </Button>
       </Card>
 
       {listQuery.isError ? <p className="text-sm text-red-400">{(listQuery.error as Error).message}</p> : null}
 
-      <DataTable data={listQuery.data ?? []} columns={columns} getRowId={(r) => r.id} empty={<EmptyState title="No rows" />} />
+      {listQuery.isLoading ? (
+        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+      ) : (
+        <DataTable data={listQuery.data ?? []} columns={columns} getRowId={(r) => r.id} empty={<EmptyState title="No rows" />} />
+      )}
 
       <Drawer open={Boolean(sel)} onOpenChange={(o) => !o && setSel(null)} title="Transaction detail">
         {sel ? (
           <div className="space-y-3 text-sm">
+            <Button variant="secondary" size="sm" type="button" onClick={() => exportDrawerJson()}>
+              Export JSON (row + events)
+            </Button>
             <pre className="overflow-auto rounded-lg bg-zinc-950 p-3 text-[11px] text-zinc-400">{JSON.stringify(sel, null, 2)}</pre>
             <div className="text-xs font-medium text-zinc-300">payment_events (best-effort)</div>
             {eventsQuery.isLoading ? (

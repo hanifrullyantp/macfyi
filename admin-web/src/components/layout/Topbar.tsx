@@ -1,6 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { Bell, Menu, Moon, PanelLeftClose, PanelLeft, Search, Sun } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { breadcrumbFromPath } from "../../lib/navigation";
 import { useAppUi } from "../../store/appUi";
 import { Button } from "../ui/Button";
@@ -22,6 +24,17 @@ export function Topbar({
   const crumbs = useMemo(() => breadcrumbFromPath(pathname), [pathname]);
   const { theme, setTheme, sidebarCollapsed, setSidebarCollapsed } = useAppUi();
   const [q, setQ] = useState("");
+  const debouncedQ = useDebouncedValue(q.trim(), 300);
+
+  const previewQ = useQuery({
+    queryKey: ["topbar", "license-count", debouncedQ],
+    enabled: debouncedQ.length >= 3,
+    queryFn: async () => {
+      const { count, error } = await supabase.from("licenses").select("id", { count: "exact", head: true }).ilike("email", `%${debouncedQ}%`);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
 
   const runSearch = () => {
     const t = q.trim();
@@ -70,18 +83,25 @@ export function Topbar({
           </span>
         ))}
       </nav>
-      <div className="flex flex-1 min-w-[200px] max-w-md items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2">
-        <Search className="w-4 h-4 text-zinc-500 shrink-0" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && runSearch()}
-          placeholder="Search license email…"
-          className="flex-1 min-w-0 bg-transparent py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
-        />
-        <Button variant="ghost" size="sm" className="shrink-0" onClick={() => runSearch()}>
-          Go
-        </Button>
+      <div className="flex min-w-[200px] max-w-md flex-1 flex-col gap-0.5">
+        <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2">
+          <Search className="h-4 w-4 shrink-0 text-zinc-500" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && runSearch()}
+            placeholder="Search license email…"
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
+          />
+          <Button variant="ghost" size="sm" className="shrink-0" onClick={() => runSearch()}>
+            Go
+          </Button>
+        </div>
+        {debouncedQ.length >= 3 ? (
+          <p className="px-1 text-[10px] text-zinc-500">
+            {previewQ.isFetching ? "Counting matches…" : previewQ.isError ? "Preview unavailable" : `${previewQ.data ?? 0} license(s) match (debounced 300ms)`}
+          </p>
+        ) : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
         <UserBar email={sessionEmail} onSignOut={onSignOut} />

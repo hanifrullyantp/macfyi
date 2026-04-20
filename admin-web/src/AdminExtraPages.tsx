@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { StatusBadge } from "./components/ui/StatusBadge";
 import { supabase } from "./supabase";
 
 export { CrmHubAdmin } from "./CrmHub";
@@ -82,7 +83,9 @@ export function WithdrawalsAdmin({ session }: { session: Session }) {
               <tr key={r.id} className="border-b border-zinc-800/80">
                 <td className="p-2 font-mono text-xs">{r.slug}</td>
                 <td className="p-2">Rp {(Number(r.amount_idr) || 0).toLocaleString("id-ID")}</td>
-                <td className="p-2">{r.status}</td>
+                <td className="p-2">
+                  <StatusBadge status={r.status} />
+                </td>
                 <td className="p-2 flex flex-wrap gap-1">
                   {r.status === "pending" && (
                     <>
@@ -165,7 +168,9 @@ export function AffiliatesAdmin() {
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-zinc-800/80">
                 <td className="p-2 font-mono text-xs">{r.slug}</td>
-                <td className="p-2">{r.status}</td>
+                <td className="p-2">
+                  <StatusBadge status={r.status} />
+                </td>
                 <td className="p-2">{r.total_sales}</td>
                 <td className="p-2 text-xs">
                   {Number(r.balance_available_idr).toLocaleString("id-ID")} / {Number(r.balance_pending_idr).toLocaleString("id-ID")}

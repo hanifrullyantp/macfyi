@@ -5,6 +5,8 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { DataTable } from "../components/ui/DataTable";
 import { Button } from "../components/ui/Button";
+import { Skeleton } from "../components/ui/Skeleton";
+import { StatusBadge } from "../components/ui/StatusBadge";
 import { Drawer } from "../components/ui/Drawer";
 import { Card } from "../components/ui/Card";
 import { CopyButton } from "../components/shared/CopyButton";
@@ -74,7 +76,26 @@ export default function LicensesPage() {
       ]);
       if (act.error) throw act.error;
       if (tx.error) throw tx.error;
-      return { license, activation: act.data, txs: tx.data ?? [] };
+      const txs = (tx.data ?? []) as Record<string, unknown>[];
+      const orderIds = [...new Set(txs.map((t) => String(t.order_id ?? "").trim()).filter(Boolean))];
+      let paymentEvents: Record<string, unknown>[] = [];
+      if (orderIds.length) {
+        const evRes = await supabase.from("payment_events").select("id, provider, payload, processed, created_at").order("created_at", { ascending: false }).limit(500);
+        if (!evRes.error && evRes.data) {
+          paymentEvents = (evRes.data as Record<string, unknown>[]).filter((e) =>
+            orderIds.some((oid) => {
+              const p = e.payload;
+              if (p && typeof p === "object" && "order_id" in p) return String((p as { order_id?: string }).order_id) === oid;
+              try {
+                return JSON.stringify(p).includes(oid);
+              } catch {
+                return false;
+              }
+            }),
+          );
+        }
+      }
+      return { license, activation: act.data, txs, paymentEvents };
     },
   });
 
@@ -135,7 +156,11 @@ export default function LicensesPage() {
   const columns = useMemo<ColumnDef<LicenseRow>[]>(
     () => [
       { accessorKey: "email", header: "Email", cell: (c) => <span className="font-mono text-[11px]">{c.getValue() as string}</span> },
-      { accessorKey: "status", header: "Status" },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: (c) => <StatusBadge status={String(c.getValue())} />,
+      },
       {
         accessorKey: "license_key_hash",
         header: "Key (hash)",
@@ -213,12 +238,22 @@ export default function LicensesPage() {
 
       {listQuery.isError ? <p className="text-sm text-red-400">{(listQuery.error as Error).message}</p> : null}
 
-      <DataTable
-        data={rows}
-        columns={columns}
-        getRowId={(r) => r.id}
-        empty={<EmptyState title="No licenses" description="Try clearing the email filter." />}
-      />
+      {listQuery.isLoading ? (
+        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-9 w-full" />
+          ))}
+        </div>
+      ) : null}
+
+      {!listQuery.isLoading ? (
+        <DataTable
+          data={rows}
+          columns={columns}
+          getRowId={(r) => r.id}
+          empty={<EmptyState title="No licenses" description="Try clearing the email filter." />}
+        />
+      ) : null}
 
       <div className="flex items-center justify-between text-xs text-zinc-500">
         <span>
@@ -249,7 +284,7 @@ export default function LicensesPage() {
                 <span className="break-all font-mono text-[11px] text-zinc-400">
                   {(detailQuery.data.license as { license_key_hash: string }).license_key_hash}
                 </span>
-                <CopyButton text={(detailQuery.data.license as { license_key_hash: string }).license_key_hash} label="Copy" />
+                <CopyButton text={(detailQuery.data.license as { license_key_hash: string }).license_key_hash} title="Copy" />
               </div>
             </div>
             {detailQuery.data.activation ? (
@@ -271,6 +306,20 @@ export default function LicensesPage() {
                   </li>
                 ))}
               </ul>
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500 mb-1">payment_events (same order_ids)</div>
+              {(detailQuery.data.paymentEvents as Record<string, unknown>[] | undefined)?.length ? (
+                <ul className="max-h-48 space-y-1 overflow-auto text-[10px]">
+                  {(detailQuery.data.paymentEvents as Record<string, unknown>[]).map((e) => (
+                    <li key={String(e.id)} className="rounded border border-zinc-800 px-2 py-1 font-mono text-zinc-400">
+                      {String(e.created_at ?? "").slice(0, 19)} · {String(e.provider)} · {String(e.id).slice(0, 24)}…
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-xs text-zinc-500">No matching events (or table unavailable).</p>
+              )}
             </div>
           </div>
         ) : (

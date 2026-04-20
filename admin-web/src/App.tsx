@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
+import { RouteErrorBoundary } from "./components/shared/RouteErrorBoundary";
 import { LEGACY_REDIRECTS } from "./lib/navigation";
 import { supabase, supabaseConfigured } from "./supabase";
 
@@ -128,7 +129,7 @@ export function App() {
   return (
     <Suspense fallback={<SuspenseFallback />}>
       <Routes>
-        <Route element={<AppLayout session={session} onSignOut={signOut} />}>
+        <Route element={<AppLayout session={session} onSignOut={signOut} />} errorElement={<RouteErrorBoundary />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="licenses" element={<LicensesPage />} />

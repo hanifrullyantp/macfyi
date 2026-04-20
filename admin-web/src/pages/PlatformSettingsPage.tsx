@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
-import { GROUP_ORDER, groupKeyForSetting, PLATFORM_SETTING_GROUPS } from "../lib/platformSettingsMeta";
+import { GROUP_ORDER, groupKeyForSetting, PLATFORM_SETTING_GROUPS, PLATFORM_SETTING_HINTS } from "../lib/platformSettingsMeta";
 import { supabase } from "../supabase";
 
 type Row = { key: string; value: unknown };
@@ -82,6 +82,7 @@ export default function PlatformSettingsPage() {
               {list.map((r) => (
                 <li key={r.key} className="rounded-lg border border-zinc-800 p-3">
                   <div className="mb-1 font-mono text-[11px] text-zinc-400">{r.key}</div>
+                  {PLATFORM_SETTING_HINTS[r.key] ? <p className="mb-2 text-[11px] leading-relaxed text-zinc-500">{PLATFORM_SETTING_HINTS[r.key]}</p> : null}
                   <textarea
                     className="min-h-[48px] w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 font-mono text-xs"
                     value={edit[r.key] ?? ""}

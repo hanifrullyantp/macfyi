@@ -27,7 +27,9 @@ const SECTION_KEYS = [
   "legal",
 ] as const;
 
-type AdminMeta = { sectionOrder?: string[] };
+const LANDING_DRAFT_KEY = "macfyi.admin.landingDraft";
+
+type AdminMeta = { sectionOrder?: string[]; hiddenSections?: string[] };
 
 function getAdminMeta(c: Record<string, unknown>): AdminMeta {
   const a = c._admin;
@@ -35,7 +37,17 @@ function getAdminMeta(c: Record<string, unknown>): AdminMeta {
   return {};
 }
 
-function SortableRow({ id, label }: { id: string; label: string }) {
+function SortableRow({
+  id,
+  label,
+  hidden,
+  onToggleHidden,
+}: {
+  id: string;
+  label: string;
+  hidden: boolean;
+  onToggleHidden: () => void;
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : 1 };
   return (
@@ -45,6 +57,10 @@ function SortableRow({ id, label }: { id: string; label: string }) {
       </button>
       <span className="font-mono text-xs text-violet-300">{id}</span>
       <span className="text-xs text-zinc-500">{label}</span>
+      <label className="ml-auto flex cursor-pointer items-center gap-1.5 text-[11px] text-zinc-400">
+        <input type="checkbox" className="rounded border-zinc-600" checked={hidden} onChange={onToggleHidden} />
+        hidden
+      </label>
     </div>
   );
 }
@@ -87,6 +103,71 @@ export default function LandingEditorPage() {
       next._admin = admin;
       return next;
     });
+  };
+
+  const hiddenSet = useMemo(() => new Set(getAdminMeta(content).hiddenSections ?? []), [content]);
+
+  const toggleSectionHidden = (sectionId: string) => {
+    setDraft((prev) => {
+      const next = { ...(prev ?? baseContent) };
+      const meta = getAdminMeta(next);
+      const cur = new Set(meta.hiddenSections ?? []);
+      if (cur.has(sectionId)) cur.delete(sectionId);
+      else cur.add(sectionId);
+      next._admin = { ...meta, hiddenSections: [...cur] };
+      return next;
+    });
+  };
+
+  const [localDraftNotice, setLocalDraftNotice] = useState<"none" | "available">("none");
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(LANDING_DRAFT_KEY);
+      setLocalDraftNotice(raw ? "available" : "none");
+    } catch {
+      setLocalDraftNotice("none");
+    }
+  }, [q.data?.updated_at]);
+
+  const saveDraftLocally = () => {
+    try {
+      const body = { savedAt: new Date().toISOString(), content: draft ?? baseContent };
+      localStorage.setItem(LANDING_DRAFT_KEY, JSON.stringify(body));
+      setLocalDraftNotice("available");
+      toast.success("Draft saved in this browser only");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save draft");
+    }
+  };
+
+  const clearLocalDraft = () => {
+    try {
+      localStorage.removeItem(LANDING_DRAFT_KEY);
+      setLocalDraftNotice("none");
+      toast.message("Local draft cleared");
+    } catch {
+      /* */
+    }
+  };
+
+  const mergeLocalDraft = () => {
+    try {
+      const raw = localStorage.getItem(LANDING_DRAFT_KEY);
+      if (!raw) {
+        toast.error("No local draft");
+        return;
+      }
+      const parsed = JSON.parse(raw) as { content?: Record<string, unknown> };
+      if (!parsed.content || typeof parsed.content !== "object") {
+        toast.error("Invalid draft shape");
+        return;
+      }
+      setDraft({ ...baseContent, ...parsed.content });
+      toast.success("Merged local draft into editor (review before Save to server)");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Invalid draft JSON");
+    }
   };
 
   const hero = (content.hero && typeof content.hero === "object" ? content.hero : {}) as Record<string, string>;
@@ -175,14 +256,31 @@ export default function LandingEditorPage() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Landing page editor</h1>
           <p className="mt-1 text-sm text-zinc-500">
-            Section order stored under <code className="text-zinc-400">content._admin.sectionOrder</code>. Version history table not in schema — MVP uses{" "}
-            <code className="text-zinc-400">updated_at</code> only.
+            Section order and visibility under <code className="text-zinc-400">content._admin</code> (<code className="text-zinc-400">sectionOrder</code>,{" "}
+            <code className="text-zinc-400">hiddenSections</code>). Local draft stays in <code className="text-zinc-400">localStorage</code> only — merge when you intend to publish.
           </p>
         </div>
-        <Button variant="primary" disabled={saveMut.isPending} onClick={() => void saveMut.mutateAsync()}>
-          Save
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm" type="button" onClick={() => saveDraftLocally()}>
+            Save draft locally
+          </Button>
+          <Button variant="ghost" size="sm" type="button" onClick={() => clearLocalDraft()}>
+            Clear local draft
+          </Button>
+          <Button variant="primary" disabled={saveMut.isPending} onClick={() => void saveMut.mutateAsync()}>
+            Save to server
+          </Button>
+        </div>
       </div>
+
+      {localDraftNotice === "available" ? (
+        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-amber-900/40 bg-amber-950/20 px-3 py-2 text-xs text-amber-200/90">
+          <span>A saved local draft exists in this browser.</span>
+          <Button variant="secondary" size="sm" type="button" onClick={() => mergeLocalDraft()}>
+            Merge draft into editor
+          </Button>
+        </div>
+      ) : null}
 
       {q.data?.updated_at ? <p className="text-xs text-zinc-500">Last updated: {q.data.updated_at}</p> : null}
 
@@ -192,14 +290,27 @@ export default function LandingEditorPage() {
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={sectionOrder} strategy={verticalListSortingStrategy}>
               {sectionOrder.map((id) => (
-                <SortableRow key={id} id={id} label="block" />
+                <SortableRow
+                  key={id}
+                  id={id}
+                  label="block"
+                  hidden={hiddenSet.has(id)}
+                  onToggleHidden={() => toggleSectionHidden(id)}
+                />
               ))}
             </SortableContext>
           </DndContext>
         </Card>
 
         <Card className="p-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-200">Preview</h2>
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium text-zinc-200">Preview</h2>
+            {previewUrl ? (
+              <Button variant="secondary" size="sm" type="button" onClick={() => window.open(previewUrl, "_blank", "noopener,noreferrer")}>
+                Open preview in new tab
+              </Button>
+            ) : null}
+          </div>
           {previewUrl ? (
             <iframe title="Landing preview" src={previewUrl} className="h-80 w-full rounded-lg border border-zinc-800 bg-white" />
           ) : (
