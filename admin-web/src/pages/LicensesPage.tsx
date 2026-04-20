@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { DataTable } from "../components/ui/DataTable";
@@ -31,6 +31,11 @@ export default function LicensesPage() {
   const [sp, setSp] = useSearchParams();
   const qEmail = sp.get("q") ?? "";
   const [filter, setFilter] = useState(qEmail);
+
+  useEffect(() => {
+    setFilter(qEmail);
+    setPage(0);
+  }, [qEmail]);
   const [page, setPage] = useState(0);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [revokeId, setRevokeId] = useState<string | null>(null);
