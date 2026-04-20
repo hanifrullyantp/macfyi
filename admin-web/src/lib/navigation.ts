@@ -90,6 +90,13 @@ export const LEGACY_REDIRECTS: Record<string, string> = {
   "/wa-templates": "/wa-templates",
 };
 
+/** Strip query/hash and trailing slash so breadcrumbs match NAV routes. */
+export function normalizePathname(pathname: string): string {
+  let p = pathname.split(/[?#]/)[0] ?? pathname;
+  if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
+  return p || "/";
+}
+
 export function breadcrumbFromPath(pathname: string): string[] {
   const map: Record<string, string> = {
     "/": "Dashboard",

@@ -1,4 +1,4 @@
-import { lazy, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -6,25 +6,25 @@ import { RouteErrorBoundary } from "./components/shared/RouteErrorBoundary";
 import { LEGACY_REDIRECTS } from "./lib/navigation";
 import { supabase, supabaseConfigured } from "./supabase";
 
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const LicensesPage = lazy(() => import("./pages/LicensesPage"));
-const TransactionsPage = lazy(() => import("./pages/TransactionsPage"));
-const PromoAndPricingPage = lazy(() => import("./pages/PromoAndPricingPage"));
-const AppSettingsPage = lazy(() => import("./pages/AppSettingsPage"));
-const LandingEditorPage = lazy(() => import("./pages/LandingEditorPage"));
-const AnalyticsPage = lazy(() => import("./pages/AnalyticsPage"));
-const LiveActivityPage = lazy(() => import("./pages/LiveActivityPage"));
-const AffiliatesPage = lazy(() => import("./pages/AffiliatesPage"));
-const WithdrawalsPage = lazy(() => import("./pages/WithdrawalsPage"));
-const CrmPage = lazy(() => import("./pages/CrmPage"));
-const PlatformSettingsPage = lazy(() => import("./pages/PlatformSettingsPage"));
-const EdgeFunctionsPage = lazy(() => import("./pages/EdgeFunctionsPage"));
-const AdminUsersPage = lazy(() => import("./pages/AdminUsersPage"));
-const LogsPage = lazy(() => import("./pages/LogsPage"));
-const MarketingPage = lazy(() => import("./pages/MarketingPage"));
-const EventsPage = lazy(() => import("./pages/EventsPage"));
-const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
-const WaTemplatesPage = lazy(() => import("./pages/WaTemplatesPage"));
+import AdminUsersPage from "./pages/AdminUsersPage";
+import AffiliatesPage from "./pages/AffiliatesPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import AnnouncementsPage from "./pages/AnnouncementsPage";
+import AppSettingsPage from "./pages/AppSettingsPage";
+import CrmPage from "./pages/CrmPage";
+import DashboardPage from "./pages/DashboardPage";
+import EdgeFunctionsPage from "./pages/EdgeFunctionsPage";
+import EventsPage from "./pages/EventsPage";
+import LandingEditorPage from "./pages/LandingEditorPage";
+import LicensesPage from "./pages/LicensesPage";
+import LiveActivityPage from "./pages/LiveActivityPage";
+import LogsPage from "./pages/LogsPage";
+import MarketingPage from "./pages/MarketingPage";
+import PlatformSettingsPage from "./pages/PlatformSettingsPage";
+import PromoAndPricingPage from "./pages/PromoAndPricingPage";
+import TransactionsPage from "./pages/TransactionsPage";
+import WaTemplatesPage from "./pages/WaTemplatesPage";
+import WithdrawalsPage from "./pages/WithdrawalsPage";
 
 function isAdmin(session: Session | null): boolean {
   return session?.user.app_metadata?.role === "admin";
@@ -71,7 +71,7 @@ export function App() {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-900/80 p-8 shadow-xl">
-          <h1 className="text-xl font-semibold text-white">Macfyi Admin</h1>
+          <h1 className="text-xl font-semibold text-white">MacFYI Admin</h1>
           <p className="mt-2 text-sm text-zinc-400">Sign in with a Supabase user that has app_metadata.role = &quot;admin&quot;.</p>
           <div className="mt-6 space-y-3">
             <label className="block text-xs uppercase tracking-wide text-zinc-500">Email</label>

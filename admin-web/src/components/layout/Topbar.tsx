@@ -3,7 +3,7 @@ import { Bell, Menu, Moon, PanelLeftClose, PanelLeft, Search, Sun } from "lucide
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
-import { breadcrumbFromPath } from "../../lib/navigation";
+import { breadcrumbFromPath, normalizePathname } from "../../lib/navigation";
 import { useAppUi } from "../../store/appUi";
 import { Button } from "../ui/Button";
 import { supabase } from "../../supabase";
@@ -21,7 +21,7 @@ export function Topbar({
 }) {
   const { pathname } = useLocation();
   const nav = useNavigate();
-  const crumbs = useMemo(() => breadcrumbFromPath(pathname), [pathname]);
+  const crumbs = useMemo(() => breadcrumbFromPath(normalizePathname(pathname)), [pathname]);
   const { theme, setTheme, sidebarCollapsed, setSidebarCollapsed } = useAppUi();
   const [q, setQ] = useState("");
   const debouncedQ = useDebouncedValue(q.trim(), 300);

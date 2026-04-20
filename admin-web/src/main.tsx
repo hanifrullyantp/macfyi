@@ -9,12 +9,14 @@ import { App } from "./App";
 import { queryClient } from "./lib/queryClient";
 import { AppUiProvider } from "./store/appUi";
 
+const routerBasename = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <Tooltip.Provider delayDuration={200}>
         <AppUiProvider>
-          <BrowserRouter>
+          <BrowserRouter basename={routerBasename === "/" ? undefined : routerBasename}>
             <App />
             <Toaster richColors position="bottom-right" closeButton duration={4000} />
           </BrowserRouter>
