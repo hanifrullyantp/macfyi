@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import type { Session } from "@supabase/supabase-js";
 import { useAppUi } from "../../store/appUi";
@@ -18,7 +19,7 @@ export function AppLayout({
   return (
     <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
       <div className="flex min-h-0 flex-1">
-        <div className="hidden shrink-0 lg:block">
+        <div className="relative z-20 hidden h-full min-h-0 shrink-0 lg:block">
           <Sidebar />
         </div>
         {mobileNavOpen ? (
@@ -45,8 +46,16 @@ export function AppLayout({
             onSignOut={() => void onSignOut()}
             onOpenMobileNav={() => setMobileNavOpen(true)}
           />
-          <main className="min-h-0 flex-1 overflow-auto p-4 md:p-6">
-            <Outlet context={{ session } satisfies { session: Session }} />
+          <main className="relative z-0 min-h-0 flex-1 overflow-auto p-4 md:p-6">
+            <Suspense
+              fallback={
+                <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-500" aria-busy>
+                  Loading…
+                </div>
+              }
+            >
+              <Outlet context={{ session } satisfies { session: Session }} />
+            </Suspense>
           </main>
           <StatusBar />
         </div>

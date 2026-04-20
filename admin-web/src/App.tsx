@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppLayout } from "./components/layout/AppLayout";
@@ -28,14 +28,6 @@ const WaTemplatesPage = lazy(() => import("./pages/WaTemplatesPage"));
 
 function isAdmin(session: Session | null): boolean {
   return session?.user.app_metadata?.role === "admin";
-}
-
-function SuspenseFallback() {
-  return (
-    <div className="flex min-h-[40vh] items-center justify-center text-sm text-zinc-500" aria-busy>
-      Loading…
-    </div>
-  );
 }
 
 export function App() {
@@ -127,35 +119,33 @@ export function App() {
   }
 
   return (
-    <Suspense fallback={<SuspenseFallback />}>
-      <Routes>
-        <Route element={<AppLayout session={session} onSignOut={signOut} />} errorElement={<RouteErrorBoundary />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          <Route path="licenses" element={<LicensesPage />} />
-          <Route path="transactions" element={<TransactionsPage />} />
-          <Route path="promo-pricing" element={<PromoAndPricingPage />} />
-          <Route path="app-settings" element={<AppSettingsPage />} />
-          <Route path="landing" element={<LandingEditorPage />} />
-          <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="live" element={<LiveActivityPage />} />
-          <Route path="affiliates" element={<AffiliatesPage />} />
-          <Route path="withdrawals" element={<WithdrawalsPage />} />
-          <Route path="crm" element={<CrmPage />} />
-          <Route path="platform" element={<PlatformSettingsPage />} />
-          <Route path="edge-functions" element={<EdgeFunctionsPage />} />
-          <Route path="admin-users" element={<AdminUsersPage />} />
-          <Route path="logs" element={<LogsPage />} />
-          <Route path="marketing" element={<MarketingPage />} />
-          <Route path="events" element={<EventsPage />} />
-          <Route path="announcements" element={<AnnouncementsPage />} />
-          <Route path="wa-templates" element={<WaTemplatesPage />} />
-        </Route>
-        {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
-          <Route key={from} path={from.replace(/^\//, "")} element={<Navigate to={to} replace />} />
-        ))}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route element={<AppLayout session={session} onSignOut={signOut} />} errorElement={<RouteErrorBoundary />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="licenses" element={<LicensesPage />} />
+        <Route path="transactions" element={<TransactionsPage />} />
+        <Route path="promo-pricing" element={<PromoAndPricingPage />} />
+        <Route path="app-settings" element={<AppSettingsPage />} />
+        <Route path="landing" element={<LandingEditorPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="live" element={<LiveActivityPage />} />
+        <Route path="affiliates" element={<AffiliatesPage />} />
+        <Route path="withdrawals" element={<WithdrawalsPage />} />
+        <Route path="crm" element={<CrmPage />} />
+        <Route path="platform" element={<PlatformSettingsPage />} />
+        <Route path="edge-functions" element={<EdgeFunctionsPage />} />
+        <Route path="admin-users" element={<AdminUsersPage />} />
+        <Route path="logs" element={<LogsPage />} />
+        <Route path="marketing" element={<MarketingPage />} />
+        <Route path="events" element={<EventsPage />} />
+        <Route path="announcements" element={<AnnouncementsPage />} />
+        <Route path="wa-templates" element={<WaTemplatesPage />} />
+      </Route>
+      {Object.entries(LEGACY_REDIRECTS).map(([from, to]) => (
+        <Route key={from} path={from.replace(/^\//, "")} element={<Navigate to={to} replace />} />
+      ))}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
   );
 }
