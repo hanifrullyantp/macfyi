@@ -32,6 +32,20 @@ export interface SiteSettings {
   pixelSendMeta: boolean;
   pixelSendGa: boolean;
   pixelSendTiktok: boolean;
+  /**
+   * Meta (Facebook) standard event per step.
+   * Kosong / "none" berarti tidak mengirim standard event untuk step tsb (custom `macfyi_*` tetap bisa jalan).
+   */
+  metaEventOnPageOpen: string;
+  metaEventOnPricingCta: string;
+  metaEventOnDemoModalOpen: string;
+  metaEventOnDemoSubmit: string;
+  metaEventOnLeadFormVisible: string;
+  metaEventOnLeadFormSubmit: string;
+  metaEventOnCheckoutNav: string;
+  metaEventOnCheckoutFormVisible: string;
+  metaEventOnCheckoutFormSubmit: string;
+  metaEventOnPurchaseCompleted: string;
   faqSingleOpen: boolean;
   privacyPolicyUrl: string;
   termsUrl: string;
@@ -222,6 +236,16 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   pixelSendMeta: true,
   pixelSendGa: true,
   pixelSendTiktok: true,
+  metaEventOnPageOpen: "PageView",
+  metaEventOnPricingCta: "InitiateCheckout",
+  metaEventOnDemoModalOpen: "Lead",
+  metaEventOnDemoSubmit: "CompleteRegistration",
+  metaEventOnLeadFormVisible: "ViewContent",
+  metaEventOnLeadFormSubmit: "Lead",
+  metaEventOnCheckoutNav: "InitiateCheckout",
+  metaEventOnCheckoutFormVisible: "AddPaymentInfo",
+  metaEventOnCheckoutFormSubmit: "AddPaymentInfo",
+  metaEventOnPurchaseCompleted: "Purchase",
   faqSingleOpen: true,
   privacyPolicyUrl: "/privacy",
   termsUrl: "/terms",
