@@ -9,6 +9,7 @@ import {
   HardDrive,
   PackageOpen,
   Search,
+  FolderTree,
   Settings,
   User,
   Sparkles,
@@ -18,6 +19,7 @@ import {
 } from "lucide-react";
 import { ScanOrbButton, type OrbDisplayMode } from "./ScanOrbButton";
 import { useI18n } from "../i18n/context";
+import { DEFAULT_BRAND_LOGO_URL } from "../lib/defaultBrandLogo";
 
 export type FeatureId =
   | "smart-care"
@@ -27,14 +29,17 @@ export type FeatureId =
   | "user-trash"
   | "monitor"
   | "performance"
+  | "disk-explorer"
   | "history"
   | "settings";
 
 interface AppShellProps {
   children: ReactNode;
   title?: string;
-  /** Logo dari landing (public-config); ikon dock macOS tetap dari build Tauri. */
+  /** Logo dari landing (public-config); jika kosong memakai mark bawaan aplikasi. */
   brandLogoUrl?: string | null;
+  /** Teks proses latar (manusiawi) di atas area bawah / orb. */
+  footerActivity?: string | null;
   activeFeature: FeatureId;
   onFeatureChange: (feature: FeatureId) => void;
   orbMode: OrbDisplayMode;
@@ -73,6 +78,7 @@ const FEATURE_ITEMS: FeatureItem[] = [
   { id: "smart-care", label: "shell.smartCare", icon: Sparkles, group: "maintenance" },
   { id: "cleanup", label: "shell.cleanup", icon: Trash, group: "maintenance" },
   { id: "my-clutter", label: "shell.myClutter", icon: CircleDashed, group: "maintenance" },
+  { id: "disk-explorer", label: "shell.diskExplorer", icon: FolderTree, group: "maintenance" },
   { id: "uninstaller", label: "shell.uninstaller", icon: PackageOpen, group: "maintenance" },
   { id: "user-trash", label: "shell.userTrash", icon: Trash2, group: "maintenance" },
   { id: "monitor", label: "shell.monitor", icon: Activity, group: "insights" },
@@ -101,6 +107,7 @@ export const AppShell = ({
   children,
   title,
   brandLogoUrl = null,
+  footerActivity = null,
   activeFeature,
   onFeatureChange,
   orbMode,
@@ -169,6 +176,9 @@ export const AppShell = ({
   const diskFreeLabel =
     freeSpaceGb != null && freeSpaceGb.length > 0 ? t("shell.diskFree", { n: freeSpaceGb }) : null;
 
+  const logoSrc =
+    typeof brandLogoUrl === "string" && brandLogoUrl.trim().length > 0 ? brandLogoUrl.trim() : DEFAULT_BRAND_LOGO_URL;
+
   return (
     <div className="flex h-full w-full min-h-0 bg-[var(--color-bg)] text-white">
       {/* Sidebar */}
@@ -180,21 +190,17 @@ export const AppShell = ({
         <div className={`flex items-center mb-2 px-1 ${collapsed ? "flex-col gap-2" : "justify-between"}`}>
           {!collapsed && (
             <div className="flex items-center gap-2 min-w-0">
-              {brandLogoUrl ? (
-                <img
-                  src={brandLogoUrl}
-                  alt=""
-                  className="h-7 w-7 rounded-lg object-contain bg-white/5 border border-white/10 shrink-0"
-                />
-              ) : (
-                <span className="h-2 w-2 rounded-full bg-[var(--color-brand-glow)]/80 shadow-[0_0_10px_rgba(199,92,82,0.28)] shrink-0" />
-              )}
+              <img
+                src={logoSrc}
+                alt=""
+                className="h-7 w-7 rounded-lg object-contain bg-white/5 border border-white/10 shrink-0"
+              />
               <span className="text-[11px] font-semibold text-white/80 tracking-wide truncate">{t("appName")}</span>
             </div>
           )}
-          {collapsed && brandLogoUrl ? (
+          {collapsed ? (
             <img
-              src={brandLogoUrl}
+              src={logoSrc}
               alt=""
               className="h-9 w-9 rounded-lg object-contain bg-white/5 border border-white/10"
             />
@@ -370,6 +376,22 @@ export const AppShell = ({
             )}
             <div className="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">{children}</div>
           </main>
+
+          {footerActivity ? (
+            <div
+              className={`pointer-events-none fixed left-0 right-0 z-[55] px-4 sm:px-6 ${
+                showScanOrb ? "bottom-[5.75rem] sm:bottom-24 max-md:bottom-[6.25rem]" : "bottom-3"
+              }`}
+            >
+              <p
+                className="mx-auto max-w-3xl rounded-xl border border-white/10 bg-black/55 px-3 py-2 text-center text-[11px] leading-snug text-white/65 backdrop-blur-md shadow-lg"
+                role="status"
+                aria-live="polite"
+              >
+                {footerActivity}
+              </p>
+            </div>
+          ) : null}
 
           {showScanOrb && (
             <div className="fixed left-5 bottom-5 md:left-6 md:bottom-6 z-[60] pointer-events-none max-md:left-1/2 max-md:-translate-x-1/2 max-md:bottom-5">

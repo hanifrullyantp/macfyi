@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import {
@@ -10,6 +10,8 @@ import {
 } from "../lib/formValidation";
 import { getMacfyiVisitorId, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
+import { fireConversionPixels } from "../lib/conversionPixels";
+import type { SiteSettings } from "../types/content";
 
 type AuthTab = "register" | "login";
 
@@ -17,10 +19,14 @@ export function DemoRequestModal({
   open,
   onClose,
   toast,
+  settings,
+  demoSource,
 }: {
   open: boolean;
   onClose: () => void;
   toast: (msg: string, type?: "info" | "success" | "error") => void;
+  settings: SiteSettings;
+  demoSource: string;
 }) {
   const [authTab, setAuthTab] = useState<AuthTab>("register");
   const [name, setName] = useState("");
@@ -30,6 +36,14 @@ export function DemoRequestModal({
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+
+  useEffect(() => {
+    if (!open) return;
+    fireConversionPixels(settingsRef.current, "demo_modal_open", { source: demoSource });
+    queueSiteEvent("demo_modal_open", { source: demoSource });
+  }, [open, demoSource]);
 
   if (!open) return null;
 
@@ -72,6 +86,8 @@ export function DemoRequestModal({
       return;
     }
     toast("Berhasil! Mengalihkan ke halaman unduhan…", "success");
+    fireConversionPixels(settingsRef.current, "demo_download_ready", { source: demoSource });
+    queueSiteEvent("demo_download_ready", { source: demoSource });
     window.setTimeout(() => {
       const target = data.download_url!.startsWith("http")
         ? data.download_url!
@@ -126,12 +142,16 @@ export function DemoRequestModal({
     setSubmitting(true);
     try {
       queueSiteEvent("lead_submitted", { form: "demo_request_auth", tab: authTab });
+      fireConversionPixels(settingsRef.current, "demo_modal_submit", { tab: authTab, source: demoSource });
       if (authTab === "register") {
         const nameRes = validatePersonName(name);
+        const origin =
+          typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
         const { data, error } = await supabase.auth.signUp({
           email: normalizeEmail(email),
           password,
           options: {
+            emailRedirectTo: origin,
             data: { full_name: nameRes.ok ? nameRes.value : name.trim() },
           },
         });

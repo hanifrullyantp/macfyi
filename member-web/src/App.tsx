@@ -126,7 +126,13 @@ function DaftarPage() {
     e.preventDefault();
     setErr(null);
     setMsg(null);
-    const { error } = await supabase.auth.signUp({ email: email.trim(), password });
+    const origin =
+      typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+    const { error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: { emailRedirectTo: origin },
+    });
     if (error) setErr(error.message);
     else setMsg("Cek email untuk verifikasi (jika diaktifkan), lalu masuk.");
   };

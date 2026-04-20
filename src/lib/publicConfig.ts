@@ -1,3 +1,15 @@
+/** Salinan paywall Pro dari platform_settings (public-config). */
+export type UpgradePaywallPublic = {
+  /** Jika true, setelah bersih berhasil pakai angka sesi; jika false, selalu teks generik/marketing. Default true. */
+  use_session_clean_amount: boolean;
+  /** Template dengan placeholder `{amount}` (opsional). */
+  subtitle_with_amount_id: string | null;
+  subtitle_with_amount_en: string | null;
+  /** Subjudul tanpa angka — tombol upgrade manual atau saat admin menonaktifkan angka sesi. */
+  subtitle_generic_id: string | null;
+  subtitle_generic_en: string | null;
+};
+
 export type PublicConfig = {
   version: number;
   brand?: { logo_url: string | null };
@@ -6,6 +18,9 @@ export type PublicConfig = {
   checkout_success_base_url: string | null;
   demo: Record<string, unknown>;
   ai: Record<string, unknown>;
+  desktop?: {
+    upgrade_paywall?: UpgradePaywallPublic;
+  };
 };
 
 let cache: PublicConfig | null = null;

@@ -12,6 +12,7 @@ import type {
   TrashListItem,
   AiRequest,
 } from "../types";
+import type { DiskExplorerFileInfo, DiskExplorerVolume, DiskNode } from "./types/diskExplorer";
 
 export interface DiskStats {
   free_gb: number;
@@ -489,4 +490,79 @@ export async function activateLicense(
           ? String(raw.expires_at)
           : null,
   };
+}
+
+// --- Disk Explorer (Tauri; paths stay local — never sent to cloud AI prompts except redacted summaries) ---
+export async function diskExplorerCheckFullDiskAccess(): Promise<boolean> {
+  try {
+    return await invoke<boolean>("check_full_disk_access");
+  } catch {
+    if (import.meta.env.DEV) return true;
+    throw new Error("Full Disk Access check requires the Macfyi desktop app.");
+  }
+}
+
+export async function diskExplorerOpenFdaSettings(): Promise<void> {
+  await invoke<void>("open_fda_system_settings");
+}
+
+export async function diskExplorerVolumeStats(): Promise<DiskExplorerVolume> {
+  try {
+    return await invoke<DiskExplorerVolume>("disk_explorer_volume_stats");
+  } catch {
+    if (import.meta.env.DEV) {
+      return { totalBytes: 500 * 1024 ** 3, usedBytes: 420 * 1024 ** 3, freeBytes: 80 * 1024 ** 3 };
+    }
+    throw new Error("Volume stats require the Macfyi desktop app.");
+  }
+}
+
+export async function diskExplorerScanLevel(path: string): Promise<DiskNode[]> {
+  try {
+    return await invoke<DiskNode[]>("scan_disk_level", { path });
+  } catch {
+    if (import.meta.env.DEV) {
+      return [
+        {
+          path: `${path}/Caches`,
+          displayName: "Caches",
+          redactedPath: "~/Library/Caches",
+          sizeBytes: 2_100_000_000,
+          itemCount: 12,
+          children: [],
+          nodeType: "Cache",
+          riskLevel: "Safe",
+          isExpandable: true,
+          isAccessible: true,
+          lastModified: null,
+        },
+        {
+          path: `${path}/Photos`,
+          displayName: "Photos Library.photoslibrary",
+          redactedPath: "~/Pictures/Photos Library.photoslibrary",
+          sizeBytes: 48_000_000_000,
+          itemCount: 0,
+          children: [],
+          nodeType: "Media",
+          riskLevel: "Caution",
+          isExpandable: true,
+          isAccessible: true,
+          lastModified: null,
+        },
+      ];
+    }
+    throw new Error("Disk Explorer scan requires the Macfyi desktop app.");
+  }
+}
+
+export async function diskExplorerMoveNodeToTrash(path: string): Promise<void> {
+  await invoke<void>("move_node_to_trash", { path });
+}
+
+export async function diskExplorerFileList(path: string, limit: number): Promise<DiskExplorerFileInfo[]> {
+  return await invoke<DiskExplorerFileInfo[]>("get_node_file_list", { path, limit });
+}
+
+export async function diskExplorerExportReport(nodes: DiskNode[], format: "json" | "txt"): Promise<string> {
+  return await invoke<string>("export_scan_report", { nodes, format });
 }

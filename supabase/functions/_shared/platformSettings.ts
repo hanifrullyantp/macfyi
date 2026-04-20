@@ -15,3 +15,10 @@ export function asNumber(v: unknown, defaultVal: number): number {
   const n = typeof v === "number" ? v : parseInt(String(v ?? ""), 10);
   return Number.isFinite(n) ? n : defaultVal;
 }
+
+/** Read string-ish JSONB values from platform_settings. */
+export function asJsonString(v: unknown, defaultVal: string): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  return defaultVal;
+}

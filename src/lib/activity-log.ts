@@ -50,6 +50,19 @@ export function appendActivity(entry: Omit<ActivityEntry, "id" | "at"> & { id?: 
   save([full, ...prev]);
 }
 
+/** Remove one entry by id. Returns true if an entry was removed. */
+export function removeActivity(id: string): boolean {
+  const prev = loadActivities();
+  const next = prev.filter((e) => e.id !== id);
+  if (next.length === prev.length) return false;
+  save(next);
+  return true;
+}
+
+export function clearAllActivities(): void {
+  save([]);
+}
+
 export function formatGb(n: number | undefined): string {
   if (n === undefined || Number.isNaN(n)) return "—";
   return `${n.toFixed(1)} GB`;

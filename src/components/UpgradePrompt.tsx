@@ -3,10 +3,13 @@ import { Sparkles, Check, X } from "lucide-react";
 import { useI18n } from "../i18n/context";
 
 export const UpgradePrompt = ({
+  subtitle,
   onUpgrade,
   onMaybeLater,
   priceShort,
 }: {
+  /** Satu baris di bawah judul — dari angka bersih sesi + pengaturan admin / i18n */
+  subtitle: string;
   onUpgrade: () => void;
   onMaybeLater: () => void;
   /** Dari public-config (admin); jika kosong pakai teks i18n bawaan */
@@ -25,7 +28,7 @@ export const UpgradePrompt = ({
         <div className="bg-gradient-to-br from-[#8b0000] via-[var(--color-brand)] to-[var(--color-brand-glow)] p-8 text-center text-white">
           <Sparkles size={48} className="mx-auto mb-4" />
           <h2 className="text-2xl font-bold">{t("upgrade.title")}</h2>
-          <p className="text-white/85 mt-2">{t("upgrade.subtitle")}</p>
+          <p className="text-white/85 mt-2">{subtitle}</p>
         </div>
 
         <div className="p-8 space-y-4">

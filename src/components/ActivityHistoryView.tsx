@@ -1,4 +1,11 @@
-import { loadActivities, formatGb, type ActivityEntry } from "../lib/activity-log";
+import { useCallback, useEffect, useState } from "react";
+import {
+  clearAllActivities,
+  loadActivities,
+  removeActivity,
+  formatGb,
+  type ActivityEntry,
+} from "../lib/activity-log";
 import { useI18n } from "../i18n/context";
 
 function formatBytes(n: number): string {
@@ -27,13 +34,54 @@ function line(e: ActivityEntry, t: (k: string, v?: Record<string, string | numbe
 
 export function ActivityHistoryView() {
   const { t } = useI18n();
-  const rows = loadActivities();
+  const [rows, setRows] = useState<ActivityEntry[]>(() => loadActivities());
+
+  const refresh = useCallback(() => {
+    setRows(loadActivities());
+  }, []);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("focus", refresh);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("focus", refresh);
+    };
+  }, [refresh]);
+
+  const onDeleteOne = (id: string) => {
+    if (!window.confirm(t("history.deleteOneConfirm"))) return;
+    removeActivity(id);
+    refresh();
+  };
+
+  const onClearAll = () => {
+    if (!window.confirm(t("history.clearAllConfirm", { n: rows.length }))) return;
+    clearAllActivities();
+    refresh();
+  };
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-6 py-6 md:px-8">
       <div className="max-w-4xl mx-auto space-y-4">
-        <h2 className="text-[30px] leading-[36px] font-semibold text-white tracking-tight">{t("history.title")}</h2>
-        <p className="text-sm text-white/60">{t("history.subtitle")}</p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-[30px] leading-[36px] font-semibold text-white tracking-tight">{t("history.title")}</h2>
+            <p className="text-sm text-white/60">{t("history.subtitle")}</p>
+          </div>
+          {rows.length > 0 && (
+            <button
+              type="button"
+              onClick={onClearAll}
+              className="shrink-0 text-sm font-medium text-rose-300/90 hover:text-rose-200 underline-offset-4 hover:underline self-start sm:self-auto"
+            >
+              {t("history.clearAll")}
+            </button>
+          )}
+        </div>
         {rows.length === 0 ? (
           <p className="text-sm text-white/45 py-8">{t("history.empty")}</p>
         ) : (
@@ -41,15 +89,25 @@ export function ActivityHistoryView() {
             {rows.map((e) => (
               <li
                 key={e.id}
-                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/80"
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white/80 flex gap-3 justify-between items-start"
               >
-                <div className="text-[10px] text-white/40 uppercase tracking-wide">
-                  {new Date(e.at).toLocaleString()}
+                <div className="min-w-0 flex-1">
+                  <div className="text-[10px] text-white/40 uppercase tracking-wide">
+                    {new Date(e.at).toLocaleString()}
+                  </div>
+                  <p className="mt-1">{line(e, t)}</p>
+                  {e.sampleNames && e.sampleNames.length > 0 && (
+                    <p className="text-[11px] text-white/45 mt-2 line-clamp-3">{e.sampleNames.join(", ")}</p>
+                  )}
                 </div>
-                <p className="mt-1">{line(e, t)}</p>
-                {e.sampleNames && e.sampleNames.length > 0 && (
-                  <p className="text-[11px] text-white/45 mt-2 line-clamp-3">{e.sampleNames.join(", ")}</p>
-                )}
+                <button
+                  type="button"
+                  aria-label={t("history.deleteOneAria")}
+                  onClick={() => onDeleteOne(e.id)}
+                  className="shrink-0 text-xs font-medium text-white/45 hover:text-rose-300/90 px-2 py-1 rounded-lg hover:bg-white/5"
+                >
+                  {t("history.deleteOne")}
+                </button>
               </li>
             ))}
           </ul>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Monitor, 
@@ -25,18 +26,18 @@ import {
 } from 'lucide-react';
 import { EditableText, EditableImage, EditableVideo } from './components/Editable';
 import type { ContentData } from './types/content';
-import { DEFAULT_SITE_SETTINGS } from './types/content';
+import { DEFAULT_SITE_SETTINGS, DEFAULT_LEGAL } from './types/content';
 import { deepMerge } from './lib/mergeData';
 import { clearLegacyAdminSession, isValidLegacyAdminSession } from './config/adminAuth';
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured, isSupabaseUserAdmin } from './lib/supabase';
-import { injectFacebookPixel, injectGoogleAnalytics } from './lib/injectTracking';
+import { injectFacebookPixel, injectGoogleAnalytics, injectTikTokPixel } from './lib/injectTracking';
+import { fireConversionPixels } from './lib/conversionPixels';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { NotificationBanner } from './components/NotificationBanner';
 import { SocialProofToast, toggleSocialProofMuteFromOutside, getSocialProofMuted } from './components/SocialProofToast';
 import { LeadCaptureForm } from './components/LeadCaptureForm';
-import { CheckoutModal } from './components/CheckoutModal';
 import { DemoRequestModal } from './components/DemoRequestModal';
 import { bootstrapReferralAndTracking, queueSiteEvent } from './lib/siteAnalytics';
 import { applyLifetimePriceIdrToContent, normalizePricingContent } from './lib/pricingContent';
@@ -44,49 +45,36 @@ import { formatIdr } from './lib/formatIdr';
 import { ScarcityBand } from './components/ScarcityBand';
 import { StorageImpactAnimation } from './components/StorageImpactAnimation';
 import { syncLandingBrandingTags } from './lib/brandingHead';
-
-type MacfyiPublicPromo = {
-  active: boolean;
-  ends_at: string | null;
-  compare_at_idr: number | null;
-  slots_remaining: number | null;
-  slots_display: number | null;
-};
-
-type MacfyiPublicConfigPayload = {
-  server_time?: string;
-  pricing?: { lifetime_price_idr?: number };
-  promo?: MacfyiPublicPromo;
-};
+import { fetchMacfyiPublicConfig, type MacfyiPublicPromo } from './lib/macfyiPublicConfig';
 
 type PromoLiveState = {
   countdown: { endMs: number; clockOffsetMs: number } | null;
   slotsDisplay: number | null;
 };
 
-async function fetchMacfyiPublicConfig(): Promise<{
-  idr: number | null;
-  promo: MacfyiPublicPromo | null;
-  serverTimeIso: string | null;
-} | null> {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
-  const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
-  if (!supabaseUrl || !anon) return null;
-  try {
-    const res = await fetch(`${supabaseUrl}/functions/v1/public-config`, {
-      headers: { apikey: anon, Authorization: `Bearer ${anon}` },
-    });
-    if (!res.ok) return null;
-    const j = (await res.json()) as MacfyiPublicConfigPayload;
-    const idr = j.pricing?.lifetime_price_idr;
-    return {
-      idr: typeof idr === "number" && idr > 0 ? idr : null,
-      promo: j.promo ?? null,
-      serverTimeIso: j.server_time ?? null,
-    };
-  } catch {
-    return null;
+function SmartFooterLink({
+  href,
+  className,
+  children,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const t = href.trim();
+  if (/^https?:\/\//i.test(t)) {
+    return (
+      <a href={t} className={className}>
+        {children}
+      </a>
+    );
   }
+  const path = t.startsWith('/') ? t : `/${t}`;
+  return (
+    <Link to={path} className={className}>
+      {children}
+    </Link>
+  );
 }
 
 function mergePricingFromServer(merged: ContentData, idr: number, compareAtIdr: number | null): ContentData {
@@ -281,20 +269,22 @@ const INITIAL_DATA: ContentData = {
     contact: "support@macfyi.com",
     hours: "Senin - Jumat, 09:00 - 18:00 WIB",
     links: [
-      { label: "Syarat & Ketentuan", url: "#" },
-      { label: "Kebijakan Privasi", url: "#" }
+      { label: "Syarat & Ketentuan", url: "/terms" },
+      { label: "Kebijakan Privasi", url: "/privacy" },
     ],
-    copyright: "© 2026 Macfyi. Dibuat untuk Produktivitas & Keamanan Data Anda."
+    copyright: "© 2026 Macfyi. Dibuat untuk Produktivitas & Keamanan Data Anda.",
   },
+  legal: { ...DEFAULT_LEGAL },
   settings: {
     ...DEFAULT_SITE_SETTINGS,
-  }
+  },
 };
 
 function withDefaultSettings(d: ContentData): ContentData {
   return {
     ...d,
     settings: { ...DEFAULT_SITE_SETTINGS, ...d.settings },
+    legal: { ...DEFAULT_LEGAL, ...(d.legal ?? {}) },
   };
 }
 
@@ -324,6 +314,7 @@ const IconComponent = ({ name, className }: { name: string; className?: string }
 };
 
 export function LandingApp() {
+  const navigate = useNavigate();
   const toast = useToast();
   const [data, setData] = useState<ContentData>(() =>
     typeof localStorage !== 'undefined' ? mergeSavedContent(localStorage.getItem('macfyi_data')) : INITIAL_DATA
@@ -341,8 +332,8 @@ export function LandingApp() {
   const [adminPreview, setAdminPreview] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [demoModalSource, setDemoModalSource] = useState<string>("unknown");
   const [hasChanges, setHasChanges] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [openFaqs, setOpenFaqs] = useState<Set<number>>(() => new Set([0]));
@@ -454,6 +445,10 @@ export function LandingApp() {
   useEffect(() => {
     if (data.settings.googleAnalyticsId?.trim()) injectGoogleAnalytics(data.settings.googleAnalyticsId);
   }, [data.settings.googleAnalyticsId]);
+
+  useEffect(() => {
+    if (data.settings.tiktokPixelId?.trim()) injectTikTokPixel(data.settings.tiktokPixelId);
+  }, [data.settings.tiktokPixelId]);
 
   useEffect(() => {
     bootstrapReferralAndTracking();
@@ -605,11 +600,13 @@ export function LandingApp() {
     );
   };
 
-  const openCheckout = useCallback(() => {
-    queueSiteEvent("cta_click", { target: "checkout" });
-    queueSiteEvent("checkout_started", {});
-    setCheckoutOpen(true);
-  }, []);
+  const openCheckout = useCallback((source?: string) => {
+    const src = source ?? "unknown";
+    fireConversionPixels(dataRef.current.settings, "checkout_nav", { source: src });
+    queueSiteEvent("cta_click", { target: "checkout", source: src });
+    queueSiteEvent("checkout_started", { source: src });
+    navigate("/checkout");
+  }, [navigate]);
 
   const openLoginModal = useCallback(() => setIsLoginOpen(true), []);
 
@@ -642,8 +639,9 @@ export function LandingApp() {
     setIsLoginOpen(true);
   };
 
-  const openDemoModal = useCallback(() => {
-    queueSiteEvent("cta_click", { target: "demo" });
+  const openDemoModal = useCallback((source: string) => {
+    queueSiteEvent("cta_click", { target: "demo", source });
+    setDemoModalSource(source);
     setDemoModalOpen(true);
   }, []);
 
@@ -841,7 +839,7 @@ export function LandingApp() {
             })()}
             <button
               type="button"
-              onClick={openDemoModal}
+              onClick={() => openDemoModal("header_demo")}
               className="text-white px-5 py-2 rounded-full text-sm font-bold transition shadow-lg"
               style={{ backgroundColor: data.settings.primaryColor, boxShadow: `0 10px 40px ${data.settings.primaryColor}33` }}
             >
@@ -896,7 +894,7 @@ export function LandingApp() {
             <div className="flex flex-wrap justify-center gap-3 mt-10">
               <button
                 type="button"
-                onClick={openDemoModal}
+                onClick={() => openDemoModal("hero_primary")}
                 className="text-white px-8 py-3 rounded-full text-sm font-bold transition shadow-lg"
                 style={{ backgroundColor: data.settings.primaryColor, boxShadow: `0 10px 40px ${data.settings.primaryColor}33` }}
               >
@@ -904,7 +902,7 @@ export function LandingApp() {
               </button>
               <button
                 type="button"
-                onClick={openCheckout}
+                onClick={() => openCheckout("hero_secondary")}
                 className="px-8 py-3 rounded-full text-sm font-bold border border-white/20 text-white/90 hover:bg-white/5 transition"
               >
                 <EditableText value={data.hero.secondaryCTA} onSave={(v) => updateData('hero.secondaryCTA', v)} isAdmin={canEdit} />
@@ -1191,6 +1189,10 @@ export function LandingApp() {
         updateData={updateData}
         promoCountdown={promoLive?.countdown ?? null}
         promoSlotsDisplay={promoLive?.slotsDisplay ?? null}
+        onScrollToPricing={() => {
+          fireConversionPixels(dataRef.current.settings, "scarcity_scroll_to_pricing", {});
+          queueSiteEvent("cta_click", { target: "scarcity_scroll_pricing" });
+        }}
       />
 
       {/* Pricing: kiri demo gratis, kanan lifetime (harga dari admin / app_settings → public-config) */}
@@ -1245,7 +1247,7 @@ export function LandingApp() {
                 </ul>
                 <button
                   type="button"
-                  onClick={openDemoModal}
+                  onClick={() => openDemoModal("pricing_free")}
                   className="w-full bg-sky-600/90 hover:bg-sky-500 text-white py-3.5 rounded-2xl text-base font-bold transition flex items-center justify-center gap-2"
                 >
                   <Download size={18} />
@@ -1305,7 +1307,7 @@ export function LandingApp() {
                 </ul>
                 <button
                   type="button"
-                  onClick={openCheckout}
+                  onClick={() => openCheckout("pricing_paid")}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-3.5 rounded-2xl text-base font-bold transition shadow-lg shadow-emerald-900/40 flex items-center justify-center gap-2 group"
                 >
                   <EditableText value={data.pricing.cta} onSave={(v) => updateData("pricing.cta", v)} isAdmin={canEdit} />
@@ -1360,7 +1362,7 @@ export function LandingApp() {
           </div>
           <button
             type="button"
-            onClick={openCheckout}
+            onClick={() => openCheckout("value_stack")}
             className="text-red-500 font-bold flex items-center gap-2 mx-auto hover:underline"
           >
             <EditableText value={data.valueStack.cta} onSave={(v) => updateData('valueStack.cta', v)} isAdmin={canEdit} />
@@ -1405,7 +1407,7 @@ export function LandingApp() {
           </div>
           <button 
             type="button"
-            onClick={openCheckout}
+            onClick={() => openCheckout("urgency")}
             className="bg-white text-black hover:bg-white/90 px-8 py-4 rounded-2xl text-xl font-black transition"
           >
             <EditableText value={data.urgency.cta} onSave={(v) => updateData('urgency.cta', v)} isAdmin={canEdit} />
@@ -1545,7 +1547,7 @@ export function LandingApp() {
           <div className="mt-16">
             <button 
               type="button"
-              onClick={openCheckout}
+              onClick={() => openCheckout("demo_video_section")}
               className="bg-red-600 hover:bg-red-700 text-white px-10 py-5 rounded-full text-2xl font-black transition shadow-xl shadow-red-600/20"
             >
               Saya Mau!
@@ -1563,7 +1565,7 @@ export function LandingApp() {
           <div className="flex flex-col sm:flex-row justify-center gap-6">
             <button 
               type="button"
-              onClick={openCheckout}
+              onClick={() => openCheckout("final_push_checkout")}
               className="bg-red-600 hover:bg-red-700 text-white px-10 py-5 rounded-2xl text-2xl font-black transition shadow-xl shadow-red-600/20"
             >
               <EditableText value={data.pricing.cta} onSave={(v) => updateData('pricing.cta', v)} isAdmin={canEdit} />
@@ -1637,17 +1639,17 @@ export function LandingApp() {
               <ul className="space-y-4 text-sm text-white/40">
                 {data.footer.links.map((link, i) => (
                   <li key={i}>
-                    <a href={link.url} className="hover:text-red-500 transition">
-                      <EditableText 
-                        value={link.label} 
+                    <SmartFooterLink href={link.url} className="hover:text-red-500 transition">
+                      <EditableText
+                        value={link.label}
                         onSave={(v) => {
                           const newLinks = [...data.footer.links];
                           newLinks[i].label = v;
-                          updateData('footer.links', newLinks);
-                        }} 
-                        isAdmin={canEdit} 
+                          updateData("footer.links", newLinks);
+                        }}
+                        isAdmin={canEdit}
                       />
-                    </a>
+                    </SmartFooterLink>
                   </li>
                 ))}
               </ul>
@@ -1659,7 +1661,7 @@ export function LandingApp() {
                 <div className="text-xs text-white/40 mb-4">Lifetime 1 Mac Device</div>
                 <button 
                   type="button"
-                  onClick={openCheckout}
+                  onClick={() => openCheckout("footer_buy_now")}
                   className="w-full bg-red-600 hover:bg-red-700 py-2 rounded-xl text-xs font-bold transition"
                 >
                   Buy Now
@@ -1682,12 +1684,12 @@ export function LandingApp() {
                   Notif demo: {socialMuteUi ? 'suara mati' : 'suara hidup'}
                 </button>
               )}
-              <a href={data.settings.privacyPolicyUrl} className="hover:text-red-400 transition">
+              <SmartFooterLink href={data.settings.privacyPolicyUrl} className="hover:text-red-400 transition">
                 Privacy Policy
-              </a>
-              <a href={data.settings.termsUrl} className="hover:text-red-400 transition">
+              </SmartFooterLink>
+              <SmartFooterLink href={data.settings.termsUrl} className="hover:text-red-400 transition">
                 Terms of Service
-              </a>
+              </SmartFooterLink>
             </div>
           </div>
         </div>
@@ -1724,14 +1726,12 @@ export function LandingApp() {
         )}
       </AnimatePresence>
 
-      <DemoRequestModal open={demoModalOpen} onClose={() => setDemoModalOpen(false)} toast={toast} />
-      <CheckoutModal
-        open={checkoutOpen}
-        onClose={() => setCheckoutOpen(false)}
-        settings={data.settings}
-        productLabel={`${data.settings.siteName} — Lifetime`}
-        priceDisplay={data.settings.price}
+      <DemoRequestModal
+        open={demoModalOpen}
+        onClose={() => setDemoModalOpen(false)}
         toast={toast}
+        settings={data.settings}
+        demoSource={demoModalSource}
       />
 
       <AdminLoginModal

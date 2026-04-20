@@ -39,12 +39,16 @@ import {
 import { ActivationScreen } from "./components/ActivationScreen";
 import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
 import { isDemoMode, setDemoSession } from "./lib/demoSession";
-import { fetchPublicConfig } from "./lib/publicConfig";
+import { fetchPublicConfig, type PublicConfig } from "./lib/publicConfig";
+import { resolveUpgradePaywallSubtitle } from "./lib/upgradePaywallCopy";
 import { syncAppWebBrandingIcons } from "./lib/brandingHead";
 import { formatIdrShort } from "./lib/formatIdr";
 import { sendClientTelemetry } from "./lib/telemetry";
 import { MonitorDashboard } from "./components/MonitorDashboard";
 import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
+import { AppBootSplash } from "./components/AppBootSplash";
+import { useAppActivity } from "./context/AppActivityContext";
+import { DEFAULT_BRAND_LOGO_URL } from "./lib/defaultBrandLogo";
 
 const Scanner = lazy(async () => {
   const m = await import("./components/Scanner");
@@ -89,6 +93,10 @@ const ActivityHistoryView = lazy(async () => {
 const PerformanceView = lazy(async () => {
   const m = await import("./components/PerformanceView");
   return { default: m.PerformanceView };
+});
+const DiskExplorer = lazy(async () => {
+  const m = await import("./components/DiskExplorer");
+  return { default: m.DiskExplorer };
 });
 
 function ViewFallback() {
@@ -253,10 +261,16 @@ const FEATURE_THEME: Record<FeatureId, { bg: string; orbSubKey: string; shellTit
     orbSubKey: "orb.subSmart",
     shellTitleKey: "shell.performance",
   },
+  "disk-explorer": {
+    bg: CONTENT_BG,
+    orbSubKey: "shell.diskExplorer",
+    shellTitleKey: "shell.diskExplorer",
+  },
 };
 
 export default function App() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const { registerActivity, footerLine } = useAppActivity();
   const [appState, setAppState] = useState<"idle" | "scanning" | "results">("idle");
   const [activeFeature, setActiveFeature] = useState<FeatureId>("smart-care");
   const [reviewOrbIntent, setReviewOrbIntent] = useState<ReviewOrbIntent | null>(null);
@@ -282,7 +296,18 @@ export default function App() {
     () => shouldSkipLicenseGate() || !!getStoredLicenseToken() || isDemoMode()
   );
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
+  const [publicConfigSnapshot, setPublicConfigSnapshot] = useState<PublicConfig | null>(null);
+  /** Label ukuran dari pemakaian bersih terakhir (mis. "1.2 GB") untuk modal Pro */
+  const [paywallFreedLabel, setPaywallFreedLabel] = useState<string | null>(null);
+  /** True jika modal dibuka otomatis setelah alur bersih selesai */
+  const [upgradeOpenedFromClean, setUpgradeOpenedFromClean] = useState(false);
   const [brandLogoUrl, setBrandLogoUrl] = useState<string | null>(null);
+  const [appBootReady, setAppBootReady] = useState(false);
+  const [bootProgress, setBootProgress] = useState(0);
+  const [bootMessage, setBootMessage] = useState("");
+  const [pendingUpdate, setPendingUpdate] = useState<{ version: string } | null>(null);
+  const [updateInstalling, setUpdateInstalling] = useState(false);
+  const updateDismissedRef = useRef(false);
   const [trashItems, setTrashItems] = useState<TrashListItem[] | null>(null);
   const [trashLoading, setTrashLoading] = useState(false);
   const [trashLoadError, setTrashLoadError] = useState<string | null>(null);
@@ -291,6 +316,7 @@ export default function App() {
   const [uninstallerAppsLoading, setUninstallerAppsLoading] = useState(false);
   const [uninstallerOrphansLoading, setUninstallerOrphansLoading] = useState(false);
   const [uninstallerLoadError, setUninstallerLoadError] = useState<string | null>(null);
+  const uninstallerOrbLoading = uninstallerAppsLoading || uninstallerOrphansLoading;
   const [aiBannerVisible, setAiBannerVisible] = useState(false);
   const [aiBannerIndex, setAiBannerIndex] = useState(0);
   const [smartCareOverviewLoading, setSmartCareOverviewLoading] = useState(false);
@@ -383,27 +409,119 @@ export default function App() {
     }
   }, [isAIChatOpen]);
 
-  /** Disk stats only — no user-folder walks (avoids macOS Documents TCC on cold start). */
+  /** Cold start: disk + public-config + minimum splash time (onboarding-style). */
   useEffect(() => {
-    getDiskStats().then((s) => {
-      setFreeSpace(s.free_gb);
-      setDiskTotalGb(s.total_gb);
-    });
-  }, []);
+    let alive = true;
+    const minDoneAt = Date.now() + 750;
+    const tickProgress = (pct: number) => {
+      if (alive) setBootProgress(pct);
+    };
+    void (async () => {
+      setBootMessage(t("boot.phaseDisk"));
+      tickProgress(10);
+      try {
+        const s = await getDiskStats();
+        if (alive) {
+          setFreeSpace(s.free_gb);
+          setDiskTotalGb(s.total_gb);
+        }
+      } catch {
+        /* */
+      }
+      tickProgress(38);
+      if (!alive) return;
+      setBootMessage(t("boot.phaseBrand"));
+      try {
+        const cfg = await fetchPublicConfig(false);
+        if (alive && cfg) {
+          setPublicConfigSnapshot(cfg);
+          const idr = cfg.pricing?.lifetime_price_idr;
+          if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
+          const logo = cfg.brand?.logo_url?.trim();
+          setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
+        }
+      } catch {
+        /* */
+      }
+      tickProgress(72);
+      if (!alive) return;
+      setBootMessage(t("boot.phaseUi"));
+      await new Promise((r) => setTimeout(r, 180));
+      const wait = Math.max(0, minDoneAt - Date.now());
+      if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+      if (!alive) return;
+      tickProgress(100);
+      setAppBootReady(true);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [t]);
 
-  /** Harga lifetime + logo merek — dari `public-config` (landing yang dipublikasikan). */
   useEffect(() => {
-    void fetchPublicConfig(false).then((cfg) => {
-      const idr = cfg?.pricing?.lifetime_price_idr;
-      if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
-      const logo = cfg?.brand?.logo_url?.trim();
-      setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
-    });
-  }, []);
+    if (!licenseGatePassed || !appBootReady) {
+      registerActivity("app-overview", null);
+      return;
+    }
+    registerActivity("app-overview", smartCareOverviewLoading ? t("activity.smartCareOverview") : null);
+    return () => registerActivity("app-overview", null);
+  }, [licenseGatePassed, appBootReady, smartCareOverviewLoading, registerActivity, t]);
+
+  useEffect(() => {
+    if (!licenseGatePassed || !appBootReady) return;
+    registerActivity("app-scan", appState === "scanning" ? t("activity.scanning") : null);
+    return () => registerActivity("app-scan", null);
+  }, [licenseGatePassed, appBootReady, appState, registerActivity, t]);
+
+  useEffect(() => {
+    if (!licenseGatePassed || !appBootReady) return;
+    registerActivity("app-trash", trashLoading ? t("activity.trash") : null);
+    return () => registerActivity("app-trash", null);
+  }, [licenseGatePassed, appBootReady, trashLoading, registerActivity, t]);
+
+  useEffect(() => {
+    if (!licenseGatePassed || !appBootReady) return;
+    registerActivity(
+      "app-uninstaller",
+      uninstallerOrbLoading ? t("activity.uninstaller") : null
+    );
+    return () => registerActivity("app-uninstaller", null);
+  }, [licenseGatePassed, appBootReady, uninstallerOrbLoading, registerActivity, t]);
+
+  useEffect(() => {
+    if (!licenseGatePassed || !appBootReady) return;
+    registerActivity(
+      "app-perf",
+      perfLoading && activeFeature === "performance" ? t("activity.perf") : null
+    );
+    return () => registerActivity("app-perf", null);
+  }, [licenseGatePassed, appBootReady, perfLoading, activeFeature, registerActivity, t]);
 
   useEffect(() => {
     syncAppWebBrandingIcons(brandLogoUrl);
   }, [brandLogoUrl]);
+
+  /** Cek update Tauri (interval panjang; abaikan jika pengguna menutup banner). */
+  useEffect(() => {
+    if (!licenseGatePassed) return;
+    let cancelled = false;
+    const tick = async () => {
+      if (updateDismissedRef.current) return;
+      try {
+        const { checkForAppUpdate } = await import("./lib/appUpdater");
+        const info = await checkForAppUpdate();
+        if (!cancelled && info && !updateDismissedRef.current) setPendingUpdate(info);
+      } catch {
+        /* */
+      }
+    };
+    void tick();
+    const id = window.setInterval(() => void tick(), 4 * 60 * 60 * 1000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [licenseGatePassed]);
 
   /** Keep header disk stats in sync while Monitor is active (Monitor panel fetches its own detail). */
   useEffect(() => {
@@ -620,17 +738,30 @@ export default function App() {
     });
     getStorageBreakdown().then(setStorageEntries).catch(() => {});
     lastOverviewPrefetchRef.current = 0;
+    setPaywallFreedLabel(freedLabel);
+    setUpgradeOpenedFromClean(true);
     setTimeout(() => setIsUpgradeOpen(true), 1200);
   }, [freeSpace, t]);
 
   const safePotentialLabel = estimateSafePotential(scanResults);
   const freeGbLabel = freeSpace > 0 ? freeSpace.toFixed(1) : undefined;
+
+  const upgradePaywallSubtitle = useMemo(
+    () =>
+      resolveUpgradePaywallSubtitle(locale, publicConfigSnapshot, {
+        freedLabel: paywallFreedLabel,
+        openedAfterClean: upgradeOpenedFromClean,
+      }, t),
+    [locale, publicConfigSnapshot, paywallFreedLabel, upgradeOpenedFromClean, t]
+  );
   const activeTheme = FEATURE_THEME[activeFeature];
   const smartCareFamily =
     activeFeature === "smart-care" || activeFeature === "cleanup" || activeFeature === "my-clutter";
-  const uninstallerOrbLoading = uninstallerAppsLoading || uninstallerOrphansLoading;
 
   const orbMode = useMemo((): OrbDisplayMode => {
+    if (activeFeature === "disk-explorer") {
+      return "idle_scan";
+    }
     if (activeFeature === "performance") {
       return perfLoading ? "scanning" : "idle_scan";
     }
@@ -667,6 +798,9 @@ export default function App() {
   ]);
 
   const orbMainText = useMemo(() => {
+    if (activeFeature === "disk-explorer") {
+      return undefined;
+    }
     if (activeFeature === "performance") {
       return perfLoading ? undefined : t("orb.perfAnalyze");
     }
@@ -705,6 +839,9 @@ export default function App() {
   ]);
 
   const handleOrbClick = useCallback(() => {
+    if (activeFeature === "disk-explorer") {
+      return;
+    }
     if (activeFeature === "performance") {
       setPerfRefreshTick((n) => n + 1);
       return;
@@ -735,10 +872,14 @@ export default function App() {
     handleStartScan();
   }, [activeFeature, appState, reviewOrbIntent, handleStartScan, refreshTrash, refreshUninstaller]);
 
+  if (!appBootReady) {
+    return <AppBootSplash progress={bootProgress} message={bootMessage || t("boot.phaseDisk")} />;
+  }
+
   if (!licenseGatePassed) {
     return (
       <ActivationScreen
-        brandLogoUrl={brandLogoUrl}
+        brandLogoUrl={brandLogoUrl?.trim() ? brandLogoUrl.trim() : DEFAULT_BRAND_LOGO_URL}
         onActivated={() => setLicenseGatePassed(true)}
         onDemoStart={(token, rules) => {
           setDemoSession(token, rules);
@@ -913,15 +1054,70 @@ export default function App() {
         onAction={() => setIsSettingsOpen(true)}
       />
     );
+  } else if (activeFeature === "disk-explorer") {
+    content = (
+      <Suspense fallback={<ViewFallback />}>
+        <DiskExplorer />
+      </Suspense>
+    );
   } else {
     content = null;
   }
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)]">
+    <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)] flex flex-col">
+      {licenseGatePassed && pendingUpdate ? (
+        <div
+          role="status"
+          className="shrink-0 z-[200] flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-950/50 px-4 py-2.5 text-sm text-amber-50"
+        >
+          <span>
+            Pembaruan tersedia: <strong className="font-semibold">{pendingUpdate.version}</strong>
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              disabled={updateInstalling}
+              onClick={() => {
+                void (async () => {
+                  setUpdateInstalling(true);
+                  try {
+                    const { downloadAndRelaunchUpdate } = await import("./lib/appUpdater");
+                    await downloadAndRelaunchUpdate();
+                  } catch (e) {
+                    window.alert(
+                      e instanceof Error
+                        ? e.message
+                        : "Gagal memasang pembaruan. Pastikan updater dikonfigurasi (pubkey + endpoints) di tauri.conf.json."
+                    );
+                  } finally {
+                    setUpdateInstalling(false);
+                  }
+                })();
+              }}
+              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
+            >
+              {updateInstalling ? "Mengunduh…" : "Pasang & mulai ulang"}
+            </button>
+            <button
+              type="button"
+              disabled={updateInstalling}
+              onClick={() => {
+                updateDismissedRef.current = true;
+                setPendingUpdate(null);
+              }}
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
+            >
+              Nanti
+            </button>
+          </div>
+        </div>
+      ) : null}
+      <div className="flex-1 min-h-0 flex flex-col">
       <AppShell
         title={t(activeTheme.shellTitleKey)}
         brandLogoUrl={brandLogoUrl}
+        footerActivity={footerLine}
         activeFeature={activeFeature}
         onFeatureChange={(feature) => {
           setActiveFeature(feature);
@@ -953,7 +1149,8 @@ export default function App() {
           !(smartCareFamily && appState === "scanning") &&
           !(activeFeature === "smart-care" && appState === "idle") &&
           activeFeature !== "history" &&
-          activeFeature !== "settings"
+          activeFeature !== "settings" &&
+          activeFeature !== "disk-explorer"
         }
         onAIButtonClick={() =>
           setIsAIChatOpen((v) => {
@@ -974,10 +1171,14 @@ export default function App() {
         orbSubLabel={t(activeTheme.orbSubKey)}
         deletionMode={deletionMode}
         onDeletionModeClick={() => setIsSettingsOpen(true)}
-        onUpgradeClick={() => setIsUpgradeOpen(true)}
+        onUpgradeClick={() => {
+          setUpgradeOpenedFromClean(false);
+          setIsUpgradeOpen(true);
+        }}
       >
         {content}
       </AppShell>
+      </div>
 
       <AnimatePresence>
         {aiBannerVisible && (
@@ -1052,6 +1253,7 @@ export default function App() {
         <AnimatePresence>
           {isUpgradeOpen && (
             <UpgradePrompt
+              subtitle={upgradePaywallSubtitle}
               priceShort={upgradePriceShort}
               onUpgrade={() => {
                 void sendClientTelemetry("UpgradeClicked", {});

@@ -10,6 +10,11 @@ pub fn run() {
       app.handle().plugin(tauri_plugin_dialog::init())?;
       app.handle().plugin(tauri_plugin_notification::init())?;
       app.handle().plugin(tauri_plugin_deep_link::init())?;
+      #[cfg(desktop)]
+      {
+        app.handle().plugin(tauri_plugin_process::init())?;
+        app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;
+      }
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
@@ -22,6 +27,13 @@ pub fn run() {
     .invoke_handler(tauri::generate_handler![
       commands::storage::get_disk_stats,
       commands::storage::storage_breakdown,
+      commands::disk_explorer::check_full_disk_access,
+      commands::disk_explorer::open_fda_system_settings,
+      commands::disk_explorer::scan_disk_level,
+      commands::disk_explorer::disk_explorer_volume_stats,
+      commands::disk_explorer::move_node_to_trash,
+      commands::disk_explorer::get_node_file_list,
+      commands::disk_explorer::export_scan_report,
       commands::scan::deep_scan,
       commands::scan::cancel_scan,
       commands::apps::app_audit,

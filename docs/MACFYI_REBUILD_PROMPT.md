@@ -49,6 +49,8 @@ Entrypoints utama:
 - Shell/layout: [`src/components/AppShell.tsx`](../src/components/AppShell.tsx)
 - Backend adapter (invoke wrappers): [`src/lib/backend.ts`](../src/lib/backend.ts)
 - Rust commands: folder `src-tauri/src/commands/` (whitelist roots, heuristics, move-to-Trash, disk stats)
+- **Disk Explorer** (folder-level browser + volume + export): Rust [`src-tauri/src/commands/disk_explorer.rs`](../src-tauri/src/commands/disk_explorer.rs); UI [`src/components/DiskExplorer/`](../src/components/DiskExplorer/); state [`src/store/diskExplorerStore.tsx`](../src/store/diskExplorerStore.tsx); AI helper [`src/lib/aiDiskAnalyzer.ts`](../src/lib/aiDiskAnalyzer.ts); types [`src/lib/types/diskExplorer.ts`](../src/lib/types/diskExplorer.ts). Dari Smart Care dashboard, kartu modul membuka fitur `disk-explorer`. **Wawasan folder (AI)** dibuka lewat modal agar tabel memakai lebar penuh; strip status global menjelaskan pekerjaan latar saat memuat.
+- **Cold start UX**: layar splash dengan progres + teks fase sampai disk stats dan `public-config` selesai (lihat §15).
 
 ### 3.2 Prinsip safety (wajib dipertahankan)
 
@@ -68,7 +70,12 @@ Entrypoints utama:
    - Lihat isi Trash, purge/restore via OS.
 5. **Monitor & performance**  
    - Disk stats, RAM/perf ringkas, “maintenance” ringan (tanpa overclaim).
-6. **AI assistant (privacy-first, optional offline)**  
+6. **Disk Explorer**  
+   - Telusuri isi folder **satu level** per navigasi; ukuran agregat per entri, label jenis & risiko, daftar file terbesar di folder, ekspor laporan (JSON/txt) ke Downloads.  
+   - **Tidak ada hapus permanen** dari UI modul ini: pemindahan ke **Trash** saja (mis. via `move_paths_to_trash` / perintah setara), dengan konfirmasi ekstra untuk item **Caution/Risky**.  
+   - **Full Disk Access** (FDA): banner + buka System Settings bila perlu; beberapa path sistem tidak terbaca tanpa FDA.  
+   - **AI insight folder**: ringkasan **hanya dengan path yang disamarkan**; alur `ai_generate` + stream token, fallback template KB (`kbAnswer`) bila model off / error / timeout (lihat [`src/lib/aiDiskAnalyzer.ts`](../src/lib/aiDiskAnalyzer.ts)).
+7. **AI assistant (privacy-first, optional offline)**  
    - Menjelaskan temuan scan, memberi saran aman, tidak mengeksekusi delete.
 
 ### 3.4 Local AI assistant (offline)
@@ -293,7 +300,7 @@ Set env `VITE_SUPABASE_URL` & `VITE_SUPABASE_ANON_KEY` at build time.
 ## 12) Non-goals (agar tidak overclaim saat rebuild)
 
 - Macfyi bukan antivirus dan tidak mengklaim “100% aman/sempurna”.
-- AI assistant tidak mengeksekusi tindakan delete; hanya memberi saran/penjelasan.
+- AI assistant tidak mengeksekusi tindakan delete; hanya memberi saran/penjelasan (termasuk insight Disk Explorer: tidak memicu hapus permanen).
 - Landing SPA bukan full backend checkout; backend payments ada di Supabase Edge.
 
 ---
@@ -312,6 +319,7 @@ Set env `VITE_SUPABASE_URL` & `VITE_SUPABASE_ANON_KEY` at build time.
   - slot decrement idempotent per order
 - Desktop:
   - scan safe roots → review → move to Trash
+  - Disk Explorer: scan satu level, breadcrumbs, volume bar, FDA hint, export laporan, Trash dengan konfirmasi; AI folder redacted + fallback KB
   - activation license via `activate-license`
   - local AI: download model → load/unload → fallback KB + redaction paths
 
@@ -323,9 +331,47 @@ Set env `VITE_SUPABASE_URL` & `VITE_SUPABASE_ANON_KEY` at build time.
 
 ---
 
+## 15) Kelemahan produk (audit singkat) & rekomendasi perbaikan
+
+Bagian ini merangkum titik lemah yang masih sering dirasakan pengguna pada implementasi saat ini, dan arah perbaikan yang realistis.
+
+### Kelemahan / risiko
+
+1. **Waktu mulai (cold start)** — UI besar + beberapa fetch paralel (disk, `public-config`, modul lazy) membuat kesan “lama” sebelum layar utama siap; tanpa umpan balik, pengguna mengira aplikasi macet.
+2. **Kurangnya konteks saat memuat** — Operasi berat (pindaian, memuat Trash, Uninstaller, Disk Explorer) sering hanya ditandai dengan spinner generik; sulit membedakan “normal lambat” vs “error diam-diam”.
+3. **Fragmentasi AI di Disk Explorer** — Panel wawasan AI di samping tabel memotong lebar konten; pengguna tidak selalu memahami bahwa itu bagian dari asisten yang sama di header.
+4. **Dependensi jaringan opsional** — `public-config` gagal tidak fatal, tetapi harga/logo bisa kosong dan tidak selalu jelas bagi pengguna offline.
+5. **Model AI lokal** — Unduhan model besar + `llama-server` menambah ukuran bundle dan kompleksitas; pada RAM terbatas, pengalaman bisa menurun drastis bila tidak ada fallback yang konsisten.
+6. **macOS privacy (TCC / FDA)** — Beberapa path tidak terbaca tanpa Full Disk Access; tanpa penjelasan kontekstual yang berulang, pengguna menganggap bug.
+7. **StrictMode & efek ganda** — Pengembangan dengan React StrictMode dapat memicu efek dua kali; alur async harus selalu idempotent dan dibatalkan dengan benar di cleanup.
+
+### Rekomendasi
+
+1. **Layar awal (splash) terstruktur** — Satu layar penuh dengan logo, **bar kemajuan**, dan **teks fase** (mis. disk → konfigurasi server → UI) hingga data minimal siap; durasi minimum singkat agar tidak berkedip.
+2. **Strip status global** — Satu area di bagian bawah yang menampilkan **satu kalimat bahasa alami** untuk pekerjaan latar (memindai, memuat folder, ringkasan AI, dll.), dengan `aria-live` untuk aksesibilitas.
+3. **Disk Explorer + AI** — Satu kolom penuh untuk tabel; **wawasan AI** dibuka lewat tombol/modal dengan tips sekali lihat agar pengguna tahu di mana mendapatkan ringkasan lengkap dan bahwa privasi path tetap dijaga.
+4. **Ikon & merek** — Satu sumber gambar persegi untuk `npx tauri icon` (ikon Dock `.icns`) dan aset `public/` untuk logo di dalam aplikasi; dokumentasikan perintah generate ikon di `docs/RELEASE_MACOS.md` atau README.
+5. **Profil performa** — Ukur cold start nyata (Instruments / log timestamp); pertimbangkan menunda prefetch Smart Care sampai setelah interaksi pertama jika perlu.
+6. **Offline-first copy** — Jika `public-config` gagal, tampilkan salinan singkat “menggunakan pengaturan lokal” alih-alih diam.
+7. **Uji otomatis** — Vitest untuk util murni; setidaknya satu tes integrasi ringan untuk resolver aktivitas / redaksi path.
+
+---
+
 ## 14) Minimal prompt template (copy/paste untuk rebuild)
 
 Gunakan blok berikut sebagai prompt untuk AI agent yang akan membangun ulang:
 
-1. Bangun monorepo dengan subprojects: desktop (Tauri 2 + React/Vite/Tailwind), landing (Vite SPA), admin-web, member-web, supabase (migrations + edge functions).\n+2. Implement desktop feature modules: scan safe roots, cleanup to Trash (review-first), uninstaller, trash manager, performance monitor, local AI assistant with privacy-first redaction and fallback.\n+3. Implement Supabase DB tables and RLS: app_settings, licenses, activations, payment_transactions, payment_events, landing_site_content, platform_settings + affiliate/CRM if included.\n+4. Implement Edge Functions: public-config, create-midtrans-snap, payment-webhook, activate-license, demo-request/verify/download-verify, track-event, scheduled-ops, withdrawals.\n+5. Implement landing funnel: hero, problem/solution/features, pricing (free vs lifetime), scarcity section, checkout modal (midtrans), admin inline edit/publish, promo plan scheduling with slot decrement.\n+6. Provide env/secrets documentation and deploy steps.\n+\n+Constraints:\n+- Respect macOS safety; no scanning system paths beyond safe whitelist.\n+- Payment webhook signature verification and idempotency.\n+- Prefer GPU-friendly animations; respect prefers-reduced-motion.\n+- No overclaims; privacy-first AI.\n+
+1. Bangun monorepo dengan subprojects: desktop (Tauri 2 + React/Vite/Tailwind), landing (Vite SPA), admin-web, member-web, supabase (migrations + edge functions).
+2. Implement desktop feature modules: scan safe roots, cleanup to Trash (review-first), uninstaller, trash manager, performance monitor, **Disk Explorer** (one-level folder scan, risk labels, Trash-only moves, redacted AI folder insight + KB fallback, FDA banner), local AI assistant with privacy-first redaction and fallback.
+3. Implement Supabase DB tables and RLS: app_settings, licenses, activations, payment_transactions, payment_events, landing_site_content, platform_settings + affiliate/CRM if included.
+4. Implement Edge Functions: public-config, create-midtrans-snap, payment-webhook, activate-license, demo-request/verify/download-verify, track-event, scheduled-ops, withdrawals.
+5. Implement landing funnel: hero, problem/solution/features, pricing (free vs lifetime), scarcity section, checkout modal (midtrans), admin inline edit/publish, promo plan scheduling with slot decrement.
+6. Provide env/secrets documentation and deploy steps.
+
+**Constraints:**
+
+- Respect macOS safety; no scanning system paths beyond safe whitelist.
+- Payment webhook signature verification and idempotency.
+- Prefer GPU-friendly animations; respect prefers-reduced-motion.
+- No overclaims; privacy-first AI.
 

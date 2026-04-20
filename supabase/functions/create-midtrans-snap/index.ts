@@ -3,7 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { asBool, getPlatformSetting } from "../_shared/platformSettings.ts";
-import { resolvePromoContext, shouldBlockCheckoutForSlots } from "../_shared/promoPlan.ts";
+import { resolveMidtransCheckoutPricing } from "../_shared/checkoutPricing.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
 
     const { data: settings } = await supabase
       .from("app_settings")
-      .select("lifetime_price_idr, checkout_success_base_url")
+      .select("lifetime_price_idr, checkout_success_base_url, promo_plan, promo_slots_remaining, checkout_coupons")
       .eq("id", "default")
       .maybeSingle();
 
@@ -144,21 +144,41 @@ Deno.serve(async (req) => {
       crmContactId = (byEmail?.id as string) ?? null;
     }
 
-    const baseIdr = Number(settings?.lifetime_price_idr) > 0 ? Number(settings?.lifetime_price_idr) : 173000;
-    const promoResolved = resolvePromoContext({
+    const couponCodeRaw = body.coupon_code != null ? String(body.coupon_code).trim() : "";
+    const skipAutoCoupon = Boolean(body.skip_auto_coupon);
+
+    const priced = resolveMidtransCheckoutPricing({
+      appRow: {
+        lifetime_price_idr: settings?.lifetime_price_idr,
+        promo_plan: settings?.promo_plan ?? null,
+        promo_slots_remaining: settings?.promo_slots_remaining ?? null,
+        checkout_coupons: settings?.checkout_coupons ?? null,
+      },
+      couponCode: couponCodeRaw || null,
+      skipAutoCoupon,
       now: new Date(),
-      baseLifetimeIdr: baseIdr,
-      plan: settings?.promo_plan ?? null,
-      promoSlotsRemaining: settings?.promo_slots_remaining ?? null,
     });
-    if (shouldBlockCheckoutForSlots(promoResolved)) {
-      return new Response(JSON.stringify({ error: "promo_slots_exhausted" }), {
-        status: 409,
+
+    if (!priced.ok) {
+      if (priced.error === "promo_slots_exhausted") {
+        return new Response(JSON.stringify({ error: "promo_slots_exhausted" }), {
+          status: 409,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      if (priced.error === "invalid_coupon") {
+        return new Response(JSON.stringify({ error: "invalid_coupon" }), {
+          status: 400,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ error: "multiple_auto_coupon" }), {
+        status: 500,
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    const grossAmount =
-      promoResolved.lifetime_price_idr > 0 ? promoResolved.lifetime_price_idr : 173000;
+
+    const grossAmount = priced.grossAmount;
     const orderId = `MFY-${Date.now()}-${crypto.randomUUID().slice(0, 8)}`;
 
     const finishBase = String(settings?.checkout_success_base_url ?? "").trim().replace(/\/$/, "");
@@ -228,6 +248,10 @@ Deno.serve(async (req) => {
       customer_name: name,
       phone,
       gross_amount_idr: grossAmount,
+      base_amount_idr: priced.baseAmount,
+      discount_idr: priced.discountIdr,
+      coupon_id: priced.couponId,
+      coupon_code: priced.couponCode,
       status: "pending",
       provider: "midtrans",
       affiliate_id: affiliateId,
@@ -253,6 +277,8 @@ Deno.serve(async (req) => {
         client_key: clientKey,
         is_production: isProd,
         gross_amount_idr: grossAmount,
+        base_amount_idr: priced.baseAmount,
+        discount_idr: priced.discountIdr,
       }),
       { headers: { ...cors, "Content-Type": "application/json" } }
     );

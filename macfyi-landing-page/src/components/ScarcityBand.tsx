@@ -61,6 +61,7 @@ export function ScarcityBand({
   updateData,
   promoCountdown,
   promoSlotsDisplay,
+  onScrollToPricing,
 }: {
   scarcity: ContentData["scarcity"];
   canEdit: boolean;
@@ -69,6 +70,8 @@ export function ScarcityBand({
   promoCountdown?: { endMs: number; clockOffsetMs: number } | null;
   /** Slot tampilan dari public-config (counter atau slots_initial fase) */
   promoSlotsDisplay?: number | null;
+  /** Pixel / analytics sebelum scroll ke #pricing */
+  onScrollToPricing?: () => void;
 }) {
   const useServerCountdown = Boolean(
     promoCountdown && Number.isFinite(promoCountdown.endMs) && promoCountdown.endMs > 0
@@ -94,8 +97,10 @@ export function ScarcityBand({
   const m = Math.floor((remain % 3600000) / 60000);
   const s = Math.floor((remain % 60000) / 1000);
 
-  const scrollToPricing = () =>
+  const scrollToPricing = () => {
+    onScrollToPricing?.();
     document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   return (
     <section

@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { X, Download, Upload, Trash2, Plus } from "lucide-react";
 import type { ContentData, SiteSettings } from "../types/content";
-import { DEFAULT_SITE_SETTINGS } from "../types/content";
+import { DEFAULT_SITE_SETTINGS, DEFAULT_LEGAL } from "../types/content";
 import { deepMerge } from "../lib/mergeData";
 import { loadLeads, saveLeads, updateLeadStage, type CrmLead, type LeadStage } from "../lib/leads";
 import { getSupabaseBrowserClient, isSupabaseUserAdmin } from "../lib/supabase";
+import type { CheckoutGateway } from "../lib/macfyiPublicConfig";
 import { formatIdr } from "../lib/formatIdr";
 import { uploadBrandLogoFromAdmin } from "../lib/brandAssetUpload";
 
@@ -16,8 +17,9 @@ const TABS = [
   { id: "track", label: "Pixel & Analytics" },
   { id: "ui", label: "Banner & FAQ" },
   { id: "checkout", label: "Checkout" },
+  { id: "coupons", label: "Kupon checkout" },
   { id: "promo", label: "Promo & scarcity" },
-  { id: "legal", label: "Footer & privasi" },
+  { id: "legal", label: "Footer & legal" },
   { id: "content", label: "Konten JSON" },
   { id: "crm", label: "CRM & WA" },
 ] as const;
@@ -32,6 +34,36 @@ type PromoPhaseRow = {
 
 function emptyPromoPhaseRow(): PromoPhaseRow {
   return { starts_at: "", ends_at: "", lifetime_price_idr: "173000", compare_at_idr: "", slots_initial: "" };
+}
+
+type CouponRow = {
+  id: string;
+  code: string;
+  label: string;
+  enabled: boolean;
+  auto_apply: boolean;
+  mode: "fixed_price" | "percent_off" | "amount_off_idr";
+  percent: string;
+  amount_off_idr: string;
+  fixed_price_idr: string;
+  starts_at: string;
+  ends_at: string;
+};
+
+function emptyCouponRow(): CouponRow {
+  return {
+    id: `c-${Date.now()}`,
+    code: "",
+    label: "",
+    enabled: true,
+    auto_apply: false,
+    mode: "percent_off",
+    percent: "10",
+    amount_off_idr: "",
+    fixed_price_idr: "",
+    starts_at: "",
+    ends_at: "",
+  };
 }
 
 type TabId = (typeof TABS)[number]["id"];
@@ -71,11 +103,18 @@ export function AdminSettingsModal({
   const [promoLoadBusy, setPromoLoadBusy] = useState(false);
   const [promoSaveBusy, setPromoSaveBusy] = useState(false);
   const [logoUploadBusy, setLogoUploadBusy] = useState(false);
+  const [couponRows, setCouponRows] = useState<CouponRow[]>([emptyCouponRow()]);
+  const [couponLoadBusy, setCouponLoadBusy] = useState(false);
+  const [couponSaveBusy, setCouponSaveBusy] = useState(false);
+  const [checkoutGatewayDraft, setCheckoutGatewayDraft] = useState<CheckoutGateway>("midtrans");
+  const [checkoutGatewayLoadBusy, setCheckoutGatewayLoadBusy] = useState(false);
+  const [checkoutGatewaySaveBusy, setCheckoutGatewaySaveBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const wpRef = useRef<HTMLInputElement>(null);
   const logoUploadRef = useRef<HTMLInputElement>(null);
 
   const s = data.settings;
+  const legalMerged = { ...DEFAULT_LEGAL, ...(data.legal ?? {}) };
   const lifetimeIdr = typeof s.lifetime_price_idr === "number" && Number.isFinite(s.lifetime_price_idr) ? s.lifetime_price_idr : 173000;
 
   const waByCat = useMemo(() => {
@@ -93,6 +132,59 @@ export function AdminSettingsModal({
     if (open && tab === "content") {
       setJsonText(JSON.stringify(data, null, 2));
     }
+  }, [open, tab]);
+
+  useEffect(() => {
+    if (!open || tab !== "coupons") return;
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCouponLoadBusy(true);
+      try {
+        const { data: row, error } = await client
+          .from("app_settings")
+          .select("checkout_coupons")
+          .eq("id", "default")
+          .maybeSingle();
+        if (error) throw error;
+        if (cancelled) return;
+        const doc = row?.checkout_coupons as { coupons?: unknown[] } | null;
+        const list = Array.isArray(doc?.coupons) ? doc!.coupons! : [];
+        if (list.length === 0) {
+          setCouponRows([emptyCouponRow()]);
+          return;
+        }
+        setCouponRows(
+          list.map((p: unknown) => {
+            const o = (p ?? {}) as Record<string, unknown>;
+            return {
+              id: String(o.id ?? `c-${Math.random()}`),
+              code: String(o.code ?? ""),
+              label: String(o.label ?? ""),
+              enabled: Boolean(o.enabled),
+              auto_apply: Boolean(o.auto_apply),
+              mode: (String(o.mode ?? "percent_off") as CouponRow["mode"]) || "percent_off",
+              percent: o.percent != null && o.percent !== "" ? String(o.percent) : "",
+              amount_off_idr: o.amount_off_idr != null && o.amount_off_idr !== "" ? String(o.amount_off_idr) : "",
+              fixed_price_idr: o.fixed_price_idr != null && o.fixed_price_idr !== "" ? String(o.fixed_price_idr) : "",
+              starts_at: o.starts_at != null ? String(o.starts_at) : "",
+              ends_at: o.ends_at != null ? String(o.ends_at) : "",
+            };
+          })
+        );
+      } catch (e) {
+        if (!cancelled) toast(e instanceof Error ? e.message : String(e), "error");
+      } finally {
+        if (!cancelled) setCouponLoadBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [open, tab]);
 
   useEffect(() => {
@@ -141,6 +233,47 @@ export function AdminSettingsModal({
         if (!cancelled) toast(e instanceof Error ? e.message : String(e), "error");
       } finally {
         if (!cancelled) setPromoLoadBusy(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, tab]);
+
+  useEffect(() => {
+    if (!open || tab !== "checkout") return;
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCheckoutGatewayLoadBusy(true);
+      try {
+        const { data: row, error } = await client
+          .from("platform_settings")
+          .select("value")
+          .eq("key", "checkout.gateway")
+          .maybeSingle();
+        if (error) throw error;
+        if (cancelled) return;
+        const v = row?.value;
+        const raw =
+          typeof v === "string"
+            ? v
+            : v === true || v === false
+              ? String(v)
+              : typeof v === "object" && v !== null && "gateway" in (v as object)
+                ? String((v as { gateway?: string }).gateway ?? "")
+                : String(v ?? "midtrans");
+        const s = raw.toLowerCase().replace(/^"+|"+$/g, "");
+        if (s === "lynk" || s === "external" || s === "midtrans") setCheckoutGatewayDraft(s);
+        else setCheckoutGatewayDraft("midtrans");
+      } catch (e) {
+        if (!cancelled) toast(e instanceof Error ? e.message : String(e), "error");
+      } finally {
+        if (!cancelled) setCheckoutGatewayLoadBusy(false);
       }
     })();
     return () => {
@@ -297,6 +430,111 @@ export function AdminSettingsModal({
       toast(e instanceof Error ? e.message : String(e), "error");
     } finally {
       setPromoSaveBusy(false);
+    }
+  };
+
+  const saveCheckoutGatewayToServer = async () => {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi.", "error");
+      return;
+    }
+    const { data: sess } = await client.auth.getSession();
+    if (!sess.session?.user || !isSupabaseUserAdmin(sess.session.user)) {
+      toast("Masuk sebagai admin Supabase untuk mengubah gateway.", "error");
+      return;
+    }
+    setCheckoutGatewaySaveBusy(true);
+    try {
+      const { error } = await client.from("platform_settings").upsert(
+        {
+          key: "checkout.gateway",
+          value: checkoutGatewayDraft,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "key" }
+      );
+      if (error) throw error;
+      toast("Gateway checkout disimpan (platform_settings).", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setCheckoutGatewaySaveBusy(false);
+    }
+  };
+
+  const saveCheckoutCouponsToServer = async () => {
+    const client = getSupabaseBrowserClient();
+    if (!client) {
+      toast("Supabase belum dikonfigurasi.", "error");
+      return;
+    }
+    const { data: sess } = await client.auth.getSession();
+    if (!sess.session?.user || !isSupabaseUserAdmin(sess.session.user)) {
+      toast("Masuk sebagai admin.", "error");
+      return;
+    }
+    const coupons = couponRows
+      .map((row) => {
+        const id = row.id.trim();
+        if (!id) return null;
+        const mode = row.mode;
+        const obj: Record<string, unknown> = {
+          id,
+          code: row.code.trim(),
+          label: row.label.trim() || null,
+          enabled: row.enabled,
+          auto_apply: row.auto_apply,
+          mode,
+        };
+        if (row.starts_at.trim()) obj.starts_at = row.starts_at.trim();
+        if (row.ends_at.trim()) obj.ends_at = row.ends_at.trim();
+        if (mode === "percent_off") {
+          const p = Number(row.percent);
+          if (!Number.isFinite(p) || p <= 0) return null;
+          obj.percent = Math.round(p);
+        } else if (mode === "amount_off_idr") {
+          const a = Math.round(Number(row.amount_off_idr));
+          if (!Number.isFinite(a) || a <= 0) return null;
+          obj.amount_off_idr = a;
+        } else if (mode === "fixed_price") {
+          const f = Math.round(Number(row.fixed_price_idr));
+          if (!Number.isFinite(f) || f <= 0) return null;
+          obj.fixed_price_idr = f;
+        }
+        if (!row.auto_apply && !row.code.trim()) return null;
+        return obj;
+      })
+      .filter(Boolean) as Record<string, unknown>[];
+
+    const autos = coupons.filter((c) => c.auto_apply);
+    if (autos.length > 1) {
+      toast("Hanya satu kupon yang boleh auto-apply.", "error");
+      return;
+    }
+
+    setCouponSaveBusy(true);
+    try {
+      const { data: cur, error: readErr } = await client
+        .from("app_settings")
+        .select("config_version")
+        .eq("id", "default")
+        .maybeSingle();
+      if (readErr) throw readErr;
+      const nextVer = (Number(cur?.config_version) || 1) + 1;
+      const { error } = await client
+        .from("app_settings")
+        .update({
+          checkout_coupons: { coupons },
+          config_version: nextVer,
+        })
+        .eq("id", "default");
+      if (error) throw error;
+      toast("Kupon checkout disimpan ke server.", "success");
+    } catch (e) {
+      toast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setCouponSaveBusy(false);
     }
   };
 
@@ -638,7 +876,47 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ googleAnalyticsId: e.target.value })}
                 />
               </Field>
-              <p className="text-white/35 text-xs">
+              <Field label="TikTok Pixel ID">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="CXXXX… (dari TikTok Events Manager)"
+                  value={s.tiktokPixelId ?? ""}
+                  onChange={(e) => patchSettings({ tiktokPixelId: e.target.value })}
+                />
+              </Field>
+              <p className="text-white/50 text-sm font-medium">Kirim event interaksi ke pixel mana</p>
+              <p className="text-white/35 text-xs mb-3">
+                Event pakai nama <code className="text-white/55">macfyi_*</code> (mis. <code className="text-white/55">macfyi_checkout_nav</code>,{" "}
+                <code className="text-white/55">macfyi_demo_modal_open</code>). Matikan jika hanya ingin PageView / tanpa custom event.
+              </p>
+              <label className="flex items-center gap-3 cursor-pointer text-sm text-white/80">
+                <input
+                  type="checkbox"
+                  className="rounded border-white/20"
+                  checked={s.pixelSendMeta !== false}
+                  onChange={(e) => patchSettings({ pixelSendMeta: e.target.checked })}
+                />
+                Meta (Facebook) — event interaksi
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer text-sm text-white/80 mt-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-white/20"
+                  checked={s.pixelSendGa !== false}
+                  onChange={(e) => patchSettings({ pixelSendGa: e.target.checked })}
+                />
+                Google Analytics 4 — event interaksi
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer text-sm text-white/80 mt-2">
+                <input
+                  type="checkbox"
+                  className="rounded border-white/20"
+                  checked={s.pixelSendTiktok !== false}
+                  onChange={(e) => patchSettings({ pixelSendTiktok: e.target.checked })}
+                />
+                TikTok — event interaksi
+              </label>
+              <p className="text-white/35 text-xs mt-4">
                 Script dimuat sekali saat ID diisi. Sesuaikan kebijakan cookie / consent di produksi.
               </p>
             </>
@@ -754,6 +1032,102 @@ export function AdminSettingsModal({
               <p className="text-white/45 text-xs">
                 Teks modal checkout (label, placeholder, tombol). Subjudul produk kosongkan untuk memakai nama produk dari halaman.
               </p>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                <p className="text-white/70 text-xs font-semibold">Gateway pembayaran (server)</p>
+                <p className="text-white/40 text-xs leading-relaxed">
+                  Mengatur <code className="text-white/55">platform_settings.checkout.gateway</code> — landing membaca lewat{" "}
+                  <code className="text-white/55">public-config</code>. Midtrans butuh secret Midtrans; Lynk butuh{" "}
+                  <code className="text-white/55">LYNK_*</code> di Supabase; URL eksternal hanya membuka Checkout URL (tanpa Snap / Lynk).
+                </p>
+                {checkoutGatewayLoadBusy ? (
+                  <p className="text-white/40 text-xs">Memuat gateway dari server…</p>
+                ) : (
+                  <div className="flex flex-col gap-2 text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="checkout-gateway"
+                        checked={checkoutGatewayDraft === "midtrans"}
+                        onChange={() => setCheckoutGatewayDraft("midtrans")}
+                      />
+                      <span>Midtrans (Snap)</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="checkout-gateway"
+                        checked={checkoutGatewayDraft === "lynk"}
+                        onChange={() => setCheckoutGatewayDraft("lynk")}
+                      />
+                      <span>Lynk.id</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="checkout-gateway"
+                        checked={checkoutGatewayDraft === "external"}
+                        onChange={() => setCheckoutGatewayDraft("external")}
+                      />
+                      <span>Hanya URL eksternal</span>
+                    </label>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  disabled={checkoutGatewaySaveBusy || checkoutGatewayLoadBusy}
+                  onClick={() => void saveCheckoutGatewayToServer()}
+                  className="bg-red-600 hover:bg-red-500 disabled:opacity-50 px-4 py-2 rounded-xl text-xs font-bold"
+                >
+                  {checkoutGatewaySaveBusy ? "Menyimpan…" : "Simpan gateway ke server"}
+                </button>
+                {(checkoutGatewayDraft === "lynk" || Boolean(s.checkoutLynkStaticUrl?.trim())) && (
+                  <div className="pt-3 mt-3 border-t border-white/10 space-y-3">
+                    <p className="text-white/55 text-xs leading-relaxed">
+                      <strong className="text-white/80">Lynk — dua cara:</strong> (1){" "}
+                      <em>Tautan hosted</em> — isi URL di bawah; pengunjung diarahkan ke Lynk dengan query{" "}
+                      <code className="text-white/50">email</code>, <code className="text-white/50">name</code>,{" "}
+                      <code className="text-white/50">phone</code> (sesuai dukungan URL Lynk Anda). Disimpan saat Anda{" "}
+                      <strong className="text-white/80">Publikasikan</strong> konten landing. (2) <em>API server</em> — kosongkan
+                      URL ini; set secret <code className="text-white/50">LYNK_CREATE_URL</code> +{" "}
+                      <code className="text-white/50">LYNK_BEARER_TOKEN</code> (atau kunci / merchant key dari panel Lynk sebagai
+                      token) di Supabase; jangan menaruh secret di halaman admin ini.
+                    </p>
+                    <Field label="URL tautan checkout Lynk (hosted link, opsional)">
+                      <input
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 font-mono text-xs"
+                        placeholder="https://…"
+                        value={s.checkoutLynkStaticUrl}
+                        onChange={(e) => patchSettings({ checkoutLynkStaticUrl: e.target.value })}
+                      />
+                    </Field>
+                    <div className="rounded-lg bg-black/35 border border-white/10 p-3 space-y-2">
+                      <p className="text-[11px] text-white/45 uppercase tracking-wide">Contoh isi secret (CLI)</p>
+                      <pre className="text-[10px] text-emerald-200/90 whitespace-pre-wrap break-all font-mono leading-relaxed">
+                        {`# File: scripts/env.supabase.secrets (salin dari .example), lalu:
+supabase secrets set --env-file scripts/env.supabase.secrets
+
+LYNK_CREATE_URL=https://…
+LYNK_BEARER_TOKEN=…
+# atau: LYNK_AUTH_MODE=x-api-key  +  LYNK_API_KEY=…
+LYNK_WEBHOOK_SECRET=…`}
+                      </pre>
+                      <button
+                        type="button"
+                        className="text-[11px] text-red-300 hover:text-red-200 underline-offset-2 hover:underline"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(`LYNK_CREATE_URL=
+LYNK_BEARER_TOKEN=
+LYNK_WEBHOOK_SECRET=
+`);
+                          toast("Template secret Lynk disalin — isi nilai lalu set lewat CLI.", "success");
+                        }}
+                      >
+                        Salin template nama secret (tanpa nilai)
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
               <Field label="Judul modal">
                 <input
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
@@ -856,12 +1230,19 @@ export function AdminSettingsModal({
                   />
                 </Field>
               </div>
-              <div className="grid md:grid-cols-3 gap-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Field label="Tombol (Midtrans)">
                   <input
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
                     value={s.checkoutCtaMidtrans}
                     onChange={(e) => patchSettings({ checkoutCtaMidtrans: e.target.value })}
+                  />
+                </Field>
+                <Field label="Tombol (Lynk.id)">
+                  <input
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                    value={s.checkoutCtaLynk}
+                    onChange={(e) => patchSettings({ checkoutCtaLynk: e.target.value })}
                   />
                 </Field>
                 <Field label="Tombol (URL eksternal)">
@@ -893,6 +1274,13 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ checkoutFooterSnap: e.target.value })}
                 />
               </Field>
+              <Field label="Catatan kaki (Lynk.id)">
+                <textarea
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[56px] text-xs"
+                  value={s.checkoutFooterLynk}
+                  onChange={(e) => patchSettings({ checkoutFooterLynk: e.target.value })}
+                />
+              </Field>
               <Field label="Catatan kaki (tanpa gateway)">
                 <textarea
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 min-h-[56px] text-xs"
@@ -900,6 +1288,195 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ checkoutFooterNoGateway: e.target.value })}
                 />
               </Field>
+            </>
+          )}
+
+          {tab === "coupons" && (
+            <>
+              <p className="text-white/45 text-xs leading-relaxed">
+                Kupon memotong harga <strong className="text-white/80">setelah harga promo</strong> fase aktif. Harga final
+                dihitung di Edge Function (Midtrans + preview). Mode: harga tetap, persen, atau potongan nominal.{" "}
+                <strong className="text-white/80">Satu</strong> kupon boleh <code className="text-white/60">auto_apply</code>{" "}
+                (terisi otomatis di halaman checkout).
+              </p>
+              {couponLoadBusy && <p className="text-white/40 text-xs">Memuat dari server…</p>}
+              <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+                {couponRows.map((row, idx) => (
+                  <div key={row.id} className="rounded-xl border border-white/10 bg-black/25 p-4 space-y-3">
+                    <div className="flex flex-wrap gap-3 items-center">
+                      <label className="flex items-center gap-2 text-xs text-white/70">
+                        <input
+                          type="checkbox"
+                          checked={row.enabled}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], enabled: e.target.checked };
+                            setCouponRows(next);
+                          }}
+                        />
+                        Aktif
+                      </label>
+                      <label className="flex items-center gap-2 text-xs text-white/70">
+                        <input
+                          type="checkbox"
+                          checked={row.auto_apply}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], auto_apply: e.target.checked };
+                            setCouponRows(next);
+                          }}
+                        />
+                        Auto di checkout
+                      </label>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <Field label="ID unik">
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                          value={row.id}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], id: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                      <Field label="Kode (wajib jika tidak auto)">
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                          value={row.code}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], code: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                    </div>
+                    <Field label="Label (tampilan)">
+                      <input
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                        value={row.label}
+                        onChange={(e) => {
+                          const next = [...couponRows];
+                          next[idx] = { ...next[idx], label: e.target.value };
+                          setCouponRows(next);
+                        }}
+                      />
+                    </Field>
+                    <Field label="Mode">
+                      <select
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                        value={row.mode}
+                        onChange={(e) => {
+                          const next = [...couponRows];
+                          next[idx] = { ...next[idx], mode: e.target.value as CouponRow["mode"] };
+                          setCouponRows(next);
+                        }}
+                      >
+                        <option value="percent_off">Diskon persen</option>
+                        <option value="amount_off_idr">Potongan nominal (IDR)</option>
+                        <option value="fixed_price">Harga jadi (IDR)</option>
+                      </select>
+                    </Field>
+                    {row.mode === "percent_off" && (
+                      <Field label="Persen (1–100)">
+                        <input
+                          type="number"
+                          min={1}
+                          max={100}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500 tabular-nums"
+                          value={row.percent}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], percent: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                    )}
+                    {row.mode === "amount_off_idr" && (
+                      <Field label="Potongan (IDR)">
+                        <input
+                          type="number"
+                          min={1000}
+                          step={1000}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500 tabular-nums"
+                          value={row.amount_off_idr}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], amount_off_idr: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                    )}
+                    {row.mode === "fixed_price" && (
+                      <Field label="Harga final (IDR)">
+                        <input
+                          type="number"
+                          min={1000}
+                          step={1000}
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500 tabular-nums"
+                          value={row.fixed_price_idr}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], fixed_price_idr: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                    )}
+                    <div className="grid md:grid-cols-2 gap-3">
+                      <Field label="Mulai (ISO, opsional)">
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                          placeholder="2026-01-01T00:00:00.000Z"
+                          value={row.starts_at}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], starts_at: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                      <Field label="Berakhir (ISO, opsional)">
+                        <input
+                          className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs outline-none focus:border-red-500"
+                          value={row.ends_at}
+                          onChange={(e) => {
+                            const next = [...couponRows];
+                            next[idx] = { ...next[idx], ends_at: e.target.value };
+                            setCouponRows(next);
+                          }}
+                        />
+                      </Field>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCouponRows(couponRows.filter((_, i) => i !== idx))}
+                      className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                    >
+                      <Trash2 size={14} /> Hapus kupon
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setCouponRows([...couponRows, emptyCouponRow()])}
+                  className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/15 px-3 py-2 rounded-xl text-xs"
+                >
+                  <Plus size={14} /> Tambah kupon
+                </button>
+              </div>
+              <button
+                type="button"
+                disabled={couponSaveBusy || couponLoadBusy}
+                onClick={() => void saveCheckoutCouponsToServer()}
+                className="w-full bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm"
+              >
+                {couponSaveBusy ? "Menyimpan…" : "Simpan kupon ke server"}
+              </button>
             </>
           )}
 
@@ -1044,16 +1621,58 @@ export function AdminSettingsModal({
 
           {tab === "legal" && (
             <>
-              <Field label="URL Syarat & Ketentuan">
+              <p className="text-white/45 text-xs">
+                Tautan <code className="text-white/60">/terms</code> dan <code className="text-white/60">/privacy</code>{" "}
+                memuat HTML di bawah. URL override di bawah untuk link eksternal atau path lain.
+              </p>
+              <Field label="Judul halaman Syarat (/terms)">
                 <input
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  value={legalMerged.termsTitle}
+                  onChange={(e) =>
+                    replaceData({ ...data, legal: { ...legalMerged, termsTitle: e.target.value } })
+                  }
+                />
+              </Field>
+              <Field label="HTML Syarat & Ketentuan">
+                <textarea
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs min-h-[140px] outline-none focus:border-red-500"
+                  value={legalMerged.termsHtml}
+                  onChange={(e) =>
+                    replaceData({ ...data, legal: { ...legalMerged, termsHtml: e.target.value } })
+                  }
+                />
+              </Field>
+              <Field label="Judul halaman Privasi (/privacy)">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  value={legalMerged.privacyTitle}
+                  onChange={(e) =>
+                    replaceData({ ...data, legal: { ...legalMerged, privacyTitle: e.target.value } })
+                  }
+                />
+              </Field>
+              <Field label="HTML Kebijakan Privasi">
+                <textarea
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs min-h-[140px] outline-none focus:border-red-500"
+                  value={legalMerged.privacyHtml}
+                  onChange={(e) =>
+                    replaceData({ ...data, legal: { ...legalMerged, privacyHtml: e.target.value } })
+                  }
+                />
+              </Field>
+              <Field label="URL Syarat & Ketentuan (override / link)">
+                <input
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="/terms atau https://…"
                   value={s.termsUrl}
                   onChange={(e) => patchSettings({ termsUrl: e.target.value })}
                 />
               </Field>
-              <Field label="URL Kebijakan Privasi">
+              <Field label="URL Kebijakan Privasi (override / link)">
                 <input
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500"
+                  placeholder="/privacy atau https://…"
                   value={s.privacyPolicyUrl}
                   onChange={(e) => patchSettings({ privacyPolicyUrl: e.target.value })}
                 />

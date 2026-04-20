@@ -15,7 +15,25 @@ const KEYS = [
   "marketing.social_toast_enabled",
   "seo.ga4_measurement_id",
   "seo.facebook_pixel_id",
+  /** Modal upgrade di app desktop — ada di respons public-config bagian desktop.upgrade_paywall */
+  "desktop.upgrade_paywall.use_session_clean_amount",
+  "desktop.upgrade_paywall.subtitle_with_amount_id",
+  "desktop.upgrade_paywall.subtitle_with_amount_en",
+  "desktop.upgrade_paywall.subtitle_generic_id",
+  "desktop.upgrade_paywall.subtitle_generic_en",
 ] as const;
+
+const KEY_HINTS: Partial<Record<(typeof KEYS)[number], string>> = {
+  "desktop.upgrade_paywall.use_session_clean_amount":
+    "true = setelah bersih, subjudul memakai jumlah ruang yang benar dari Macfyi. false = selalu teks generik (tanpa angka sesi).",
+  "desktop.upgrade_paywall.subtitle_with_amount_id":
+    "Bahasa Indonesia. Harus ada placeholder {amount} — contoh: Kamu sudah membersihkan {amount}! Dapatkan fitur tanpa batas.",
+  "desktop.upgrade_paywall.subtitle_with_amount_en":
+    "English. Include {amount} — e.g. You've cleaned {amount} already! Get unlimited power.",
+  "desktop.upgrade_paywall.subtitle_generic_id":
+    "Subjudul tanpa angka (tombol upgrade manual / saat use_session_clean_amount false). Tanpa {amount}.",
+  "desktop.upgrade_paywall.subtitle_generic_en": "Generic English subtitle when no session amount is shown.",
+};
 
 export function MarketingSettingsAdmin() {
   const [edit, setEdit] = useState<Record<string, string>>({});
@@ -66,12 +84,15 @@ export function MarketingSettingsAdmin() {
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-medium text-white">Marketing, demo &amp; AI (platform_settings)</h2>
-      <p className="text-xs text-zinc-500">Nilai JSON valid. Setelah simpan, config_version naik agar landing/app refetch.</p>
+      <p className="text-xs text-zinc-500">
+        Nilai JSON valid (boolean angka tanpa kutip, string pakai kutip). Setelah simpan, config_version naik agar landing/app refetch public-config (~30 detik cache).
+      </p>
       {err && <p className="text-sm text-red-400">{err}</p>}
       <ul className="space-y-3">
         {KEYS.map((k) => (
           <li key={k} className="rounded-xl border border-zinc-800 p-3">
             <div className="text-xs font-mono text-amber-500 mb-1">{k}</div>
+            {KEY_HINTS[k] ? <p className="text-[11px] text-zinc-400 mb-2 leading-snug">{KEY_HINTS[k]}</p> : null}
             <textarea
               className="w-full min-h-[48px] rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs font-mono"
               value={edit[k] ?? ""}

@@ -17,6 +17,10 @@ dist/
 # Supabase CLI cache lokal (jangan commit)
 supabase/.temp/
 
+# Secret Supabase untuk `supabase secrets set --env-file` (jangan commit)
+scripts/env.supabase.secrets
+.env.supabase.secrets
+
 # Local AI runtime binaries (downloaded by scripts/fetch-llama-sidecar.sh before build)
 src-tauri/resources/llama/*
 !src-tauri/resources/llama/.gitkeep

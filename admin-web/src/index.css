@@ -1,1 +1,32 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    --admin-bg: #09090b;
+    --admin-surface: #18181b;
+    --admin-border: #27272a;
+    --admin-text: #fafafa;
+    --admin-muted: #a1a1aa;
+    --admin-accent: #8b5cf6;
+    --admin-accent-hover: #7c3aed;
+  }
+
+  html.light {
+    color-scheme: light;
+    --admin-bg: #fafafa;
+    --admin-surface: #f4f4f5;
+    --admin-border: #e4e4e7;
+    --admin-text: #18181b;
+    --admin-muted: #71717a;
+    --admin-accent: #7c3aed;
+    --admin-accent-hover: #6d28d9;
+  }
+
+  html,
+  body {
+    @apply antialiased;
+    background: var(--admin-bg);
+    color: var(--admin-text);
+  }
+}

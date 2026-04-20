@@ -1,9 +1,11 @@
-// Midtrans HTTP notification + generic fallback. Deploy: supabase functions deploy payment-webhook --no-verify-jwt
-// Dashboard: set Notification URL to https://<ref>.supabase.co/functions/v1/payment-webhook
-// Secrets: MIDTRANS_SERVER_KEY (for SHA512 verification), SMTP_*, EMAIL_FROM (optional license email)
+// Midtrans HTTP notification + Lynk.id (HMAC) + generic fallback. Deploy: supabase functions deploy payment-webhook --no-verify-jwt
+// Dashboard Midtrans: Notification URL → …/payment-webhook
+// Dashboard Lynk: webhook/callback URL → …/payment-webhook
+// Secrets: MIDTRANS_SERVER_KEY, LYNK_WEBHOOK_SECRET (optional), LYNK_WEBHOOK_SIGNATURE_HEADER (default x-lynk-signature), SMTP_*, EMAIL_FROM
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { processAffiliateCommission } from "../_shared/affiliateCommission.ts";
+import { verifyMidtransSignature } from "../_shared/midtransSignature.ts";
 import { sendResendHtml } from "../_shared/resendHtml.ts";
 
 async function sha256hex(plain: string): Promise<string> {
@@ -13,26 +15,53 @@ async function sha256hex(plain: string): Promise<string> {
     .join("");
 }
 
-async function sha512hex(plain: string): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-512", new TextEncoder().encode(plain));
-  return Array.from(new Uint8Array(buf))
+async function hmacSha256Hex(secret: string, message: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 }
 
-/** Midtrans: SHA512(order_id + status_code + gross_amount + server_key) */
-async function verifyMidtransSignature(
-  payload: Record<string, unknown>,
-  serverKey: string
-): Promise<boolean> {
-  const orderId = String(payload.order_id ?? "");
-  const statusCode = String(payload.status_code ?? "");
-  const grossAmount = String(payload.gross_amount ?? "");
-  const sig = String(payload.signature_key ?? "").toLowerCase();
-  if (!orderId || !statusCode || !grossAmount || !sig) return false;
-  const raw = orderId + statusCode + grossAmount + serverKey;
-  const hex = await sha512hex(raw);
-  return hex.toLowerCase() === sig;
+function timingSafeEqualHex(a: string, b: string): boolean {
+  const x = a.toLowerCase().replace(/^0x/, "");
+  const y = b.toLowerCase().replace(/^0x/, "").replace(/^sha256=/i, "");
+  if (x.length !== y.length) return false;
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) {
+    diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+function extractOrderId(payload: Record<string, unknown>, isMidtrans: boolean): string {
+  if (isMidtrans) return String(payload.order_id ?? "");
+  const data = payload.data;
+  const nested =
+    data && typeof data === "object"
+      ? (data as Record<string, unknown>).reference_id ??
+        (data as Record<string, unknown>).order_id ??
+        (data as Record<string, unknown>).external_id
+      : undefined;
+  return String(
+    payload.order_id ??
+      payload.reference_id ??
+      payload.reference ??
+      payload.external_id ??
+      nested ??
+      ""
+  );
+}
+
+function isLynkPaidStatus(payload: Record<string, unknown>): boolean {
+  const s = String(payload.status ?? payload.payment_status ?? payload.transaction_status ?? "").toLowerCase();
+  return s === "paid" || s === "success" || s === "completed" || s === "settlement";
 }
 
 function isMidtransPaymentComplete(payload: Record<string, unknown>): boolean {
@@ -53,9 +82,10 @@ Deno.serve(async (req) => {
       return new Response("misconfigured", { status: 500 });
     }
 
+    const rawBody = await req.text();
     let payload: Record<string, unknown>;
     try {
-      payload = (await req.json()) as Record<string, unknown>;
+      payload = JSON.parse(rawBody) as Record<string, unknown>;
     } catch {
       return new Response(JSON.stringify({ ok: false, error: "invalid_json" }), {
         status: 400,
@@ -81,9 +111,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    const lynkSecret = Deno.env.get("LYNK_WEBHOOK_SECRET")?.trim();
+    const sigHeaderName = (Deno.env.get("LYNK_WEBHOOK_SIGNATURE_HEADER") ?? "x-lynk-signature").trim();
+    const sigValRaw = req.headers.get(sigHeaderName) ?? req.headers.get(sigHeaderName.toLowerCase());
+    const sigVal = sigValRaw?.trim() ?? "";
+
+    const orderId = extractOrderId(payload, isMidtrans);
+
+    let isLynkSigOk = false;
+    if (!isMidtrans && lynkSecret) {
+      if (!sigVal) {
+        if (orderId.startsWith("MFY-")) {
+          return new Response(JSON.stringify({ ok: false, error: "missing_lynk_signature" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      } else {
+        const expectedHex = await hmacSha256Hex(lynkSecret, rawBody);
+        isLynkSigOk = timingSafeEqualHex(expectedHex, sigVal);
+        if (!isLynkSigOk) {
+          return new Response(JSON.stringify({ ok: false, error: "invalid_lynk_signature" }), {
+            status: 403,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     const transactionId = String(payload.transaction_id ?? "");
-    const orderId = String(payload.order_id ?? "");
-    const txStatus = String(payload.transaction_status ?? "unknown");
+    const txStatus = String(
+      payload.transaction_status ?? payload.status ?? payload.payment_status ?? "unknown"
+    );
     /** One row per Midtrans notification (same tx id can appear as pending then settlement). */
     const eventId = transactionId
       ? `${transactionId}_${txStatus}`
@@ -100,15 +159,21 @@ Deno.serve(async (req) => {
 
     const paid = isMidtrans
       ? isMidtransPaymentComplete(payload)
-      : payload.status === "paid" || payload.transaction_status === "settlement";
+      : isLynkSigOk
+        ? isLynkPaidStatus(payload)
+        : payload.status === "paid" ||
+          payload.transaction_status === "settlement" ||
+          isLynkPaidStatus(payload);
 
-    if (isMidtrans && orderId) {
-      const statusLabel = String(payload.transaction_status ?? "unknown");
+    if ((isMidtrans || isLynkSigOk) && orderId) {
+      const statusLabel = String(
+        payload.transaction_status ?? payload.status ?? payload.payment_status ?? "unknown"
+      );
       await supabase
         .from("payment_transactions")
         .update({
           status: statusLabel,
-          midtrans_transaction_id: transactionId || null,
+          midtrans_transaction_id: isMidtrans ? transactionId || null : null,
           raw_last_payload: payload,
           updated_at: new Date().toISOString(),
         })
@@ -118,7 +183,7 @@ Deno.serve(async (req) => {
     if (!paid) {
       await supabase.from("payment_events").insert({
         id: eventId,
-        provider: isMidtrans ? "midtrans" : "generic",
+        provider: isMidtrans ? "midtrans" : isLynkSigOk ? "lynk" : "generic",
         payload,
         processed: false,
       });
@@ -147,7 +212,7 @@ Deno.serve(async (req) => {
     if (!email) {
       await supabase.from("payment_events").insert({
         id: eventId,
-        provider: isMidtrans ? "midtrans" : "generic",
+        provider: isMidtrans ? "midtrans" : isLynkSigOk ? "lynk" : "generic",
         payload,
         processed: false,
       });
@@ -160,7 +225,7 @@ Deno.serve(async (req) => {
     const rawLicense = crypto.randomUUID().replace(/-/g, "").slice(0, 20).toUpperCase();
     const license_key_hash = await sha256hex(rawLicense);
 
-    const grossFromPayload = parseInt(String(payload.gross_amount ?? "0").split(".")[0], 10);
+    const grossFromPayload = parseGrossAmountIdr(payload);
     const { data: pt } = orderId
       ? await supabase.from("payment_transactions").select("gross_amount_idr").eq("order_id", orderId).maybeSingle()
       : { data: null };
@@ -209,7 +274,7 @@ Deno.serve(async (req) => {
 
     await supabase.from("payment_events").insert({
       id: eventId,
-      provider: isMidtrans ? "midtrans" : "generic",
+      provider: isMidtrans ? "midtrans" : isLynkSigOk ? "lynk" : "generic",
       payload,
       processed: true,
     });

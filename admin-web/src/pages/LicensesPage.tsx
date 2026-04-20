@@ -1,0 +1,289 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
+import { DataTable } from "../components/ui/DataTable";
+import { Button } from "../components/ui/Button";
+import { Drawer } from "../components/ui/Drawer";
+import { Card } from "../components/ui/Card";
+import { CopyButton } from "../components/shared/CopyButton";
+import { ConfirmDialog } from "../components/shared/ConfirmDialog";
+import { EmptyState } from "../components/shared/EmptyState";
+import { supabase } from "../supabase";
+import { formatIdr, licenseHashDisplay, maskFingerprint } from "../lib/formatters";
+import * as Tooltip from "@radix-ui/react-tooltip";
+
+type LicenseRow = {
+  id: string;
+  email: string;
+  status: string;
+  license_key_hash: string;
+  created_at: string;
+  revoked_at: string | null;
+  price_paid_idr: number | null;
+};
+
+const PAGE_SIZE = 25;
+
+export default function LicensesPage() {
+  const qc = useQueryClient();
+  const [sp, setSp] = useSearchParams();
+  const qEmail = sp.get("q") ?? "";
+  const [filter, setFilter] = useState(qEmail);
+  const [page, setPage] = useState(0);
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [revokeId, setRevokeId] = useState<string | null>(null);
+
+  const activeFilter = filter.trim();
+
+  const listQuery = useQuery({
+    queryKey: ["licenses", "list", activeFilter, page],
+    queryFn: async () => {
+      const from = page * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      let qb = supabase
+        .from("licenses")
+        .select("id,email,status,license_key_hash,created_at,revoked_at,price_paid_idr", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(from, to);
+      if (activeFilter) qb = qb.ilike("email", `%${activeFilter}%`);
+      const { data, error, count } = await qb;
+      if (error) throw error;
+      return { rows: (data ?? []) as LicenseRow[], total: count ?? 0 };
+    },
+  });
+
+  const detailQuery = useQuery({
+    queryKey: ["licenses", "detail", drawerId],
+    enabled: Boolean(drawerId),
+    queryFn: async () => {
+      const id = drawerId!;
+      const { data: license, error: e1 } = await supabase.from("licenses").select("*").eq("id", id).maybeSingle();
+      if (e1) throw e1;
+      if (!license) throw new Error("License not found");
+      const email = (license as { email: string }).email;
+      const [act, tx] = await Promise.all([
+        supabase.from("activations").select("*").eq("license_id", id).maybeSingle(),
+        supabase.from("payment_transactions").select("*").eq("email", email).order("created_at", { ascending: false }).limit(20),
+      ]);
+      if (act.error) throw act.error;
+      if (tx.error) throw tx.error;
+      return { license, activation: act.data, txs: tx.data ?? [] };
+    },
+  });
+
+  const revokeMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("licenses")
+        .update({ status: "revoked", revoked_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      toast.success("License revoked");
+      setRevokeId(null);
+      setDrawerId(null);
+      await qc.invalidateQueries({ queryKey: ["licenses"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const applyFilter = () => {
+    setPage(0);
+    const next = new URLSearchParams(sp);
+    if (activeFilter) next.set("q", activeFilter);
+    else next.delete("q");
+    setSp(next);
+  };
+
+  const exportCsv = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("licenses")
+      .select("id,email,status,license_key_hash,created_at,revoked_at,price_paid_idr")
+      .order("created_at", { ascending: false })
+      .limit(2000);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const rows = (data ?? []) as LicenseRow[];
+    const header = ["id", "email", "status", "license_key_hash_prefix", "created_at", "revoked_at", "price_paid_idr"];
+    const lines = [header.join(",")];
+    for (const r of rows) {
+      lines.push(
+        [r.id, JSON.stringify(r.email), r.status, licenseHashDisplay(r.license_key_hash, 16), r.created_at, r.revoked_at ?? "", r.price_paid_idr ?? ""].join(
+          ",",
+        ),
+      );
+    }
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `licenses-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.message("Exported (max 2000 rows)");
+  }, []);
+
+  const columns = useMemo<ColumnDef<LicenseRow>[]>(
+    () => [
+      { accessorKey: "email", header: "Email", cell: (c) => <span className="font-mono text-[11px]">{c.getValue() as string}</span> },
+      { accessorKey: "status", header: "Status" },
+      {
+        accessorKey: "license_key_hash",
+        header: "Key (hash)",
+        cell: (c) => {
+          const h = c.getValue() as string;
+          const show = licenseHashDisplay(h, 14);
+          return (
+            <Tooltip.Root>
+              <Tooltip.Trigger asChild>
+                <span className="cursor-help font-mono text-[11px] text-zinc-400">{show}</span>
+              </Tooltip.Trigger>
+              <Tooltip.Portal>
+                <Tooltip.Content
+                  className="max-w-xs rounded-lg border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-[11px] text-zinc-300 shadow-lg"
+                  sideOffset={6}
+                >
+                  Plaintext license key is only sent to the buyer by email. Admin stores hash only.
+                  <Tooltip.Arrow className="fill-zinc-900" />
+                </Tooltip.Content>
+              </Tooltip.Portal>
+            </Tooltip.Root>
+          );
+        },
+      },
+      { accessorKey: "price_paid_idr", header: "Paid", cell: (c) => formatIdr(c.getValue() as number | null) },
+      {
+        id: "actions",
+        header: "",
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            <CopyButton text={row.original.license_key_hash} />
+            <Button variant="ghost" size="sm" onClick={() => setDrawerId(row.original.id)}>
+              Detail
+            </Button>
+            {row.original.status === "active" ? (
+              <Button variant="ghost" size="sm" className="text-red-400" onClick={() => setRevokeId(row.original.id)}>
+                Revoke
+              </Button>
+            ) : null}
+          </div>
+        ),
+      },
+    ],
+    [],
+  );
+
+  const rows = listQuery.data?.rows ?? [];
+  const total = listQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-semibold text-zinc-100">Licenses</h1>
+        <p className="mt-1 text-sm text-zinc-500">Hashed keys only — copy full hash for support correlation.</p>
+      </div>
+
+      <Card className="flex flex-wrap items-end gap-3 p-4">
+        <label className="min-w-[200px] flex-1 text-xs text-zinc-500">
+          Filter email
+          <input
+            className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && applyFilter()}
+          />
+        </label>
+        <Button variant="secondary" size="sm" onClick={() => applyFilter()}>
+          Apply
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => void exportCsv()}>
+          Export CSV
+        </Button>
+      </Card>
+
+      {listQuery.isError ? <p className="text-sm text-red-400">{(listQuery.error as Error).message}</p> : null}
+
+      <DataTable
+        data={rows}
+        columns={columns}
+        getRowId={(r) => r.id}
+        empty={<EmptyState title="No licenses" description="Try clearing the email filter." />}
+      />
+
+      <div className="flex items-center justify-between text-xs text-zinc-500">
+        <span>
+          Page {page + 1} / {totalPages} — {total} rows
+        </span>
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
+            Prev
+          </Button>
+          <Button variant="ghost" size="sm" disabled={page + 1 >= totalPages} onClick={() => setPage((p) => p + 1)}>
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <Drawer open={Boolean(drawerId)} onOpenChange={(o) => !o && setDrawerId(null)} title="License detail">
+        {detailQuery.isLoading ? (
+          <p className="text-sm text-zinc-500">Loading…</p>
+        ) : detailQuery.data?.license ? (
+          <div className="space-y-4 text-sm">
+            <div>
+              <div className="text-xs text-zinc-500">Email</div>
+              <div className="font-mono text-xs">{(detailQuery.data.license as { email: string }).email}</div>
+            </div>
+            <div>
+              <div className="text-xs text-zinc-500">Hash</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-[11px] text-zinc-400">
+                  {(detailQuery.data.license as { license_key_hash: string }).license_key_hash}
+                </span>
+                <CopyButton text={(detailQuery.data.license as { license_key_hash: string }).license_key_hash} label="Copy" />
+              </div>
+            </div>
+            {detailQuery.data.activation ? (
+              <div>
+                <div className="text-xs text-zinc-500">Activation fingerprint</div>
+                <div className="font-mono text-[11px] text-zinc-300">
+                  {maskFingerprint((detailQuery.data.activation as { device_fingerprint: string }).device_fingerprint)}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-500">No activation row.</p>
+            )}
+            <div>
+              <div className="text-xs text-zinc-500 mb-1">Payment rows (same email)</div>
+              <ul className="space-y-1 text-xs">
+                {(detailQuery.data.txs as Record<string, unknown>[]).map((t) => (
+                  <li key={String(t.id)} className="rounded border border-zinc-800 px-2 py-1 font-mono text-[10px] text-zinc-400">
+                    {String(t.order_id)} · {String(t.status)} · {formatIdr(Number(t.gross_amount_idr))}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-red-400">Not found</p>
+        )}
+      </Drawer>
+
+      <ConfirmDialog
+        open={Boolean(revokeId)}
+        onOpenChange={(o) => !o && setRevokeId(null)}
+        title="Revoke license?"
+        description="Buyer keeps email copy; server will reject activations for this row."
+        danger
+        confirmLabel="Revoke"
+        onConfirm={async () => {
+          if (revokeId) await revokeMut.mutateAsync(revokeId);
+        }}
+      />
+    </div>
+  );
+}

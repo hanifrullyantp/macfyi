@@ -57,3 +57,12 @@ The app identifier is set in `src-tauri/tauri.conf.json` as `identifier` (curren
 ## CI
 
 `.github/workflows/tauri-build.yml` builds on every push to `main`/`master` and uploads the bundle as an artifact. CI does **not** sign or notarize; add a separate protected workflow with Apple credentials if you need automated release uploads.
+
+## In-app updates (Tauri updater)
+
+The desktop app includes `tauri-plugin-updater` + `tauri-plugin-process`. A banner appears when a newer signed build is available; **Install** downloads the update and relaunches the app.
+
+1. Generate a signing key pair (see [Tauri updater](https://v2.tauri.app/plugin/updater/)) and put the **public** key in `src-tauri/tauri.conf.json` under `plugins.updater.pubkey`.
+2. Set `plugins.updater.endpoints` to your JSON endpoint (for example a static URL or GitHub Releases latest JSON).
+3. Set `plugins.updater.active` to `true` when you are ready to ship updates (keep `false` in development if you do not host update metadata yet).
+4. Each release must publish the update bundle and signature expected by that endpoint; the app must remain **Developer ID signed and notarized** so macOS allows the downloaded update.

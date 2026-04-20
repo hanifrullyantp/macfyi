@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Send, Loader2 } from "lucide-react";
 import { addLead } from "../lib/leads";
 import type { ContentData } from "../types/content";
@@ -9,6 +9,7 @@ import {
   validatePhoneOptional,
 } from "../lib/formValidation";
 import { queueSiteEvent } from "../lib/siteAnalytics";
+import { fireConversionPixels } from "../lib/conversionPixels";
 
 export function LeadCaptureForm({
   settings,
@@ -22,6 +23,29 @@ export function LeadCaptureForm({
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const sectionRef = useRef<HTMLElement | null>(null);
+  const leadVisibleFired = useRef(false);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || leadVisibleFired.current) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const en of entries) {
+          if (en.isIntersecting && en.intersectionRatio >= 0.15) {
+            leadVisibleFired.current = true;
+            fireConversionPixels(settings, "lead_form_visible", { form: "lead_capture" });
+            queueSiteEvent("lead_form_visible", { form: "lead_capture" });
+            io.disconnect();
+            return;
+          }
+        }
+      },
+      { threshold: [0.15, 0.3] }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [settings]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +83,7 @@ export function LeadCaptureForm({
         message: payload.message,
       });
       queueSiteEvent("form_submitted", { form: "lead_capture" });
+      fireConversionPixels(settings, "lead_form_submit", { form: "lead_capture" });
 
       const webhookUrl = import.meta.env.VITE_LEAD_WEBHOOK_URL?.trim();
       if (webhookUrl) {
@@ -93,7 +118,7 @@ export function LeadCaptureForm({
   };
 
   return (
-    <section id="lead" className="py-20 border-t border-white/5 bg-white/[0.02]">
+    <section ref={sectionRef} id="lead" className="py-20 border-t border-white/5 bg-white/[0.02]">
       <div className="container mx-auto px-4 max-w-xl">
         <h2 className="text-2xl font-bold mb-2 text-center">Tanya atau minta demo</h2>
         <p className="text-white/45 text-sm text-center mb-8">
@@ -101,7 +126,7 @@ export function LeadCaptureForm({
           <code className="text-white/60">MARKETING_ECOSYSTEM.md</code>.
         </p>
         <form
-          onSubmit={submit}
+          onSubmit={(e) => void submit(e)}
           className="space-y-4 bg-[#0B1220] border border-white/10 rounded-2xl p-6"
           aria-busy={submitting}
           noValidate

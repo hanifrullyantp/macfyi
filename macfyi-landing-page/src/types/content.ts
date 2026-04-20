@@ -6,6 +6,12 @@ export interface SiteSettings {
   /** Label tampilan (disinkron dari lifetime_price_idr; boleh diedit manual lalu disimpan ke draft) */
   price: string;
   checkoutUrl: string;
+  /**
+   * Lynk “hosted link”: jika gateway server = Lynk dan URL ini valid (`https://…`), pengunjung
+   * diarahkan ke sini dengan query `email`, `name`, `phone` — tanpa Edge `create-lynk-checkout`.
+   * Untuk harga & order server, kosongkan dan set secret `LYNK_*` di Supabase.
+   */
+  checkoutLynkStaticUrl: string;
   loginUrl: string;
   videoUrl: string;
   siteName: string;
@@ -20,6 +26,12 @@ export interface SiteSettings {
   ogImageUrl: string;
   facebookPixelId: string;
   googleAnalyticsId: string;
+  /** TikTok Pixel ID (Events API / Web). */
+  tiktokPixelId: string;
+  /** Jika false, event interaksi tidak dikirim ke pixel ini (PageView/init script tetap jika ID ada). */
+  pixelSendMeta: boolean;
+  pixelSendGa: boolean;
+  pixelSendTiktok: boolean;
   faqSingleOpen: boolean;
   privacyPolicyUrl: string;
   termsUrl: string;
@@ -57,9 +69,11 @@ export interface SiteSettings {
   checkoutPrivacyLinkLabel: string;
   checkoutSubmitLoading: string;
   checkoutCtaMidtrans: string;
+  checkoutCtaLynk: string;
   checkoutCtaExternal: string;
   checkoutCtaConfirm: string;
   checkoutFooterSnap: string;
+  checkoutFooterLynk: string;
   checkoutFooterNoGateway: string;
 }
 
@@ -170,6 +184,13 @@ export interface ContentData {
     links: { label: string; url: string }[];
     copyright: string;
   };
+  /** Halaman /terms dan /privacy (HTML dari admin terpercaya). */
+  legal: {
+    termsTitle: string;
+    termsHtml: string;
+    privacyTitle: string;
+    privacyHtml: string;
+  };
   settings: SiteSettings;
 }
 
@@ -180,6 +201,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   price: "Rp 173.000",
   /** Kosongkan jika belum ada gateway; checkout tetap lewat modal di halaman ini. */
   checkoutUrl: "",
+  checkoutLynkStaticUrl: "",
   loginUrl: "https://app.macfyi.com/login",
   videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
   siteName: "Macfyi",
@@ -196,9 +218,13 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   ogImageUrl: "",
   facebookPixelId: "",
   googleAnalyticsId: "",
+  tiktokPixelId: "",
+  pixelSendMeta: true,
+  pixelSendGa: true,
+  pixelSendTiktok: true,
   faqSingleOpen: true,
-  privacyPolicyUrl: "#",
-  termsUrl: "#",
+  privacyPolicyUrl: "/privacy",
+  termsUrl: "/terms",
   notificationBannerEnabled: true,
   notificationBannerText: "Promo lifetime — checkout sekarang dan rapikan Mac Anda dengan tenang.",
   notificationSoundEnabled: true,
@@ -231,9 +257,20 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   checkoutPrivacyLinkLabel: "Kebijakan Privasi",
   checkoutSubmitLoading: "Memproses…",
   checkoutCtaMidtrans: "Bayar dengan Midtrans",
+  checkoutCtaLynk: "Bayar dengan Lynk.id",
   checkoutCtaExternal: "Lanjut ke pembayaran",
   checkoutCtaConfirm: "Konfirmasi pesanan",
   checkoutFooterSnap: "Pembayaran diproses melalui Midtrans (metode mengikuti pengaturan merchant).",
+  checkoutFooterLynk: "Pembayaran diproses melalui Lynk.id (metode mengikuti pengaturan merchant).",
   checkoutFooterNoGateway:
     "Tambahkan variabel VITE_SUPABASE_URL dan kunci anon, atau atur Checkout URL di pengaturan.",
+};
+
+export const DEFAULT_LEGAL: ContentData["legal"] = {
+  termsTitle: "Syarat & Ketentuan",
+  termsHtml:
+    "<p>Berikut syarat penggunaan layanan dan lisensi Macfyi. Sesuaikan teks ini di pengaturan admin.</p><ul><li>Penggunaan sesuai hukum yang berlaku.</li><li>Lisensi per perangkat sesuai pembelian.</li></ul>",
+  privacyTitle: "Kebijakan Privasi",
+  privacyHtml:
+    "<p>Macfyi menghormati privasi Anda. Sesuaikan kebijakan ini di admin.</p><ul><li>Data diproses untuk aktivasi dan dukungan.</li><li>AI lokal tidak mengirim path file ke server kami.</li></ul>",
 };

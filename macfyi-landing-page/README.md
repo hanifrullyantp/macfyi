@@ -13,7 +13,7 @@ Environment variables are documented in [`.env.example`](.env.example).
 
 **QA / security audit** (scope: static landing vs full payment backend): [`docs/QA_AUDIT_LANDING_PAGE.md`](../docs/QA_AUDIT_LANDING_PAGE.md).
 
-**Pembayaran Midtrans + Supabase:** set `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`, deploy Edge Functions di [`supabase/README.md`](../supabase/README.md) (`create-midtrans-snap`, `payment-webhook`). Tanpa env itu, checkout memakai **Checkout URL** dari pengaturan admin atau pesan kontak.
+**Pembayaran Midtrans / Lynk.id / URL eksternal:** set `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY`, pilih gateway (`platform_settings.checkout.gateway` atau tab Checkout di admin). Deploy & secret: [`docs/CHECKOUT_GATEWAY_LYNK.md`](../docs/CHECKOUT_GATEWAY_LYNK.md) dan [`supabase/README.md`](../supabase/README.md).
 
 **Tutorial langkah demi langkah** (Supabase, Vercel, Midtrans, SMTP): [`docs/TUTORIAL_INTEGRASI_STACK.md`](../docs/TUTORIAL_INTEGRASI_STACK.md).
 

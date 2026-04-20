@@ -1,8 +1,13 @@
 // Public marketing + demo rule snapshot (no secrets). Deploy: supabase functions deploy public-config --no-verify-jwt
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { asBool, asNumber, getPlatformSetting } from "../_shared/platformSettings.ts";
+import { asBool, asNumber, asJsonString, getPlatformSetting } from "../_shared/platformSettings.ts";
 import { resolvePromoContext } from "../_shared/promoPlan.ts";
+import {
+  parseCheckoutCouponsDoc,
+  pickApplicableCoupon,
+  applyCouponToBase,
+} from "../_shared/checkoutCoupons.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -31,7 +36,7 @@ Deno.serve(async (req) => {
   const { data: app } = await supabase
     .from("app_settings")
     .select(
-      "lifetime_price_idr, download_base_url, checkout_success_base_url, terms_url, privacy_url, config_version, product_version, promo_plan, promo_slots_remaining"
+      "lifetime_price_idr, download_base_url, checkout_success_base_url, terms_url, privacy_url, config_version, product_version, promo_plan, promo_slots_remaining, checkout_coupons"
     )
     .eq("id", "default")
     .maybeSingle();
@@ -60,6 +65,50 @@ Deno.serve(async (req) => {
   const effectiveIdr =
     promoResolved.lifetime_price_idr > 0 ? promoResolved.lifetime_price_idr : 173000;
 
+  const couponDoc = parseCheckoutCouponsDoc(app?.checkout_coupons ?? null);
+  const autoPick = pickApplicableCoupon(couponDoc, serverNow, null, false);
+  let checkout:
+    | {
+        compare_at_idr: number | null;
+        base_lifetime_idr: number;
+        auto_coupon: { id: string; code: string; label: string | null } | null;
+        final_with_auto_idr: number | null;
+      }
+    | undefined;
+  if (!autoPick.error && autoPick.coupon) {
+    const { finalIdr } = applyCouponToBase(effectiveIdr, autoPick.coupon);
+    checkout = {
+      compare_at_idr: promoResolved.compare_at_idr,
+      base_lifetime_idr: effectiveIdr,
+      auto_coupon: {
+        id: autoPick.coupon.id,
+        code: autoPick.coupon.code,
+        label: autoPick.coupon.label ?? null,
+      },
+      final_with_auto_idr: finalIdr,
+    };
+  } else if (!autoPick.error) {
+    checkout = {
+      compare_at_idr: promoResolved.compare_at_idr,
+      base_lifetime_idr: effectiveIdr,
+      auto_coupon: null,
+      final_with_auto_idr: null,
+    };
+  } else {
+    checkout = {
+      compare_at_idr: promoResolved.compare_at_idr,
+      base_lifetime_idr: effectiveIdr,
+      auto_coupon: null,
+      final_with_auto_idr: null,
+    };
+  }
+
+  const gwRaw = await getPlatformSetting(supabase, "checkout.gateway");
+  const gwStr = asJsonString(gwRaw, "midtrans").toLowerCase().trim();
+  const checkout_gateway =
+    gwStr === "lynk" || gwStr === "external" || gwStr === "midtrans" ? gwStr : "midtrans";
+  checkout = { ...checkout, gateway: checkout_gateway };
+
   const demo = {
     token_ttl_days: asNumber(await getPlatformSetting(supabase, "demo.token_ttl_days"), 14),
     clean_daily_gb_cap: asNumber(await getPlatformSetting(supabase, "demo.clean_daily_gb_cap"), 2),
@@ -85,6 +134,21 @@ Deno.serve(async (req) => {
     facebook_pixel_id: String(await getPlatformSetting(supabase, "seo.facebook_pixel_id") ?? "").replace(/^"|"$/g, ""),
   };
 
+  const upAmtId = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_with_amount_id"), "").trim();
+  const upAmtEn = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_with_amount_en"), "").trim();
+  const upGenId = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_generic_id"), "").trim();
+  const upGenEn = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_generic_en"), "").trim();
+
+  const desktop = {
+    upgrade_paywall: {
+      use_session_clean_amount: asBool(await getPlatformSetting(supabase, "desktop.upgrade_paywall.use_session_clean_amount"), true),
+      subtitle_with_amount_id: upAmtId.length > 0 ? upAmtId : null,
+      subtitle_with_amount_en: upAmtEn.length > 0 ? upAmtEn : null,
+      subtitle_generic_id: upGenId.length > 0 ? upGenId : null,
+      subtitle_generic_en: upGenEn.length > 0 ? upGenEn : null,
+    },
+  };
+
   const body = {
     version: cfgVersion,
     server_time: serverNow.toISOString(),
@@ -104,6 +168,7 @@ Deno.serve(async (req) => {
       slots_display: promoResolved.slots_display,
       block_checkout_when_slots_zero: promoResolved.block_checkout_when_slots_zero,
     },
+    checkout,
     download_url: String(app?.download_base_url ?? "").trim() || null,
     checkout_success_base_url: String(app?.checkout_success_base_url ?? "").trim() || null,
     terms_url: app?.terms_url ?? null,
@@ -113,6 +178,7 @@ Deno.serve(async (req) => {
     ai,
     marketing,
     seo,
+    desktop,
   };
 
   return new Response(JSON.stringify(body), {

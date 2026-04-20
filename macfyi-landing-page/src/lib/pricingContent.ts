@@ -1,4 +1,5 @@
 import type { ContentData } from "../types/content";
+import { DEFAULT_LEGAL } from "../types/content";
 import { formatIdr, formatIdrCompactRb } from "./formatIdr";
 
 const DEFAULT_SCARCITY: ContentData["scarcity"] = {
@@ -51,6 +52,11 @@ export function normalizePricingContent(data: ContentData): ContentData {
   if (!pp.compareAtPrice?.trim()) {
     next = { ...next, pricing: { ...pp, compareAtPrice: "Rp 299.000" } };
   }
+
+  next = {
+    ...next,
+    legal: { ...DEFAULT_LEGAL, ...(next.legal ?? {}) },
+  };
 
   return next;
 }

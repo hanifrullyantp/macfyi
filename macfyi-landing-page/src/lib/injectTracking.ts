@@ -1,7 +1,8 @@
-/** Inject Meta Pixel + gtag once when IDs are set (admin-configured). */
+/** Inject Meta Pixel + gtag + TikTok once when IDs are set (admin-configured). */
 
 let pixelInjected = "";
 let gaInjected = "";
+let tiktokInjected = "";
 
 export function injectFacebookPixel(pixelId: string): void {
   const id = pixelId.trim();
@@ -49,4 +50,15 @@ gtag('js', new Date());
 gtag('config', '${id.replace(/[^A-Z0-9_-]/gi, "")}');
 `;
   document.head.appendChild(inline);
+}
+
+/** TikTok Pixel — snippet resmi ringkas; `ttq.page()` setelah load. */
+export function injectTikTokPixel(pixelId: string): void {
+  const id = pixelId.trim().replace(/[^A-Z0-9]/gi, "");
+  if (!id || id === tiktokInjected) return;
+  tiktokInjected = id;
+
+  const s = document.createElement("script");
+  s.innerHTML = `!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie","holdConsent","revokeConsent","grantConsent"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var r="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=r,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var i=document.createElement("script");i.type="text/javascript",i.async=!0,i.src=r+"?sdkid="+e+"&lib="+t;var a=d.getElementsByTagName("script")[0];a.parentNode.insertBefore(i,a)};ttq.load("${id}");ttq.page();}(window,document,'ttq');`;
+  document.head.appendChild(s);
 }

@@ -251,7 +251,7 @@ export function MonitorDashboard({ refreshSignal = 0 }: { refreshSignal?: number
     <div className="h-full overflow-y-auto custom-scrollbar px-6 py-6 md:px-8" aria-busy={refreshing}>
       <div className="max-w-6xl mx-auto space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
+        <div>
             <h2 className="text-[30px] leading-[36px] font-semibold text-white tracking-tight">
               {t("monitor.title")}
             </h2>

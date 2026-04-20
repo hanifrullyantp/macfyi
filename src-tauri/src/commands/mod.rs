@@ -1,4 +1,5 @@
 pub mod common;
+pub mod disk_explorer;
 pub mod scan;
 pub mod storage;
 pub mod apps;

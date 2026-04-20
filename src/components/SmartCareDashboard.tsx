@@ -3,6 +3,7 @@ import {
   Activity,
   ArrowRight,
   Clock3,
+  FolderTree,
   HardDrive,
   Layers,
   PackageOpen,
@@ -265,6 +266,18 @@ export function SmartCareDashboard({
               <Layers className="text-cyan-400 mb-2" size={18} />
               <p className="text-sm font-semibold text-white">{t("shell.myClutter")}</p>
               <p className="text-xs text-white/50 mt-1">{t("dashboard.moduleClutterDesc")}</p>
+              <span className="text-[10px] text-[var(--color-accent-text)] mt-2 inline-flex items-center gap-1">
+                {t("dashboard.openModule")} <ArrowRight size={12} />
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateFeature("disk-explorer")}
+              className="surface-card-soft p-4 text-left hover:bg-white/[0.05] transition-colors border border-transparent hover:border-white/10"
+            >
+              <FolderTree className="text-sky-400 mb-2" size={18} />
+              <p className="text-sm font-semibold text-white">{t("shell.diskExplorer")}</p>
+              <p className="text-xs text-white/50 mt-1">{t("dashboard.moduleDiskExplorerDesc")}</p>
               <span className="text-[10px] text-[var(--color-accent-text)] mt-2 inline-flex items-center gap-1">
                 {t("dashboard.openModule")} <ArrowRight size={12} />
               </span>
