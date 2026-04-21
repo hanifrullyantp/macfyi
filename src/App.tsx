@@ -39,7 +39,7 @@ import {
 import { ActivationScreen } from "./components/ActivationScreen";
 import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
 import { isDemoMode, setDemoSession } from "./lib/demoSession";
-import { fetchPublicConfig, type PublicConfig } from "./lib/publicConfig";
+import { fetchPublicConfigWithResult, type PublicConfig } from "./lib/publicConfig";
 import { resolveUpgradePaywallSubtitle } from "./lib/upgradePaywallCopy";
 import { syncAppWebBrandingIcons } from "./lib/brandingHead";
 import { formatIdrShort } from "./lib/formatIdr";
@@ -320,8 +320,11 @@ export default function App() {
   const [aiBannerVisible, setAiBannerVisible] = useState(false);
   const [aiBannerIndex, setAiBannerIndex] = useState(0);
   const [smartCareOverviewLoading, setSmartCareOverviewLoading] = useState(false);
+  /** Defer Smart Care overview prefetch until first user gesture (pointer/key) after boot. */
+  const [smartCareOverviewPrefetchUnlocked, setSmartCareOverviewPrefetchUnlocked] = useState(false);
   const lastOverviewPrefetchRef = useRef(0);
   const overviewPrefetchInFlightRef = useRef(false);
+  const [publicConfigOfflineOpen, setPublicConfigOfflineOpen] = useState(false);
 
   const OVERVIEW_TTL_MS = 5 * 60 * 1000;
 
@@ -371,8 +374,39 @@ export default function App() {
     []
   );
 
+  const retryPublicConfigFetch = useCallback(async () => {
+    try {
+      const pub = await fetchPublicConfigWithResult(true);
+      if (pub.okFromNetwork) {
+        setPublicConfigOfflineOpen(false);
+        if (pub.config) {
+          setPublicConfigSnapshot(pub.config);
+          const idr = pub.config.pricing?.lifetime_price_idr;
+          if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
+          const logo = pub.config.brand?.logo_url?.trim();
+          setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
+        }
+      }
+    } catch {
+      /* keep banner */
+    }
+  }, []);
+
+  /** First interaction after app is ready — then allow idle prefetch of Smart Care overview. */
+  useEffect(() => {
+    if (!licenseGatePassed || !appBootReady || smartCareOverviewPrefetchUnlocked) return;
+    const unlock = () => setSmartCareOverviewPrefetchUnlocked(true);
+    window.addEventListener("pointerdown", unlock, { once: true, passive: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, [licenseGatePassed, appBootReady, smartCareOverviewPrefetchUnlocked]);
+
   useEffect(() => {
     if (!licenseGatePassed) return;
+    if (!smartCareOverviewPrefetchUnlocked) return;
     if (activeFeature !== "smart-care" || appState !== "idle") return;
 
     const run = () => {
@@ -391,7 +425,13 @@ export default function App() {
       }
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
-  }, [licenseGatePassed, activeFeature, appState, prefetchSmartCareOverview]);
+  }, [
+    licenseGatePassed,
+    smartCareOverviewPrefetchUnlocked,
+    activeFeature,
+    appState,
+    prefetchSmartCareOverview,
+  ]);
 
   /** Storage breakdown for dashboard chart — non-blocking when empty */
   useEffect(() => {
@@ -432,13 +472,19 @@ export default function App() {
       if (!alive) return;
       setBootMessage(t("boot.phaseBrand"));
       try {
-        const cfg = await fetchPublicConfig(false);
-        if (alive && cfg) {
-          setPublicConfigSnapshot(cfg);
-          const idr = cfg.pricing?.lifetime_price_idr;
-          if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
-          const logo = cfg.brand?.logo_url?.trim();
-          setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
+        const pub = await fetchPublicConfigWithResult(false);
+        if (alive) {
+          if (pub.attemptedRemote && !pub.okFromNetwork) {
+            setPublicConfigOfflineOpen(true);
+          }
+          const cfg = pub.config;
+          if (cfg) {
+            setPublicConfigSnapshot(cfg);
+            const idr = cfg.pricing?.lifetime_price_idr;
+            if (typeof idr === "number" && idr > 0) setUpgradePriceShort(formatIdrShort(idr));
+            const logo = cfg.brand?.logo_url?.trim();
+            setBrandLogoUrl(logo && logo.length > 0 ? logo : null);
+          }
         }
       } catch {
         /* */
@@ -1109,6 +1155,31 @@ export default function App() {
               className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
             >
               Nanti
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {licenseGatePassed && appBootReady && publicConfigOfflineOpen ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="shrink-0 z-[199] flex flex-wrap items-center justify-between gap-3 border-b border-sky-500/25 bg-sky-950/40 px-4 py-2.5 text-sm text-sky-50"
+        >
+          <span className="text-sky-100/95">{t("boot.publicConfigOffline")}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void retryPublicConfigFetch()}
+              className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-sky-500"
+            >
+              {t("boot.publicConfigOfflineRetry")}
+            </button>
+            <button
+              type="button"
+              onClick={() => setPublicConfigOfflineOpen(false)}
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
+            >
+              {t("boot.publicConfigOfflineDismiss")}
             </button>
           </div>
         </div>

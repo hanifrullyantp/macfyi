@@ -53,6 +53,21 @@ supabase secrets set --env-file scripts/env.supabase.secrets
 
 File `scripts/env.supabase.secrets` **jangan** di-commit (sudah di `.gitignore`).
 
+---
+
+## 3A. Auth — template email verifikasi (branding Macfyi)
+
+Supabase Auth mengirim email verifikasi / reset menggunakan template yang bisa Anda ubah di Dashboard.
+
+- **Lokasi di Dashboard**: Authentication → Email Templates → **Confirm signup**
+- **Template siap pakai**: `supabase/email-templates/confirm-signup.html`
+- **Catatan penting**: template ini memakai `{{ .RedirectTo }}` agar `emailRedirectTo` dari aplikasi (mis. `/download`) benar-benar dipakai.
+
+Alur demo yang diharapkan:
+- User daftar demo di landing → Supabase kirim email verifikasi
+- User klik tombol di email → redirect ke `/download`
+- Halaman `/download` otomatis membuat token demo + menampilkan tombol unduh DMG
+
 ### SMTP & email
 
 | Secret | Keterangan |

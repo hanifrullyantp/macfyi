@@ -8,6 +8,20 @@ MacFYI is bundled with Tauri as `MacFYI.app` and a `.dmg`. For distribution outs
 - A **Developer ID Application** certificate in Keychain
 - An app-specific password or API key for `notarytool`
 
+## App icons (Dock / `.icns`)
+
+Source of truth for the **square master** in this repo:
+
+- [`src-tauri/icons/logo box macfyi.png`](../src-tauri/icons/logo%20box%20macfyi.png) (file name contains a space — quote the path in the shell).
+
+From the **repository root**, regenerate all bundle icons (overwrites files under `src-tauri/icons/`):
+
+```bash
+npx tauri icon "src-tauri/icons/logo box macfyi.png"
+```
+
+Then rebuild (`npm run tauri:build`). More context on in-app vs Dock branding: [`docs/BRANDING_ASSETS.md`](BRANDING_ASSETS.md).
+
 ## Local release build
 
 ```bash

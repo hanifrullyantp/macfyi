@@ -27,6 +27,14 @@ let cache: PublicConfig | null = null;
 let cacheAt = 0;
 const TTL_MS = 120_000;
 
+export type PublicConfigFetchResult = {
+  config: PublicConfig | null;
+  /** True if `VITE_PUBLIC_CONFIG_URL` or Supabase env pointed at a remote endpoint (we intended to call the network). */
+  attemptedRemote: boolean;
+  /** True if this request got HTTP 2xx and parsed JSON (fresh from server for this call). */
+  okFromNetwork: boolean;
+};
+
 function publicConfigUrl(): string | null {
   const base = import.meta.env.VITE_PUBLIC_CONFIG_URL?.trim();
   if (base) return base.replace(/\/$/, "");
@@ -36,24 +44,39 @@ function publicConfigUrl(): string | null {
   return null;
 }
 
-export async function fetchPublicConfig(force = false): Promise<PublicConfig | null> {
+/**
+ * Fetches public marketing config. When remote is configured but unreachable, `attemptedRemote && !okFromNetwork`
+ * and `config` may still be a stale cache from a previous session.
+ */
+export async function fetchPublicConfigWithResult(force = false): Promise<PublicConfigFetchResult> {
   const now = Date.now();
-  if (!force && cache && now - cacheAt < TTL_MS) return cache;
   const url = publicConfigUrl();
-  if (!url) return null;
+  if (!url) {
+    return { config: null, attemptedRemote: false, okFromNetwork: false };
+  }
+  if (!force && cache && now - cacheAt < TTL_MS) {
+    return { config: cache, attemptedRemote: false, okFromNetwork: false };
+  }
   const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
   try {
     const res = await fetch(url, {
       headers: anon ? { apikey: anon, Authorization: `Bearer ${anon}` } : {},
     });
-    if (!res.ok) return cache;
+    if (!res.ok) {
+      return { config: cache, attemptedRemote: true, okFromNetwork: false };
+    }
     const j = (await res.json()) as PublicConfig;
     cache = j;
     cacheAt = now;
-    return j;
+    return { config: j, attemptedRemote: true, okFromNetwork: true };
   } catch {
-    return cache;
+    return { config: cache, attemptedRemote: true, okFromNetwork: false };
   }
+}
+
+export async function fetchPublicConfig(force = false): Promise<PublicConfig | null> {
+  const r = await fetchPublicConfigWithResult(force);
+  return r.config;
 }
 
 export function getCheckoutOrigin(): string | null {

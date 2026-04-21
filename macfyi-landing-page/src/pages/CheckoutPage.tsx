@@ -10,7 +10,7 @@ import {
   type CheckoutGateway,
   type MacfyiPublicCheckout,
 } from "../lib/macfyiPublicConfig";
-import { fireConversionPixels } from "../lib/conversionPixels";
+import { firePixelStep } from "../lib/conversionPixels";
 import { queueSiteEvent } from "../lib/siteAnalytics";
 
 export function CheckoutPage() {
@@ -51,7 +51,7 @@ export function CheckoutPage() {
         });
       }
       if (!cancelled) {
-        fireConversionPixels(mergedSettings, "checkout_page_view", {});
+        firePixelStep(mergedSettings, "checkout_route_view", {});
         queueSiteEvent("checkout_page_view", {});
       }
     })();

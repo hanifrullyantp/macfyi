@@ -31,7 +31,7 @@ import { deepMerge } from './lib/mergeData';
 import { clearLegacyAdminSession, isValidLegacyAdminSession } from './config/adminAuth';
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured, isSupabaseUserAdmin } from './lib/supabase';
 import { injectFacebookPixel, injectGoogleAnalytics, injectTikTokPixel } from './lib/injectTracking';
-import { fireConversionPixels } from './lib/conversionPixels';
+import { firePixelStep } from './lib/conversionPixels';
 import { ToastProvider, useToast } from './components/ToastProvider';
 import { AdminLoginModal } from './components/AdminLoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
@@ -344,6 +344,7 @@ export function LandingApp() {
     typeof window !== 'undefined' ? getSocialProofMuted() : false
   );
   const [promoLive, setPromoLive] = useState<PromoLiveState | null>(null);
+  const pageOpenTracked = useRef(false);
 
   const canEdit = sessionOk && !adminPreview;
 
@@ -452,6 +453,12 @@ export function LandingApp() {
 
   useEffect(() => {
     bootstrapReferralAndTracking();
+  }, []);
+
+  useEffect(() => {
+    if (pageOpenTracked.current) return;
+    pageOpenTracked.current = true;
+    firePixelStep(dataRef.current.settings, "page_open", { path: window.location.pathname });
   }, []);
 
   useEffect(() => {
@@ -602,7 +609,7 @@ export function LandingApp() {
 
   const openCheckout = useCallback((source?: string) => {
     const src = source ?? "unknown";
-    fireConversionPixels(dataRef.current.settings, "checkout_nav", { source: src });
+    firePixelStep(dataRef.current.settings, "checkout_nav", { source: src });
     queueSiteEvent("cta_click", { target: "checkout", source: src });
     queueSiteEvent("checkout_started", { source: src });
     navigate("/checkout");
@@ -640,6 +647,7 @@ export function LandingApp() {
   };
 
   const openDemoModal = useCallback((source: string) => {
+    firePixelStep(dataRef.current.settings, "open_demo_intent", { source });
     queueSiteEvent("cta_click", { target: "demo", source });
     setDemoModalSource(source);
     setDemoModalOpen(true);
@@ -1190,7 +1198,7 @@ export function LandingApp() {
         promoCountdown={promoLive?.countdown ?? null}
         promoSlotsDisplay={promoLive?.slotsDisplay ?? null}
         onScrollToPricing={() => {
-          fireConversionPixels(dataRef.current.settings, "scarcity_scroll_to_pricing", {});
+          firePixelStep(dataRef.current.settings, "scarcity_scroll_to_pricing", {});
           queueSiteEvent("cta_click", { target: "scarcity_scroll_pricing" });
         }}
       />

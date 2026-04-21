@@ -9,6 +9,7 @@ import { getSupabaseBrowserClient, isSupabaseUserAdmin } from "../lib/supabase";
 import type { CheckoutGateway } from "../lib/macfyiPublicConfig";
 import { formatIdr } from "../lib/formatIdr";
 import { uploadBrandLogoFromAdmin } from "../lib/brandAssetUpload";
+import { META_STANDARD_EVENTS } from "../lib/conversionPixels";
 
 const TABS = [
   { id: "brand", label: "Global & merek" },
@@ -884,11 +885,95 @@ export function AdminSettingsModal({
                   onChange={(e) => patchSettings({ tiktokPixelId: e.target.value })}
                 />
               </Field>
-              <p className="text-white/50 text-sm font-medium">Kirim event interaksi ke pixel mana</p>
-              <p className="text-white/35 text-xs mb-3">
-                Event pakai nama <code className="text-white/55">macfyi_*</code> (mis. <code className="text-white/55">macfyi_checkout_nav</code>,{" "}
-                <code className="text-white/55">macfyi_demo_modal_open</code>). Matikan jika hanya ingin PageView / tanpa custom event.
+              <p className="text-white/50 text-sm font-medium pt-2 border-t border-white/10">
+                Meta — nama event standar per langkah
               </p>
+              <p className="text-white/35 text-xs mb-3">
+                Pilih event yang sama persis dengan di Meta Events Manager (PageView, Lead, InitiateCheckout, dll).{" "}
+                <strong className="text-white/55">“none”</strong> = tidak kirim event Meta untuk langkah itu (script PageView awal dari pixel tetap jalan).{" "}
+                GA4 &amp; TikTok tetap menerima event analitik internal <code className="text-white/55">macfyi_*</code>.
+              </p>
+              <MetaEventField
+                label="Buka halaman landing (page_open)"
+                value={s.metaEventOnPageOpen}
+                onChange={(v) => patchSettings({ metaEventOnPageOpen: v })}
+              />
+              <MetaEventField
+                label="Klik Coba gratis / demo (header, hero, pricing kiri)"
+                value={s.metaEventOnOpenDemoIntent}
+                onChange={(v) => patchSettings({ metaEventOnOpenDemoIntent: v })}
+              />
+              <MetaEventField
+                label="Scarcity — scroll ke blok harga"
+                value={s.metaEventOnScarcityScrollToPricing}
+                onChange={(v) => patchSettings({ metaEventOnScarcityScrollToPricing: v })}
+              />
+              <MetaEventField
+                label="Pricing — CTA khusus (programatik)"
+                value={s.metaEventOnPricingCta}
+                onChange={(v) => patchSettings({ metaEventOnPricingCta: v })}
+              />
+              <MetaEventField
+                label="Modal demo terbuka"
+                value={s.metaEventOnDemoModalOpen}
+                onChange={(v) => patchSettings({ metaEventOnDemoModalOpen: v })}
+              />
+              <MetaEventField
+                label="Kirim form demo (submit)"
+                value={s.metaEventOnDemoSubmit}
+                onChange={(v) => patchSettings({ metaEventOnDemoSubmit: v })}
+              />
+              <MetaEventField
+                label="Demo — link unduhan siap"
+                value={s.metaEventOnDemoDownloadReady}
+                onChange={(v) => patchSettings({ metaEventOnDemoDownloadReady: v })}
+              />
+              <MetaEventField
+                label="Form kontak terlihat (#lead)"
+                value={s.metaEventOnLeadFormVisible}
+                onChange={(v) => patchSettings({ metaEventOnLeadFormVisible: v })}
+              />
+              <MetaEventField
+                label="Form kontak dikirim"
+                value={s.metaEventOnLeadFormSubmit}
+                onChange={(v) => patchSettings({ metaEventOnLeadFormSubmit: v })}
+              />
+              <MetaEventField
+                label="Navigasi ke /checkout"
+                value={s.metaEventOnCheckoutNav}
+                onChange={(v) => patchSettings({ metaEventOnCheckoutNav: v })}
+              />
+              <MetaEventField
+                label="Halaman /checkout dimuat"
+                value={s.metaEventOnCheckoutRouteView}
+                onChange={(v) => patchSettings({ metaEventOnCheckoutRouteView: v })}
+              />
+              <MetaEventField
+                label="Form checkout tampil"
+                value={s.metaEventOnCheckoutFormVisible}
+                onChange={(v) => patchSettings({ metaEventOnCheckoutFormVisible: v })}
+              />
+              <MetaEventField
+                label="Submit form checkout"
+                value={s.metaEventOnCheckoutFormSubmit}
+                onChange={(v) => patchSettings({ metaEventOnCheckoutFormSubmit: v })}
+              />
+              <MetaEventField
+                label="Midtrans Snap dibuka"
+                value={s.metaEventOnSnapOpened}
+                onChange={(v) => patchSettings({ metaEventOnSnapOpened: v })}
+              />
+              <MetaEventField
+                label="Redirect ke Lynk / hosted checkout"
+                value={s.metaEventOnLynkRedirect}
+                onChange={(v) => patchSettings({ metaEventOnLynkRedirect: v })}
+              />
+              <MetaEventField
+                label="Pembayaran selesai (Snap sukses)"
+                value={s.metaEventOnPurchaseCompleted}
+                onChange={(v) => patchSettings({ metaEventOnPurchaseCompleted: v })}
+              />
+              <p className="text-white/50 text-sm font-medium pt-4">Kirim event interaksi ke pixel mana</p>
               <label className="flex items-center gap-3 cursor-pointer text-sm text-white/80">
                 <input
                   type="checkbox"
@@ -1891,5 +1976,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-1.5">{label}</span>
       {children}
     </div>
+  );
+}
+
+function MetaEventField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string | undefined;
+  onChange: (v: string) => void;
+}) {
+  const v = value?.trim() ? value : "none";
+  return (
+    <Field label={label}>
+      <select
+        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 outline-none focus:border-red-500 text-sm"
+        value={v}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {META_STANDARD_EVENTS.map((opt) => (
+          <option key={opt.id} value={opt.id}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    </Field>
   );
 }

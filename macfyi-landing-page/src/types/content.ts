@@ -37,14 +37,23 @@ export interface SiteSettings {
    * Kosong / "none" berarti tidak mengirim standard event untuk step tsb (custom `macfyi_*` tetap bisa jalan).
    */
   metaEventOnPageOpen: string;
+  /** Klik menuju demo (header / hero / pricing kolom kiri) sebelum modal tampil. */
+  metaEventOnOpenDemoIntent: string;
+  /** Scroll scarcity → blok harga. */
+  metaEventOnScarcityScrollToPricing: string;
   metaEventOnPricingCta: string;
   metaEventOnDemoModalOpen: string;
   metaEventOnDemoSubmit: string;
+  metaEventOnDemoDownloadReady: string;
   metaEventOnLeadFormVisible: string;
   metaEventOnLeadFormSubmit: string;
   metaEventOnCheckoutNav: string;
+  /** Halaman /checkout dimuat. */
+  metaEventOnCheckoutRouteView: string;
   metaEventOnCheckoutFormVisible: string;
   metaEventOnCheckoutFormSubmit: string;
+  metaEventOnSnapOpened: string;
+  metaEventOnLynkRedirect: string;
   metaEventOnPurchaseCompleted: string;
   faqSingleOpen: boolean;
   privacyPolicyUrl: string;
@@ -236,15 +245,22 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   pixelSendMeta: true,
   pixelSendGa: true,
   pixelSendTiktok: true,
-  metaEventOnPageOpen: "PageView",
+  /** Pixel script Meta sudah mengirim PageView sekali; hindari dobel. */
+  metaEventOnPageOpen: "none",
+  metaEventOnOpenDemoIntent: "Lead",
+  metaEventOnScarcityScrollToPricing: "ViewContent",
   metaEventOnPricingCta: "InitiateCheckout",
-  metaEventOnDemoModalOpen: "Lead",
+  metaEventOnDemoModalOpen: "none",
   metaEventOnDemoSubmit: "CompleteRegistration",
+  metaEventOnDemoDownloadReady: "CompleteRegistration",
   metaEventOnLeadFormVisible: "ViewContent",
   metaEventOnLeadFormSubmit: "Lead",
   metaEventOnCheckoutNav: "InitiateCheckout",
+  metaEventOnCheckoutRouteView: "ViewContent",
   metaEventOnCheckoutFormVisible: "AddPaymentInfo",
   metaEventOnCheckoutFormSubmit: "AddPaymentInfo",
+  metaEventOnSnapOpened: "AddPaymentInfo",
+  metaEventOnLynkRedirect: "InitiateCheckout",
   metaEventOnPurchaseCompleted: "Purchase",
   faqSingleOpen: true,
   privacyPolicyUrl: "/privacy",

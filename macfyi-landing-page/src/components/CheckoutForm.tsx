@@ -12,7 +12,7 @@ import {
 } from "../lib/formValidation";
 import { loadMidtransSnapScript, payWithSnap } from "../lib/midtransSnap";
 import { getMacfyiVisitorId, getReferralSlugFromCookie, queueSiteEvent } from "../lib/siteAnalytics";
-import { fireConversionPixels } from "../lib/conversionPixels";
+import { firePixelStep } from "../lib/conversionPixels";
 import { getSupabaseBrowserClient } from "../lib/supabase";
 import { formatIdr } from "../lib/formatIdr";
 import { previewCheckoutPricing } from "../lib/macfyiPublicConfig";
@@ -78,7 +78,7 @@ export function CheckoutForm({
 
   useEffect(() => {
     queueSiteEvent("form_open", { form: "checkout" });
-    fireConversionPixels(settings, "checkout_form_visible", { form: "checkout" });
+    firePixelStep(settings, "checkout_form_visible", { form: "checkout" });
   }, [settings]);
 
   useEffect(() => {
@@ -198,7 +198,7 @@ export function CheckoutForm({
         message: "Checkout — niat beli",
       });
       queueSiteEvent("checkout_submit", { gateway });
-      fireConversionPixels(settings, "checkout_form_submit", { gateway });
+      firePixelStep(settings, "checkout_form_submit", { gateway });
 
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
       const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
@@ -210,7 +210,7 @@ export function CheckoutForm({
           const staticOut = buildCheckoutLink(lynkStatic, normalizeEmail(email), nameRes.value, phoneRes.digits);
           if (staticOut) {
             queueSiteEvent("lynk_static_checkout_redirect", {});
-            fireConversionPixels(settings, "lynk_checkout_redirect", { mode: "static" });
+            firePixelStep(settings, "lynk_redirect", { mode: "static" });
             window.location.href = staticOut;
             return;
           }
@@ -268,7 +268,7 @@ export function CheckoutForm({
           try {
             await loadMidtransSnapScript(Boolean(data.is_production), data.client_key);
             queueSiteEvent("snap_opened", {});
-            fireConversionPixels(settings, "midtrans_snap_opened", { order_id: data.order_id });
+            firePixelStep(settings, "snap_opened", { order_id: data.order_id });
           } catch {
             toast("Gagal memuat skrip pembayaran. Refresh halaman dan coba lagi.", "error");
             return;
@@ -279,7 +279,7 @@ export function CheckoutForm({
             onSuccess: () => {
               queueSiteEvent("payment_success", { channel: "midtrans_snap" });
               queueSiteEvent("purchase_completed", { order_id: orderIdSnap });
-              fireConversionPixels(settings, "purchase_completed", {
+              firePixelStep(settings, "purchase_completed", {
                 channel: "midtrans_snap",
                 order_id: orderIdSnap,
               });
@@ -352,7 +352,7 @@ export function CheckoutForm({
 
         if (res.ok && data.checkout_url && /^https?:\/\//i.test(data.checkout_url)) {
           queueSiteEvent("lynk_checkout_redirect", { order_id: data.order_id });
-          fireConversionPixels(settings, "lynk_checkout_redirect", { order_id: data.order_id });
+          firePixelStep(settings, "lynk_redirect", { order_id: data.order_id });
           window.location.href = data.checkout_url;
           return;
         }

@@ -19,13 +19,13 @@ Dokumen ini merangkum **aset statis** (gambar, ikon) dan **konfigurasi teks/warn
 
 Daftar file yang dipakai Tauri ada di [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) (`bundle.icon`).
 
-**Cara mengganti (disarankan):** siapkan **satu PNG persegi** (mis. 1024×1024), lalu dari root repo:
+**Cara mengganti (disarankan):** siapkan **satu PNG persegi** (mis. 1024×1024). Di repo ini ada master contoh: [`src-tauri/icons/logo box macfyi.png`](../src-tauri/icons/logo%20box%20macfyi.png) (nama berisi spasi — pakai tanda kutip di terminal). Dari root repo:
 
 ```bash
-npx tauri icon path/ke/logo-persegi.png
+npx tauri icon "src-tauri/icons/logo box macfyi.png"
 ```
 
-Ini menimpa banyak file di `src-tauri/icons/`. Setelah itu jalankan build ulang (`npm run tauri:build`).
+Ini menimpa banyak file di `src-tauri/icons/`. Setelah itu jalankan build ulang (`npm run tauri:build`). Detail rilis: [`docs/RELEASE_MACOS.md`](RELEASE_MACOS.md) § *App icons*.
 
 ### 1.2 Logo & gambar di dalam WebView (sidebar, splash, fallback aktivasi)
 

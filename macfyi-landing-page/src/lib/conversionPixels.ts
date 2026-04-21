@@ -8,17 +8,19 @@ declare global {
   }
 }
 
-/** Nama event konsisten untuk Meta (Custom), GA4, TikTok — prefix `macfyi_`. */
+/** Nama event konsisten untuk GA4 + TikTok — prefix `macfyi_*`. Meta standard lewat `firePixelStep` / `fireMetaStandard`. */
 export function fireConversionPixels(
   settings: SiteSettings,
   event: string,
-  payload?: Record<string, unknown>
+  payload?: Record<string, unknown>,
+  opts?: { skipMeta?: boolean }
 ): void {
   if (typeof window === "undefined") return;
   const base = { ...payload, event_source: "macfyi_landing" as const };
   const name = event.startsWith("macfyi_") ? event : `macfyi_${event}`;
 
-  const metaOn = settings.pixelSendMeta !== false && Boolean(settings.facebookPixelId?.trim());
+  const metaOn =
+    !opts?.skipMeta && settings.pixelSendMeta !== false && Boolean(settings.facebookPixelId?.trim());
   const gaOn = settings.pixelSendGa !== false && Boolean(settings.googleAnalyticsId?.trim());
   const ttOn = settings.pixelSendTiktok !== false && Boolean(settings.tiktokPixelId?.trim());
 
@@ -65,7 +67,7 @@ export const META_STANDARD_EVENTS: { id: string; label: string }[] = [
   { id: "AddPaymentInfo", label: "AddPaymentInfo — info pembayaran" },
 ];
 
-function fireMetaStandard(
+export function fireMetaStandard(
   settings: SiteSettings,
   standardEvent: string,
   payload?: Record<string, unknown>
@@ -86,44 +88,64 @@ function fireMetaStandard(
  * Fire pixel untuk step (Meta standard event bisa dipilih via admin).
  * GA4 + TikTok tetap menerima event custom `macfyi_<step>`.
  */
+export type ConversionPixelStep =
+  | "page_open"
+  | "open_demo_intent"
+  | "scarcity_scroll_to_pricing"
+  | "pricing_cta"
+  | "demo_modal_open"
+  | "demo_submit"
+  | "demo_download_ready"
+  | "lead_form_visible"
+  | "lead_form_submit"
+  | "checkout_nav"
+  | "checkout_route_view"
+  | "checkout_form_visible"
+  | "checkout_form_submit"
+  | "snap_opened"
+  | "lynk_redirect"
+  | "purchase_completed";
+
 export function firePixelStep(
   settings: SiteSettings,
-  step:
-    | "page_open"
-    | "pricing_cta"
-    | "demo_modal_open"
-    | "demo_submit"
-    | "lead_form_visible"
-    | "lead_form_submit"
-    | "checkout_nav"
-    | "checkout_form_visible"
-    | "checkout_form_submit"
-    | "purchase_completed",
+  step: ConversionPixelStep,
   payload?: Record<string, unknown>
 ): void {
   const meta =
     step === "page_open"
       ? settings.metaEventOnPageOpen
-      : step === "pricing_cta"
-        ? settings.metaEventOnPricingCta
-        : step === "demo_modal_open"
-          ? settings.metaEventOnDemoModalOpen
-          : step === "demo_submit"
-            ? settings.metaEventOnDemoSubmit
-            : step === "lead_form_visible"
-              ? settings.metaEventOnLeadFormVisible
-              : step === "lead_form_submit"
-                ? settings.metaEventOnLeadFormSubmit
-                : step === "checkout_nav"
-                  ? settings.metaEventOnCheckoutNav
-                  : step === "checkout_form_visible"
-                    ? settings.metaEventOnCheckoutFormVisible
-                    : step === "checkout_form_submit"
-                      ? settings.metaEventOnCheckoutFormSubmit
-                      : settings.metaEventOnPurchaseCompleted;
+      : step === "open_demo_intent"
+        ? settings.metaEventOnOpenDemoIntent
+        : step === "scarcity_scroll_to_pricing"
+          ? settings.metaEventOnScarcityScrollToPricing
+          : step === "pricing_cta"
+            ? settings.metaEventOnPricingCta
+            : step === "demo_modal_open"
+              ? settings.metaEventOnDemoModalOpen
+              : step === "demo_submit"
+                ? settings.metaEventOnDemoSubmit
+                : step === "demo_download_ready"
+                  ? settings.metaEventOnDemoDownloadReady
+                  : step === "lead_form_visible"
+                    ? settings.metaEventOnLeadFormVisible
+                    : step === "lead_form_submit"
+                      ? settings.metaEventOnLeadFormSubmit
+                      : step === "checkout_nav"
+                        ? settings.metaEventOnCheckoutNav
+                        : step === "checkout_route_view"
+                          ? settings.metaEventOnCheckoutRouteView
+                          : step === "checkout_form_visible"
+                            ? settings.metaEventOnCheckoutFormVisible
+                            : step === "checkout_form_submit"
+                              ? settings.metaEventOnCheckoutFormSubmit
+                              : step === "snap_opened"
+                                ? settings.metaEventOnSnapOpened
+                                : step === "lynk_redirect"
+                                  ? settings.metaEventOnLynkRedirect
+                                  : settings.metaEventOnPurchaseCompleted;
 
-  fireMetaStandard(settings, meta, payload);
+  fireMetaStandard(settings, meta ?? "none", payload);
 
-  // Custom events (GA4 + TikTok + Meta custom, jika diaktifkan)
-  fireConversionPixels(settings, step, payload);
+  // Custom macfyi_* ke GA4 + TikTok (Meta custom opsional lewat checkbox; hindari double dengan standard)
+  fireConversionPixels(settings, step, payload, { skipMeta: true });
 }

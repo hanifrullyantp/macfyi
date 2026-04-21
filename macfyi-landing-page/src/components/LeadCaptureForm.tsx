@@ -9,7 +9,7 @@ import {
   validatePhoneOptional,
 } from "../lib/formValidation";
 import { queueSiteEvent } from "../lib/siteAnalytics";
-import { fireConversionPixels } from "../lib/conversionPixels";
+import { firePixelStep } from "../lib/conversionPixels";
 
 export function LeadCaptureForm({
   settings,
@@ -34,7 +34,7 @@ export function LeadCaptureForm({
         for (const en of entries) {
           if (en.isIntersecting && en.intersectionRatio >= 0.15) {
             leadVisibleFired.current = true;
-            fireConversionPixels(settings, "lead_form_visible", { form: "lead_capture" });
+            firePixelStep(settings, "lead_form_visible", { form: "lead_capture" });
             queueSiteEvent("lead_form_visible", { form: "lead_capture" });
             io.disconnect();
             return;
@@ -83,7 +83,7 @@ export function LeadCaptureForm({
         message: payload.message,
       });
       queueSiteEvent("form_submitted", { form: "lead_capture" });
-      fireConversionPixels(settings, "lead_form_submit", { form: "lead_capture" });
+      firePixelStep(settings, "lead_form_submit", { form: "lead_capture" });
 
       const webhookUrl = import.meta.env.VITE_LEAD_WEBHOOK_URL?.trim();
       if (webhookUrl) {

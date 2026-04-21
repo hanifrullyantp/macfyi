@@ -179,34 +179,89 @@ Deno.serve(async (req) => {
   let contactId: string;
 
   if (userId) {
+    const row = {
+      user_id: userId,
+      visitor_id: visitorId,
+      email,
+      display_name: name,
+      phone: phone || null,
+      stage: "DEMO_REQUESTED",
+      source: "demo_landing_auth",
+      last_activity_at: now,
+      updated_at: now,
+      metadata: { message: message || null, ip },
+    };
+
+    // Prefer upsert on user_id (requires unique index). If project missed the migration, fallback to select+update/insert.
     const { data: up, error: upErr } = await supabase
       .from("crm_contacts")
-      .upsert(
-        {
-          user_id: userId,
-          visitor_id: visitorId,
-          email,
-          display_name: name,
-          phone: phone || null,
-          stage: "DEMO_REQUESTED",
-          source: "demo_landing_auth",
-          last_activity_at: now,
-          updated_at: now,
-          metadata: { message: message || null, ip },
-        },
-        { onConflict: "user_id" }
-      )
+      .upsert(row, { onConflict: "user_id" })
       .select("id")
       .single();
 
-    if (upErr || !up) {
-      console.error("crm_upsert_auth", upErr);
-      return new Response(JSON.stringify({ error: "db_error" }), {
-        status: 500,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
+    if (!upErr && up?.id) {
+      contactId = up.id as string;
+    } else {
+      const msg = String((upErr as { message?: string } | null)?.message ?? "");
+      const looksLikeNoUnique =
+        msg.includes("no unique") ||
+        msg.includes("no unique constraint") ||
+        msg.includes("no unique or exclusion constraint") ||
+        msg.includes("42P10");
+
+      if (!looksLikeNoUnique) {
+        console.error("crm_upsert_auth", upErr);
+        return new Response(JSON.stringify({ error: "db_error" }), {
+          status: 500,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: existing, error: selErr } = await supabase
+        .from("crm_contacts")
+        .select("id")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (selErr) {
+        console.error("crm_select_by_user_id", selErr);
+        return new Response(JSON.stringify({ error: "db_error" }), {
+          status: 500,
+          headers: { ...cors, "Content-Type": "application/json" },
+        });
+      }
+
+      if (existing?.id) {
+        const { data: upd, error: updErr } = await supabase
+          .from("crm_contacts")
+          .update(row)
+          .eq("id", existing.id as string)
+          .select("id")
+          .single();
+        if (updErr || !upd?.id) {
+          console.error("crm_update_auth", updErr);
+          return new Response(JSON.stringify({ error: "db_error" }), {
+            status: 500,
+            headers: { ...cors, "Content-Type": "application/json" },
+          });
+        }
+        contactId = upd.id as string;
+      } else {
+        const { data: ins, error: insErr } = await supabase
+          .from("crm_contacts")
+          .insert(row)
+          .select("id")
+          .single();
+        if (insErr || !ins?.id) {
+          console.error("crm_insert_auth", insErr);
+          return new Response(JSON.stringify({ error: "db_error" }), {
+            status: 500,
+            headers: { ...cors, "Content-Type": "application/json" },
+          });
+        }
+        contactId = ins.id as string;
+      }
     }
-    contactId = up.id as string;
   } else {
     const { data: contact, error: cErr } = await supabase
       .from("crm_contacts")

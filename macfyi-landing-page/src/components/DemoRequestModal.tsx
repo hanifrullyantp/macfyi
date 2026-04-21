@@ -10,7 +10,7 @@ import {
 } from "../lib/formValidation";
 import { getMacfyiVisitorId, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
-import { fireConversionPixels } from "../lib/conversionPixels";
+import { firePixelStep } from "../lib/conversionPixels";
 import type { SiteSettings } from "../types/content";
 
 type AuthTab = "register" | "login";
@@ -41,7 +41,7 @@ export function DemoRequestModal({
 
   useEffect(() => {
     if (!open) return;
-    fireConversionPixels(settingsRef.current, "demo_modal_open", { source: demoSource });
+    firePixelStep(settingsRef.current, "demo_modal_open", { source: demoSource });
     queueSiteEvent("demo_modal_open", { source: demoSource });
   }, [open, demoSource]);
 
@@ -86,7 +86,7 @@ export function DemoRequestModal({
       return;
     }
     toast("Berhasil! Mengalihkan ke halaman unduhan…", "success");
-    fireConversionPixels(settingsRef.current, "demo_download_ready", { source: demoSource });
+    firePixelStep(settingsRef.current, "demo_download_ready", { source: demoSource });
     queueSiteEvent("demo_download_ready", { source: demoSource });
     window.setTimeout(() => {
       const target = data.download_url!.startsWith("http")
@@ -142,7 +142,7 @@ export function DemoRequestModal({
     setSubmitting(true);
     try {
       queueSiteEvent("lead_submitted", { form: "demo_request_auth", tab: authTab });
-      fireConversionPixels(settingsRef.current, "demo_modal_submit", { tab: authTab, source: demoSource });
+      firePixelStep(settingsRef.current, "demo_submit", { tab: authTab, source: demoSource });
       if (authTab === "register") {
         const nameRes = validatePersonName(name);
         const origin =
@@ -151,7 +151,8 @@ export function DemoRequestModal({
           email: normalizeEmail(email),
           password,
           options: {
-            emailRedirectTo: origin,
+            // Setelah verifikasi email, langsung arahkan ke /download agar user dapat token + DMG tanpa login ulang.
+            emailRedirectTo: origin ? `${origin}download` : undefined,
             data: { full_name: nameRes.ok ? nameRes.value : name.trim() },
           },
         });
@@ -162,10 +163,9 @@ export function DemoRequestModal({
         const session = data.session;
         if (!session?.access_token) {
           toast(
-            "Akun dibuat. Periksa email untuk verifikasi (jika diaktifkan), lalu masuk lewat tab Masuk.",
+            "Akun dibuat. Cek email untuk verifikasi, lalu klik tombol di email. Anda akan diarahkan otomatis ke halaman unduh Macfyi.",
             "info"
           );
-          setAuthTab("login");
           return;
         }
         await callDemoRequest(session.access_token);

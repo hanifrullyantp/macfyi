@@ -9,6 +9,10 @@ export const en = {
     phaseDisk: "Reading disk free space and volume info…",
     phaseBrand: "Fetching brand and pricing from the server…",
     phaseUi: "Finishing interface setup…",
+    publicConfigOffline:
+      "Could not reach the server for brand and pricing. Using local defaults or the last saved copy until the connection works again.",
+    publicConfigOfflineRetry: "Retry",
+    publicConfigOfflineDismiss: "Dismiss",
   },
   activity: {
     smartCareOverview: "Preparing Smart Care: loading apps, leftovers, and Trash…",

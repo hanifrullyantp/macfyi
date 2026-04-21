@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { Copy, ExternalLink, Download, Loader2 } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
@@ -15,6 +15,7 @@ export function DownloadPage() {
   const [authLoading, setAuthLoading] = useState(true);
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [mintBusy, setMintBusy] = useState(false);
+  const autoMintOnce = useRef(false);
   const [authErr, setAuthErr] = useState<string | null>(null);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -161,6 +162,18 @@ export function DownloadPage() {
       setMintBusy(false);
     }
   };
+
+  // Jika user datang dari email verifikasi (session terbentuk via URL) dan belum ada token,
+  // otomatis buat token demo dan redirect ke /download?token=...
+  useEffect(() => {
+    if (!session?.access_token) return;
+    if (token) return;
+    if (mintBusy) return;
+    if (autoMintOnce.current) return;
+    autoMintOnce.current = true;
+    void handleMintToken();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.access_token, token, mintBusy]);
 
   const handleQuickLogin = async (e: React.FormEvent) => {
     e.preventDefault();

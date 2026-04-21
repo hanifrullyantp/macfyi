@@ -199,6 +199,16 @@ cd src-tauri && cargo test --lib && cargo clippy && cargo check
 
 ---
 
+## Pengukuran cold start (performa nyata)
+
+Tujuan: membedakan **waktu sampai splash hilang** vs **waktu sampai UI pertama responsif**, dan dampak prefetch Smart Care (sekarang **ditunda sampai interaksi pertama** — klik atau tombol keyboard — setelah boot).
+
+1. **Log cepat di dev** — di `src/App.tsx`, boot menandai `setAppBootReady(true)` setelah disk + percobaan `public-config` + jeda minimum splash (~750 ms). Anda bisa menambah sementara `console.debug("[boot]", performance.now(), ...)` di titik tersebut (hapus sebelum rilis) atau memakai **Performance** tab di DevTools (Tauri WebView).
+2. **Instruments (Time Profiler)** — profil proses app saat cold launch; catat waktu sampai main thread “idle” setelah window tampil.
+3. **Checklist QA manual** — tanpa jaringan: pastikan banner biru *public-config* muncul (salinan offline-first) dan **Retry** berhasil saat server kembali; pastikan ringkasan Smart Care tidak memicu prefetch berat sebelum pengguna menyentuh layar/keyboard.
+
+---
+
 ## Istilah singkat (glosarium)
 
 | Istilah | Arti sederhana |

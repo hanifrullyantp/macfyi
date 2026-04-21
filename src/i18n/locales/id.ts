@@ -10,6 +10,10 @@ export const id: MessageTree = {
     phaseDisk: "Membaca info ruang kosong dan volume disk…",
     phaseBrand: "Mengambil logo merek dan info harga dari server…",
     phaseUi: "Menyelesaikan penyiapan antarmuka…",
+    publicConfigOffline:
+      "Tidak dapat menghubungi server untuk merek dan harga. Memakai pengaturan lokal atau salinan terakhir sampai koneksi normal lagi.",
+    publicConfigOfflineRetry: "Coba lagi",
+    publicConfigOfflineDismiss: "Tutup",
   },
   activity: {
     smartCareOverview:

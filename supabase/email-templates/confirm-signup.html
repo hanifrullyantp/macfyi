@@ -1,0 +1,74 @@
+<!--
+  Supabase Auth email template: Confirm signup
+  Paste this into Dashboard → Authentication → Email Templates → Confirm signup.
+
+  Notes:
+  - Use {{ .RedirectTo }} so emailRedirectTo (e.g. /download) is respected.
+  - Site URL fallback is still handled by Supabase.
+-->
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Verifikasi email Anda — Macfyi</title>
+  </head>
+  <body style="margin:0;background:#070B14;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Inter,Arial,sans-serif;color:#fff;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#070B14;padding:28px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;width:100%;border:1px solid rgba(255,255,255,0.10);border-radius:18px;overflow:hidden;background:#0B1220;">
+            <tr>
+              <td style="padding:18px 20px;border-bottom:1px solid rgba(255,255,255,0.10);background:linear-gradient(135deg,rgba(239,68,68,0.18),rgba(7,11,20,0.0));">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  <div style="width:38px;height:38px;border-radius:10px;background:rgba(239,68,68,0.18);display:flex;align-items:center;justify-content:center;border:1px solid rgba(239,68,68,0.35);font-weight:800;font-style:italic;">
+                    M
+                  </div>
+                  <div>
+                    <div style="font-weight:800;letter-spacing:-0.3px;font-size:16px;line-height:1.1;">Macfyi</div>
+                    <div style="font-size:12px;color:rgba(255,255,255,0.55);margin-top:2px;">Demo installer &amp; token aktivasi</div>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:22px 20px 10px 20px;">
+                <h1 style="margin:0 0 8px 0;font-size:20px;line-height:1.25;letter-spacing:-0.2px;">
+                  Verifikasi email Anda untuk mulai demo
+                </h1>
+                <p style="margin:0 0 14px 0;font-size:14px;line-height:1.6;color:rgba(255,255,255,0.70);">
+                  Klik tombol di bawah untuk mengonfirmasi email. Setelah itu Anda akan diarahkan ke halaman unduh Macfyi dan mendapatkan token demo secara otomatis.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:0 20px 22px 20px;">
+                <a
+                  href="{{ .ConfirmationURL }}&redirect_to={{ .RedirectTo }}"
+                  style="display:inline-block;background:#EF4444;color:#fff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 16px;border-radius:14px;"
+                >
+                  Verifikasi email &amp; lanjut unduh
+                </a>
+                <p style="margin:14px 0 0 0;font-size:12px;line-height:1.6;color:rgba(255,255,255,0.45);">
+                  Jika tombol tidak berfungsi, salin tautan ini ke browser:
+                  <br />
+                  <span style="word-break:break-all;color:rgba(255,255,255,0.65);">{{ .ConfirmationURL }}&redirect_to={{ .RedirectTo }}</span>
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:14px 20px;border-top:1px solid rgba(255,255,255,0.10);font-size:12px;line-height:1.6;color:rgba(255,255,255,0.45);">
+                Tidak merasa mendaftar? Abaikan email ini.
+                <br />
+                Butuh bantuan? Balas email ini atau hubungi <a href="mailto:support@macfyi.com" style="color:rgba(255,255,255,0.75);">support@macfyi.com</a>.
+              </td>
+            </tr>
+          </table>
+          <div style="max-width:600px;width:100%;padding:10px 4px 0 4px;font-size:11px;color:rgba(255,255,255,0.30);text-align:center;">
+            © Macfyi. Jakarta, Indonesia.
+          </div>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
