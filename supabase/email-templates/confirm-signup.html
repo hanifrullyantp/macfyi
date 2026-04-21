@@ -3,8 +3,8 @@
   Paste this into Dashboard → Authentication → Email Templates → Confirm signup.
 
   Notes:
-  - Use {{ .RedirectTo }} so emailRedirectTo (e.g. /download) is respected.
-  - Site URL fallback is still handled by Supabase.
+  - Pakai hanya {{ .ConfirmationURL }}: GoTrue sudah menyertakan redirect dari emailRedirectTo di aplikasi.
+  - Jangan menambah &redirect_to= manual — bisa menggandakan parameter dan memicu error.
 -->
 <!doctype html>
 <html lang="id">
@@ -44,7 +44,7 @@
             <tr>
               <td style="padding:0 20px 22px 20px;">
                 <a
-                  href="{{ .ConfirmationURL }}&redirect_to={{ .RedirectTo }}"
+                  href="{{ .ConfirmationURL }}"
                   style="display:inline-block;background:#EF4444;color:#fff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 16px;border-radius:14px;"
                 >
                   Verifikasi email &amp; lanjut unduh
@@ -52,7 +52,7 @@
                 <p style="margin:14px 0 0 0;font-size:12px;line-height:1.6;color:rgba(255,255,255,0.45);">
                   Jika tombol tidak berfungsi, salin tautan ini ke browser:
                   <br />
-                  <span style="word-break:break-all;color:rgba(255,255,255,0.65);">{{ .ConfirmationURL }}&redirect_to={{ .RedirectTo }}</span>
+                  <span style="word-break:break-all;color:rgba(255,255,255,0.65);">{{ .ConfirmationURL }}</span>
                 </p>
               </td>
             </tr>

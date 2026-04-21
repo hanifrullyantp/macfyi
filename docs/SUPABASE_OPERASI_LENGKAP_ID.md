@@ -61,7 +61,7 @@ Supabase Auth mengirim email verifikasi / reset menggunakan template yang bisa A
 
 - **Lokasi di Dashboard**: Authentication → Email Templates → **Confirm signup**
 - **Template siap pakai**: `supabase/email-templates/confirm-signup.html`
-- **Catatan penting**: template ini memakai `{{ .RedirectTo }}` agar `emailRedirectTo` dari aplikasi (mis. `/download`) benar-benar dipakai.
+- **Catatan penting**: tautan verifikasi cukup `{{ .ConfirmationURL }}` (sudah termasuk redirect dari `emailRedirectTo` di kode). Jangan menambah `&redirect_to=` manual di template — bisa menggandakan parameter.
 
 Alur demo yang diharapkan:
 - User daftar demo di landing → Supabase kirim email verifikasi
@@ -77,6 +77,20 @@ Alur demo yang diharapkan:
 | `OPS_ALERT_EMAIL` | Opsional; alamat internal untuk email terkait **penarikan** (bisa beberapa, pisah koma). |
 
 Port **465** + TLS implisit: set `SMTP_TLS=true` (atau `SMTP_SECURE=true`) dan `SMTP_PORT=465` sesuai `supabase/functions/_shared/smtpSend.ts`.
+
+#### SMTP Auth (Dashboard): 504 / 500 / «Error sending confirmation email»
+
+Jika browser menunjukkan **`/auth/v1/signup` status 504 atau 500** saat daftar, itu hampir selalu **Supabase tidak sempat menghubungi SMTP custom** (timeout), bukan bug di landing page.
+
+Checklist singkat:
+
+1. **Username SMTP**: di banyak panel (cPanel, Plesk, VPS), username harus **alamat email lengkap** pengirim (mis. `no-reply@macfyi.com`), bukan hanya nama mailbox (`Macfyi`).
+2. **Port dan enkripsi**: `465` = biasanya SSL/TLS implisit; `587` = biasanya STARTTLS. Salah kombinasi sering menyebabkan hang atau ditolak.
+3. **Firewall / jaringan**: server `mail.macfyi.com` harus menerima koneksi SMTP **dari internet**, bukan hanya dari IP server web Anda. Cloud Supabase mengirim dari IP mereka; jika firewall hanya mengizinkan IP tertentu, koneksi bisa **timeout (504)**.
+4. **Uji dari mesin lokal**: `openssl s_client -connect mail.macfyi.com:465` (atau `:587`) untuk memastikan sertifikat dan port hidup.
+5. **Alternatif andal**: transactional email (Amazon SES, Resend, SendGrid, Mailgun) dengan kredensial SMTP/API resmi sering lebih stabil daripada SMTP shared hosting untuk Auth.
+
+**HTTP 400** pada signup bisa berarti `redirect_to` tidak ada di **Redirect URLs** (Dashboard → Authentication → URL Configuration) — samakan dengan `scripts/patch-supabase-auth-urls.sh` / `supabase/config.toml` (`https://macfyi.com/**`, dll.).
 
 ### Midtrans
 

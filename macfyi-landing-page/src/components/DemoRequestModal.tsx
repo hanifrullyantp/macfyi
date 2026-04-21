@@ -43,11 +43,42 @@ export function DemoRequestModal({
     if (!e) return "Terjadi kesalahan.";
     if (typeof e === "string") return e;
     if (e instanceof Error) return e.message || "Terjadi kesalahan.";
+    if (typeof e === "object") {
+      const o = e as Record<string, unknown>;
+      const msg = typeof o.message === "string" ? o.message.trim() : "";
+      if (msg) return msg;
+      const status = typeof o.status === "number" ? o.status : undefined;
+      if (status === 504 || status === 500) {
+        return describeAuthEmailFailureHint(status, "");
+      }
+      const keys = Object.keys(o);
+      if (keys.length === 0) return "Terjadi kesalahan. Coba lagi atau periksa koneksi.";
+    }
     try {
-      return JSON.stringify(e);
+      const s = JSON.stringify(e);
+      return s === "{}" ? "Terjadi kesalahan. Coba lagi atau periksa koneksi." : s;
     } catch {
       return String(e);
     }
+  };
+
+  /** Maps GoTrue / network errors to a short ID message; 504 on signup is usually custom SMTP timeout. */
+  const describeAuthEmailFailureHint = (status: number | undefined, message: string): string => {
+    const raw = message.trim();
+    const lower = raw.toLowerCase();
+    const smtpLikely =
+      status === 504 ||
+      status === 500 ||
+      lower.includes("504") ||
+      lower.includes("500") ||
+      lower.includes("timeout") ||
+      lower.includes("gateway") ||
+      lower.includes("error sending") ||
+      lower.includes("confirmation email") ||
+      lower.includes("smtp");
+    const base = raw || "Gagal mengirim email verifikasi.";
+    if (!smtpLikely) return base;
+    return `${base} Penyebab umum: SMTP custom di Supabase (Authentication → SMTP) tidak terhubung dari cloud Supabase—coba username = alamat email pengirim lengkap (mis. no-reply@macfyi.com), cocokkan port 465 (SSL) vs 587 (STARTTLS) dengan panel hosting, pastikan mail server tidak hanya mengizinkan IP situs Anda, atau gunakan penyedia transaksional (Resend, SES, SendGrid).`;
   };
 
   useEffect(() => {
@@ -168,7 +199,11 @@ export function DemoRequestModal({
           },
         });
         if (error) {
-          toast(error.message?.trim() || "Gagal mengirim email verifikasi. Coba lagi beberapa saat.", "error");
+          const status =
+            typeof (error as { status?: number }).status === "number"
+              ? (error as { status?: number }).status
+              : undefined;
+          toast(describeAuthEmailFailureHint(status, error.message ?? ""), "error");
           return;
         }
         const session = data.session;
