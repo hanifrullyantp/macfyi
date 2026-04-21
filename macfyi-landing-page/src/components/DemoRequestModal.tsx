@@ -39,6 +39,17 @@ export function DemoRequestModal({
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
+  const describeUnknownError = (e: unknown): string => {
+    if (!e) return "Terjadi kesalahan.";
+    if (typeof e === "string") return e;
+    if (e instanceof Error) return e.message || "Terjadi kesalahan.";
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return String(e);
+    }
+  };
+
   useEffect(() => {
     if (!open) return;
     firePixelStep(settingsRef.current, "demo_modal_open", { source: demoSource });
@@ -157,7 +168,7 @@ export function DemoRequestModal({
           },
         });
         if (error) {
-          toast(error.message, "error");
+          toast(error.message?.trim() || "Gagal mengirim email verifikasi. Coba lagi beberapa saat.", "error");
           return;
         }
         const session = data.session;
@@ -175,13 +186,13 @@ export function DemoRequestModal({
           password,
         });
         if (error || !data.session?.access_token) {
-          toast(error?.message ?? "Gagal masuk.", "error");
+          toast(error?.message?.trim() || "Gagal masuk. Periksa email & password.", "error");
           return;
         }
         await callDemoRequest(data.session.access_token);
       }
-    } catch {
-      toast("Jaringan error. Coba lagi.", "error");
+    } catch (e) {
+      toast(describeUnknownError(e), "error");
     } finally {
       setSubmitting(false);
     }
