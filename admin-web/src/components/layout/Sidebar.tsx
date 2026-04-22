@@ -12,30 +12,32 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r border-zinc-800 bg-zinc-950 transition-[width] duration-200",
-        sidebarCollapsed ? "w-[72px]" : "w-[240px]",
+        "flex h-full flex-col border-r border-white/10 bg-[#0E0E11] transition-[width] duration-300",
+        sidebarCollapsed ? "w-[80px]" : "w-[288px]",
       )}
     >
-      <div className="flex h-14 items-center gap-2 border-b border-zinc-800 px-3">
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-sm font-bold text-white">
-          M
+      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-red-600/15 text-sm font-black text-red-400 ring-1 ring-red-500/25">
+          <span className="italic">M</span>
         </div>
         {!sidebarCollapsed ? (
           <div className="min-w-0">
-            <div className="truncate text-sm font-semibold text-zinc-100">MacFYI Admin</div>
-            <div className="truncate text-[10px] text-zinc-500">Control panel</div>
+            <div className="truncate text-[15px] font-black tracking-tight text-white">
+              Mac<span className="text-red-500">FYI</span>
+            </div>
+            <div className="truncate text-[10px] font-black uppercase tracking-[0.22em] text-red-500/50">Admin Pusat</div>
           </div>
         ) : null}
       </div>
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 custom-scrollbar">
         {NAV_GROUPS.map((group) => (
           <div key={group.id} className="mb-4">
             {!sidebarCollapsed ? (
-              <div className="mb-1.5 px-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-600">
+              <div className="mb-2 px-2 text-[9px] font-black uppercase tracking-[0.25em] text-white/25">
                 {group.label}
               </div>
             ) : (
-              <div className="mx-1 mb-2 h-px bg-zinc-800" />
+              <div className="mx-2 mb-3 h-px bg-white/10" />
             )}
             <ul className="space-y-0.5">
               {group.items.map((item) => {
@@ -52,16 +54,16 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                       onClick={() => onNavigate?.()}
                       className={({ isActive }) =>
                         cn(
-                          "relative flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors",
+                          "relative flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-all",
                           isActive
-                            ? "bg-violet-600/15 text-violet-200 ring-1 ring-violet-500/30"
-                            : "text-zinc-400 hover:bg-zinc-900 hover:text-zinc-200",
+                            ? "bg-red-500/10 text-red-400 ring-1 ring-red-500/25 shadow-[inset_0_0_0_1px_rgba(225,6,0,0.12)]"
+                            : "text-white/35 hover:bg-white/[0.03] hover:text-white",
                           sidebarCollapsed && "justify-center px-0",
                         )
                       }
                       title={sidebarCollapsed ? item.label : undefined}
                     >
-                      <item.icon className="h-4 w-4 shrink-0 opacity-90" />
+                      <item.icon className="h-5 w-5 shrink-0 opacity-90" />
                       {!sidebarCollapsed ? (
                         <>
                           <span className="min-w-0 flex-1 truncate">{item.label}</span>
@@ -72,7 +74,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
                           ) : null}
                         </>
                       ) : count > 0 ? (
-                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-amber-500" />
+                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500" />
                       ) : null}
                     </NavLink>
                   </li>

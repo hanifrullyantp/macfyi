@@ -14,7 +14,9 @@ export default function AffiliatesPage() {
       type="button"
       key={id}
       onClick={() => setTab(id)}
-      className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === id ? "bg-violet-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}
+      className={`rounded-2xl px-5 py-3 text-xs font-black uppercase tracking-widest transition-all ${
+        tab === id ? "bg-red-600 text-white shadow-lg shadow-red-600/20" : "bg-white/[0.02] text-white/35 hover:text-white hover:bg-white/[0.04] border border-white/10"
+      }`}
     >
       {label}
     </button>
@@ -22,35 +24,38 @@ export default function AffiliatesPage() {
   const k = kpis.data;
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-zinc-100">Affiliates</h1>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div>
+        <h1 className="text-4xl font-black text-white tracking-tight">Afiliasi</h1>
+        <p className="text-white/40 font-medium">Program afiliasi, saldo, dan penarikan.</p>
+      </div>
       {kpis.isError ? <p className="text-xs text-red-400">{(kpis.error as Error).message}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Affiliates (total)</div>
-          <div className="mt-1 text-2xl font-bold tabular-nums text-zinc-100">{k?.affiliateTotal ?? (kpis.isLoading ? "…" : "0")}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Active / pending approval</div>
-          <div className="mt-1 text-2xl font-bold tabular-nums text-zinc-100">
-            {k ? `${k.affiliateActive} / ${k.affiliatePending}` : kpis.isLoading ? "…" : "—"}
-          </div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Pending balance (sum)</div>
-          <div className="mt-1 text-lg font-bold tabular-nums text-zinc-100">{k ? formatIdr(k.balancePendingSumIdr) : "…"}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Withdrawals pending</div>
-          <div className="mt-1 text-2xl font-bold tabular-nums text-zinc-100">{k?.withdrawalPendingCount ?? "…"}</div>
-          <div className="text-xs text-zinc-500">{k ? formatIdr(k.withdrawalPendingSumIdr) : null}</div>
-        </Card>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Affiliates (total)</div>
+          <div className="mt-2 text-3xl font-black tabular-nums text-white">{k?.affiliateTotal ?? (kpis.isLoading ? "…" : "0")}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Active / pending</div>
+          <div className="mt-2 text-3xl font-black tabular-nums text-white">{k ? `${k.affiliateActive} / ${k.affiliatePending}` : kpis.isLoading ? "…" : "—"}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Pending balance (sum)</div>
+          <div className="mt-2 text-2xl font-black tabular-nums text-white">{k ? formatIdr(k.balancePendingSumIdr) : "…"}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Withdrawals pending</div>
+          <div className="mt-2 text-3xl font-black tabular-nums text-white">{k?.withdrawalPendingCount ?? "…"}</div>
+          <div className="text-xs text-white/30">{k ? formatIdr(k.withdrawalPendingSumIdr) : null}</div>
+        </div>
       </div>
-      <div className="flex flex-wrap gap-2 border-b border-zinc-800 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-white/10 pb-3">
         {btn("affiliates", "Programs")}
         {btn("withdrawals", "Withdrawals")}
       </div>
-      {tab === "affiliates" ? <AffiliatesAdmin /> : <WithdrawalsAdmin session={session} />}
+      <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
+        {tab === "affiliates" ? <AffiliatesAdmin /> : <WithdrawalsAdmin session={session} />}
+      </div>
     </div>
   );
 }

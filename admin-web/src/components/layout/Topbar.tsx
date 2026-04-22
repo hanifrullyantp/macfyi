@@ -58,10 +58,10 @@ export function Topbar({
   };
 
   return (
-    <header className="shrink-0 flex flex-wrap items-center gap-3 border-b border-zinc-800 bg-zinc-950/80 px-4 py-3 backdrop-blur-sm">
+    <header className="sticky top-0 z-30 shrink-0 flex flex-wrap items-center gap-3 border-b border-white/10 bg-[#0E0E11]/80 px-4 py-3 backdrop-blur-sm">
       <button
         type="button"
-        className="lg:hidden rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+        className="lg:hidden rounded-xl p-2 text-white/60 hover:bg-white/5"
         onClick={onOpenMobileNav}
         aria-label="Open menu"
       >
@@ -69,36 +69,36 @@ export function Topbar({
       </button>
       <button
         type="button"
-        className="hidden lg:flex rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+        className="hidden lg:flex rounded-xl p-2 text-white/60 hover:bg-white/5"
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
         aria-label="Toggle sidebar"
       >
         {sidebarCollapsed ? <PanelLeft className="w-5 h-5" /> : <PanelLeftClose className="w-5 h-5" />}
       </button>
-      <nav className="flex-1 min-w-0 text-xs text-zinc-500 truncate">
+      <nav className="flex-1 min-w-0 text-xs text-white/35 truncate">
         {crumbs.map((c, i) => (
           <span key={`${c}-${i}`}>
-            {i > 0 ? <span className="mx-1.5 text-zinc-600">/</span> : null}
-            <span className={i === crumbs.length - 1 ? "text-zinc-200 font-medium" : ""}>{c}</span>
+            {i > 0 ? <span className="mx-1.5 text-white/20">/</span> : null}
+            <span className={i === crumbs.length - 1 ? "text-white font-semibold" : ""}>{c}</span>
           </span>
         ))}
       </nav>
       <div className="flex min-w-[200px] max-w-md flex-1 flex-col gap-0.5">
-        <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900/80 px-2">
-          <Search className="h-4 w-4 shrink-0 text-zinc-500" />
+        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3">
+          <Search className="h-4 w-4 shrink-0 text-white/35" />
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && runSearch()}
             placeholder="Search license email…"
-            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-zinc-200 outline-none placeholder:text-zinc-600"
+            className="min-w-0 flex-1 bg-transparent py-2 text-sm text-white/85 outline-none placeholder:text-white/20"
           />
           <Button variant="ghost" size="sm" className="shrink-0" onClick={() => runSearch()}>
             Go
           </Button>
         </div>
         {debouncedQ.length >= 3 ? (
-          <p className="px-1 text-[10px] text-zinc-500">
+          <p className="px-2 text-[10px] text-white/30">
             {previewQ.isFetching ? "Counting matches…" : previewQ.isError ? "Preview unavailable" : `${previewQ.data ?? 0} license(s) match (debounced 300ms)`}
           </p>
         ) : null}
@@ -107,7 +107,7 @@ export function Topbar({
         <UserBar email={sessionEmail} onSignOut={onSignOut} />
         <button
           type="button"
-          className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+          className="rounded-xl p-2 text-white/60 hover:bg-white/5"
           title="Notifications (placeholder)"
           disabled
         >
@@ -115,7 +115,7 @@ export function Topbar({
         </button>
         <button
           type="button"
-          className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800"
+          className="rounded-xl p-2 text-white/60 hover:bg-white/5"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           title="Toggle theme"
         >

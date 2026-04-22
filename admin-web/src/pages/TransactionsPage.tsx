@@ -148,72 +148,92 @@ export default function TransactionsPage() {
   );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Transactions</h1>
-        <p className="mt-1 text-sm text-zinc-500">Midtrans / checkout rows. Drawer tries payment_events by order_id when the table exists.</p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Transaksi</h1>
+          <p className="text-white/40 font-medium">Riwayat pembayaran (Midtrans / Lynk) dan status pemrosesan.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="ghost" size="sm" onClick={() => exportCsv()}>
+            Export CSV
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => exportJson()}>
+            Export JSON
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <Card className="p-4">
-          <div className="text-xs text-zinc-500">Rows (cap 300)</div>
-          <div className="text-xl font-semibold text-zinc-100">{summary.count}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-zinc-500">Paid / settlement</div>
-          <div className="text-xl font-semibold text-zinc-100">{summary.paidCount}</div>
-        </Card>
-        <Card className="p-4">
-          <div className="text-xs text-zinc-500">Paid gross sum</div>
-          <div className="text-xl font-semibold text-zinc-100">{formatIdr(summary.paidSum)}</div>
-        </Card>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Rows (cap 300)</div>
+          <div className="mt-2 text-3xl font-black text-white">{summary.count}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Paid / settlement</div>
+          <div className="mt-2 text-3xl font-black text-white">{summary.paidCount}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Paid gross sum</div>
+          <div className="mt-2 text-3xl font-black text-white">{formatIdr(summary.paidSum)}</div>
+        </div>
       </div>
 
-      <Card className="flex flex-wrap items-end gap-3 p-4">
-        <label className="text-xs text-zinc-500">
-          Status
-          <select
-            className="mt-1 block rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-sm"
-            value={status}
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="">Any</option>
-            <option value="pending">pending</option>
-            <option value="paid">paid</option>
-            <option value="settlement">settlement</option>
-            <option value="expire">expire</option>
-            <option value="cancel">cancel</option>
-          </select>
-        </label>
-        <label className="text-xs text-zinc-500">
-          Since
-          <input type="date" className="mt-1 block rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-sm" value={since} onChange={(e) => setSince(e.target.value)} />
-        </label>
-        <label className="text-xs text-zinc-500">
-          Until
-          <input type="date" className="mt-1 block rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-sm" value={until} onChange={(e) => setUntil(e.target.value)} />
-        </label>
-        <Button variant="secondary" size="sm" onClick={() => void qc.invalidateQueries({ queryKey: ["transactions"] })}>
-          Apply / refresh
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => exportCsv()}>
-          Export CSV
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => exportJson()}>
-          Export JSON
-        </Button>
-      </Card>
+      <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-end">
+          <label className="md:col-span-4 text-xs font-black uppercase tracking-widest text-white/20">
+            Status
+            <select
+              className="mt-2 block w-full appearance-none rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm font-medium text-white outline-none focus:border-red-500/50"
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="">Any</option>
+              <option value="pending">pending</option>
+              <option value="paid">paid</option>
+              <option value="settlement">settlement</option>
+              <option value="expire">expire</option>
+              <option value="cancel">cancel</option>
+            </select>
+          </label>
+          <label className="md:col-span-3 text-xs font-black uppercase tracking-widest text-white/20">
+            Since
+            <input
+              type="date"
+              className="mt-2 block w-full rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm font-medium text-white outline-none focus:border-red-500/50"
+              value={since}
+              onChange={(e) => setSince(e.target.value)}
+            />
+          </label>
+          <label className="md:col-span-3 text-xs font-black uppercase tracking-widest text-white/20">
+            Until
+            <input
+              type="date"
+              className="mt-2 block w-full rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm font-medium text-white outline-none focus:border-red-500/50"
+              value={until}
+              onChange={(e) => setUntil(e.target.value)}
+            />
+          </label>
+          <div className="md:col-span-2 flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={() => void qc.invalidateQueries({ queryKey: ["transactions"] })}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {listQuery.isError ? <p className="text-sm text-red-400">{(listQuery.error as Error).message}</p> : null}
 
       {listQuery.isLoading ? (
-        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
+        <div className="space-y-2 rounded-3xl border border-white/10 bg-[#121217] p-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="h-9 w-full" />
           ))}
         </div>
       ) : (
-        <DataTable data={listQuery.data ?? []} columns={columns} getRowId={(r) => r.id} empty={<EmptyState title="No rows" />} />
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-2">
+          <DataTable data={listQuery.data ?? []} columns={columns} getRowId={(r) => r.id} empty={<EmptyState title="No rows" />} />
+        </div>
       )}
 
       <Drawer open={Boolean(sel)} onOpenChange={(o) => !o && setSel(null)} title="Transaction detail">

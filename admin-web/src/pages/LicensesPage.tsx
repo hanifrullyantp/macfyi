@@ -212,34 +212,65 @@ export default function LicensesPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Licenses</h1>
-        <p className="mt-1 text-sm text-zinc-500">Hashed keys only — copy full hash for support correlation.</p>
+    <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 className="text-4xl font-black text-white tracking-tight">Lisensi</h1>
+          <p className="text-white/40 font-medium">
+            Kunci lisensi disimpan sebagai <span className="text-white/70">hash</span>; plaintext hanya dikirim via email ke pembeli.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => void exportCsv()}>
+            Ekspor CSV
+          </Button>
+        </div>
       </div>
 
-      <Card className="flex flex-wrap items-end gap-3 p-4">
-        <label className="min-w-[200px] flex-1 text-xs text-zinc-500">
-          Filter email
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Rows (page)</div>
+          <div className="mt-2 text-3xl font-black text-white">{rows.length}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Total</div>
+          <div className="mt-2 text-3xl font-black text-white">{total}</div>
+        </div>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+          <div className="text-[10px] font-black uppercase tracking-widest text-white/20">Halaman</div>
+          <div className="mt-2 text-3xl font-black text-white">
+            {page + 1} <span className="text-white/20">/</span> {totalPages}
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-12 md:items-end">
+          <label className="md:col-span-7 text-xs font-black uppercase tracking-widest text-white/20">
+            Cari email
           <input
-            className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200"
+            className="mt-2 w-full rounded-2xl border border-white/10 bg-white/[0.02] px-4 py-3 text-sm font-medium text-white placeholder:text-white/20 outline-none focus:border-red-500/50"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && applyFilter()}
+            placeholder="contoh: user@domain.com"
           />
-        </label>
-        <Button variant="secondary" size="sm" onClick={() => applyFilter()}>
-          Apply
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => void exportCsv()}>
-          Export CSV
-        </Button>
-      </Card>
+          </label>
+          <div className="md:col-span-5 flex flex-wrap gap-3">
+            <Button variant="secondary" size="sm" onClick={() => applyFilter()}>
+              Terapkan
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => void qc.invalidateQueries({ queryKey: ["licenses"] })}>
+              Refresh
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {listQuery.isError ? <p className="text-sm text-red-400">{(listQuery.error as Error).message}</p> : null}
 
       {listQuery.isLoading ? (
-        <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
+        <div className="space-y-2 rounded-3xl border border-white/10 bg-[#121217] p-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-9 w-full" />
           ))}
@@ -247,18 +278,18 @@ export default function LicensesPage() {
       ) : null}
 
       {!listQuery.isLoading ? (
-        <DataTable
-          data={rows}
-          columns={columns}
-          getRowId={(r) => r.id}
-          empty={<EmptyState title="No licenses" description="Try clearing the email filter." />}
-        />
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-2">
+          <DataTable
+            data={rows}
+            columns={columns}
+            getRowId={(r) => r.id}
+            empty={<EmptyState title="Tidak ada lisensi" description="Coba kosongkan filter email." />}
+          />
+        </div>
       ) : null}
 
-      <div className="flex items-center justify-between text-xs text-zinc-500">
-        <span>
-          Page {page + 1} / {totalPages} — {total} rows
-        </span>
+      <div className="flex items-center justify-between text-xs text-white/35">
+        <span>Page {page + 1} / {totalPages}</span>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" disabled={page <= 0} onClick={() => setPage((p) => Math.max(0, p - 1))}>
             Prev

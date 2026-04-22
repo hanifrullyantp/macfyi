@@ -16,7 +16,7 @@ export function AppLayout({
   const { mobileNavOpen, setMobileNavOpen } = useAppUi();
 
   return (
-    <div className="flex min-h-screen flex-col bg-zinc-950 text-zinc-100">
+    <div className="flex min-h-screen flex-col bg-[#0E0E11] text-white">
       <div className="flex min-h-0 flex-1">
         <div className="relative z-20 hidden h-full min-h-0 shrink-0 lg:block">
           <Sidebar />
@@ -32,7 +32,7 @@ export function AppLayout({
             <div
               className={cn(
                 "fixed inset-y-0 left-0 z-50 w-[min(88vw,280px)] max-w-full overflow-hidden shadow-2xl lg:hidden",
-                "border-r border-zinc-800 bg-zinc-950",
+                "border-r border-white/10 bg-[#0E0E11]",
               )}
             >
               <Sidebar onNavigate={() => setMobileNavOpen(false)} />
@@ -45,7 +45,7 @@ export function AppLayout({
             onSignOut={() => void onSignOut()}
             onOpenMobileNav={() => setMobileNavOpen(true)}
           />
-          <main className="relative z-0 min-h-0 min-w-0 flex-1 overflow-auto p-4 md:p-6">
+          <main className="relative z-0 min-h-0 min-w-0 flex-1 overflow-auto p-6 md:p-8">
             <Outlet context={{ session } satisfies { session: Session }} />
           </main>
           <StatusBar />
