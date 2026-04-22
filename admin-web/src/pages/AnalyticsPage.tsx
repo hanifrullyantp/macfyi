@@ -87,15 +87,17 @@ export default function AnalyticsPage() {
   const s = series.data;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Analytics</h1>
-        <p className="mt-1 text-sm text-zinc-500">Aggregate counts and 14-day activity (best-effort when tables exist).</p>
+        <h1 className="text-5xl font-black text-white tracking-tighter">Analitik</h1>
+        <p className="text-white/30 font-medium">
+          Ringkasan jumlah data + aktivitas 14 hari (best-effort bila tabel telemetry tidak ada / RLS menolak).
+        </p>
       </div>
 
       {q.isError ? <p className="text-sm text-red-400">{(q.error as Error).message}</p> : null}
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         {(
           [
             ["CRM contacts", rows?.contacts],
@@ -106,18 +108,18 @@ export default function AnalyticsPage() {
             ["CRM events", rows?.crmEvents],
           ] as const
         ).map(([label, n]) => (
-          <Card key={label} className="p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">{label}</div>
-            <div className="mt-1 text-2xl font-bold tabular-nums text-zinc-100">{n ?? "—"}</div>
-          </Card>
+          <div key={label} className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
+            <div className="text-[10px] font-black uppercase tracking-widest text-white/20">{label}</div>
+            <div className="mt-2 text-3xl font-black tabular-nums text-white">{n ?? "—"}</div>
+          </div>
         ))}
       </div>
 
       {rows?.crmEventsErr ? <p className="text-xs text-zinc-500">crm_events count: {rows.crmEventsErr}</p> : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Card className="p-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-200">Client telemetry (14d)</h2>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
+          <h2 className="mb-2 text-sm font-black uppercase tracking-widest text-white/20">Client telemetry (14d)</h2>
           {series.isLoading ? <p className="text-xs text-zinc-500">Loading…</p> : null}
           {s?.telemetryErr ? (
             <p className="text-xs text-zinc-500">No series: {s.telemetryErr}</p>
@@ -125,48 +127,48 @@ export default function AnalyticsPage() {
             <div className="h-52 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={s.telemetry ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} />
-                  <YAxis allowDecimals={false} tick={{ fill: "#71717a", fontSize: 10 }} width={28} />
-                  <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8 }} />
-                  <Bar dataKey="count" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Events" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} width={28} />
+                  <Tooltip contentStyle={{ background: "#0E0E11", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 }} />
+                  <Bar dataKey="count" fill="#E10600" radius={[6, 6, 0, 0]} name="Events" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <p className="text-xs text-zinc-500">No telemetry rows in window (or table empty).</p>
           )}
-        </Card>
+        </div>
 
-        <Card className="p-4">
-          <h2 className="mb-2 text-sm font-medium text-zinc-200">CRM events (14d)</h2>
+        <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
+          <h2 className="mb-2 text-sm font-black uppercase tracking-widest text-white/20">CRM events (14d)</h2>
           {s?.crmEventsErr ? (
             <p className="text-xs text-zinc-500">No series: {s.crmEventsErr}</p>
           ) : s?.crmEvents?.some((d) => d.count > 0) ? (
             <div className="h-52 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={s.crmEvents ?? []}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                  <XAxis dataKey="date" tick={{ fill: "#71717a", fontSize: 10 }} />
-                  <YAxis allowDecimals={false} tick={{ fill: "#71717a", fontSize: 10 }} width={28} />
-                  <Tooltip contentStyle={{ background: "#18181b", border: "1px solid #3f3f46", borderRadius: 8 }} />
-                  <Line type="monotone" dataKey="count" stroke="#a78bfa" strokeWidth={2} dot={false} name="Events" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                  <XAxis dataKey="date" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} />
+                  <YAxis allowDecimals={false} tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} width={28} />
+                  <Tooltip contentStyle={{ background: "#0E0E11", border: "1px solid rgba(255,255,255,0.12)", borderRadius: 12 }} />
+                  <Line type="monotone" dataKey="count" stroke="#FF3B3B" strokeWidth={2.5} dot={false} name="Events" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           ) : (
             <p className="text-xs text-zinc-500">No CRM events in window (or table empty).</p>
           )}
-        </Card>
+        </div>
       </div>
 
-      <Card className="space-y-2 p-4">
-        <h2 className="text-sm font-medium text-zinc-200">UTM &amp; attribution</h2>
-        <p className="text-xs text-zinc-500">
+      <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6 space-y-2">
+        <h2 className="text-sm font-black uppercase tracking-widest text-white/20">UTM &amp; attribution</h2>
+        <p className="text-xs text-white/30 leading-relaxed">
           Extend with targeted queries when <code className="text-zinc-400">utm_*</code> columns exist on <code className="text-zinc-400">crm_contacts</code> or in{" "}
           <code className="text-zinc-400">crm_events.payload</code>.
         </p>
-      </Card>
+      </div>
     </div>
   );
 }

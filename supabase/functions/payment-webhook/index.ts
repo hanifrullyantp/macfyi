@@ -263,7 +263,7 @@ Deno.serve(async (req) => {
     if (crmCid) {
       await supabase
         .from("crm_contacts")
-        .update({ stage: "PAID", last_activity_at: tsNow, updated_at: tsNow })
+        .update({ stage: "customer", last_activity_at: tsNow, updated_at: tsNow })
         .eq("id", crmCid);
       await supabase.from("crm_events").insert({
         contact_id: crmCid,

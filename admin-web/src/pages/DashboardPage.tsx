@@ -190,26 +190,34 @@ export default function DashboardPage() {
   const promoPreview = publicCfg.data && typeof publicCfg.data === "object" ? (publicCfg.data as Record<string, unknown>) : null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <div className="space-y-10 animate-in fade-in duration-500">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-xl font-semibold text-zinc-100">Dashboard</h1>
-          <p className="mt-1 text-sm text-zinc-500">Revenue proxy (paid/settlement), licenses, withdrawals, CRM funnel proxy.</p>
+          <h1 className="text-5xl font-black text-white tracking-tighter">Dasbor</h1>
+          <p className="text-white/30 font-medium max-w-xl">
+            Ringkasan revenue, lisensi, penarikan, dan pipeline CRM (best-effort bila tabel kosong/RLS menolak).
+          </p>
         </div>
-        <Button variant="secondary" size="sm" onClick={() => void queryClient.invalidateQueries({ queryKey: ["dash"] })}>
-          <RefreshCw className="h-3.5 w-3.5" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => void queryClient.invalidateQueries({ queryKey: ["dash"] })}
+            className="flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-[#16161C] border border-white/5 text-white/70 font-black text-[11px] uppercase tracking-[0.2em] transition-all hover:border-red-500/30 hover:text-white active:scale-95"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {err ? <p className="text-sm text-red-400">{err.message}</p> : null}
       {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Card key={i} className="space-y-2 p-4">
+            <div key={i} className="bg-[#16161C] border border-white/5 rounded-3xl p-6 space-y-3">
               <Skeleton className="h-3 w-24" />
               <Skeleton className="h-8 w-36" />
-            </Card>
+            </div>
           ))}
         </div>
       ) : null}

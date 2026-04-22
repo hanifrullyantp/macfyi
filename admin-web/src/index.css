@@ -3,24 +3,24 @@
 @layer base {
   :root {
     color-scheme: dark;
-    --admin-bg: #09090b;
-    --admin-surface: #18181b;
-    --admin-border: #27272a;
-    --admin-text: #fafafa;
-    --admin-muted: #a1a1aa;
-    --admin-accent: #8b5cf6;
-    --admin-accent-hover: #7c3aed;
+    --admin-bg: #0e0e11;
+    --admin-surface: #16161c;
+    --admin-border: rgba(255, 255, 255, 0.06);
+    --admin-text: #f3f4f6;
+    --admin-muted: rgba(255, 255, 255, 0.35);
+    --admin-accent: #e10600;
+    --admin-accent-hover: #ff3b3b;
   }
 
   html.light {
     color-scheme: light;
     --admin-bg: #fafafa;
-    --admin-surface: #f4f4f5;
-    --admin-border: #e4e4e7;
-    --admin-text: #18181b;
-    --admin-muted: #71717a;
-    --admin-accent: #7c3aed;
-    --admin-accent-hover: #6d28d9;
+    --admin-surface: #ffffff;
+    --admin-border: rgba(0, 0, 0, 0.08);
+    --admin-text: #111827;
+    --admin-muted: rgba(17, 24, 39, 0.6);
+    --admin-accent: #e10600;
+    --admin-accent-hover: #ff3b3b;
   }
 
   html,
@@ -28,5 +28,59 @@
     @apply antialiased;
     background: var(--admin-bg);
     color: var(--admin-text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
+      "Segoe UI Emoji";
   }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-[#16161C]/80 backdrop-blur-md border border-white/[0.06];
+  }
+
+  .text-gradient-red {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-[#E10600] to-[#FF3B3B];
+  }
+
+  .bg-gradient-red {
+    @apply bg-gradient-to-r from-[#E10600] to-[#FF3B3B];
+  }
+
+  .bg-gradient-red-hover {
+    @apply hover:from-[#FF3B3B] hover:to-[#E10600] transition-all duration-300;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Animations */
+@keyframes red-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 15px -3px rgba(225, 6, 0, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 25px -3px rgba(225, 6, 0, 0.4);
+  }
+}
+
+.animate-red-glow {
+  animation: red-glow 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
