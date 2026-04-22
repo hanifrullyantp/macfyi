@@ -68,6 +68,12 @@ Alur demo yang diharapkan:
 - User klik tombol di email → redirect ke `/download`
 - Halaman `/download` otomatis membuat token demo + menampilkan tombol unduh DMG
 
+#### Setelah klik email verifikasi: `404 NOT_FOUND` (Vercel)
+
+Pesan seperti `404: NOT_FOUND` dengan **ID** `sin1:…` berasal dari **Vercel**, bukan dari Supabase. Build landing (`vite build`) menghasilkan satu **`index.html`**; rute seperti `/download` hanya ada di **React Router**. Tanpa konfigurasi tambahan, Vercel mencari file bernama `download` dan mengembalikan **404**.
+
+**Perbaikan:** gunakan **SPA fallback** — di repo sudah ada `macfyi-landing-page/vercel.json` yang mengarahkan semua path ke `/index.html` (file statis tetap dilayani lebih dulu oleh Vercel). **Redeploy** proyek Vercel. Pastikan **Root Directory** di Vercel = `macfyi-landing-page` (jika deploy dari monorepo); jika root repo berbeda, salin isi `rewrites` ke `vercel.json` di folder yang menjadi root deploy. Samakan domain di **Site URL** Supabase dengan domain Vercel (mis. hanya `https://macfyi.com` atau hanya `www`, plus entri redirect yang konsisten).
+
 ### SMTP & email
 
 | Secret | Keterangan |
@@ -77,6 +83,38 @@ Alur demo yang diharapkan:
 | `OPS_ALERT_EMAIL` | Opsional; alamat internal untuk email terkait **penarikan** (bisa beberapa, pisah koma). |
 
 Port **465** + TLS implisit: set `SMTP_TLS=true` (atau `SMTP_SECURE=true`) dan `SMTP_PORT=465` sesuai `supabase/functions/_shared/smtpSend.ts`.
+
+#### Auth email lewat Resend (langkah lengkap)
+
+Resend cocok untuk **email konfirmasi / reset password Supabase Auth** karena SMTP-nya dihosting untuk klien cloud (hindari timeout seperti SMTP shared hosting).
+
+**A. Di Resend ([resend.com](https://resend.com))**
+
+1. Buat akun / login → **API Keys** → **Create API Key** (permission kirim email; simpan nilai yang dimulai `re_…`, hanya ditampilkan sekali).
+2. **Domains** → **Add domain** → ikuti DNS (SPF, DKIM, biasanya satu rekaman `TXT`/`MX` sesuai wizard). Tunggu status **Verified**.
+3. Alamat pengirim Auth harus memakai domain yang sudah terverifikasi, mis. `no-reply@macfyi.com` (bukan domain orang lain).
+
+**B. Nilai SMTP untuk Supabase** (sama seperti [dokumentasi Resend + Supabase](https://resend.com/docs/send-with-supabase-smtp)):
+
+| Field | Nilai |
+|--------|--------|
+| Host | `smtp.resend.com` |
+| Port | `465` (SSL/TLS implisit) — alternatif `587` jika UI Anda meminta STARTTLS |
+| Username | `resend` (teks literal, **bukan** alamat email) |
+| Password | **API key** Resend Anda (`re_…`) |
+
+**C. Di Supabase Dashboard**
+
+1. **Authentication** → bagian **Email** / **Notifications** → **SMTP Settings** (nama menu bisa sedikit berbeda antar versi UI).
+2. Aktifkan **Enable Custom SMTP** (atau setara).
+3. Isi **Sender email** = alamat di domain terverifikasi Resend (mis. `no-reply@macfyi.com`).
+4. Isi **Sender name** = mis. `Macfyi`.
+5. Tempel **Host**, **Port**, **Username** `resend`, **Password** = API key.
+6. Simpan. Uji **Daftar** dari landing: user harus muncul di **Authentication → Users** dan inbox menerima email verifikasi.
+
+**D. Edge Functions Macfyi (email lisensi / internal)**
+
+Menu **Authentication → SMTP** hanya mempengaruhi **Auth**. Email dari Edge (lisensi, ops, dll.) memakai secret `SMTP_*` di `scripts/env.supabase.secrets` — bila ingin satu penyedia, isi host/user/pass yang sama (Resend: `smtp.resend.com`, user `resend`, pass = API key) lalu `supabase secrets set --env-file scripts/env.supabase.secrets`.
 
 #### SMTP Auth (Dashboard): 504 / 500 / «Error sending confirmation email»
 
