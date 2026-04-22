@@ -34,6 +34,8 @@ const ALLOWED_TYPES = new Set([
   "checkout_submit",
   "lynk_static_checkout_redirect",
   "lynk_checkout_redirect",
+  "auth_login_submit",
+  "download_dmg_started",
 ]);
 
 /** Maps event → CRM stage when stage should advance. */
