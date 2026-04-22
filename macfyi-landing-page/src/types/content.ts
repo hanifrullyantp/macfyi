@@ -1,7 +1,7 @@
 export interface SiteSettings {
   primaryColor: string;
   secondaryColor: string;
-  /** Harga lifetime (IDR) — sumber kebenaran bersama app & Midtrans via `app_settings` / public-config */
+  /** Harga lifetime (IDR) — sumber kebenaran bersama app & gateway pembayaran (Midtrans / Lynk.id) via `app_settings` / public-config */
   lifetime_price_idr: number;
   /** Label tampilan (disinkron dari lifetime_price_idr; boleh diedit manual lalu disimpan ke draft) */
   price: string;

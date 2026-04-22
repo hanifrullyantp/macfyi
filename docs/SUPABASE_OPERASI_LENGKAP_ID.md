@@ -10,7 +10,7 @@ Dokumen ini menjawab: *“Apa yang harus saya lakukan di Supabase, nilainya dari
 |--------|---------------------|
 | **Secret Edge** | Function Deno membaca `Deno.env.get(...)`. Nilai diisi lewat **`supabase secrets set`** atau Dashboard **Edge Functions → Secrets**. Ini **terpisah** dari menu **Authentication → SMTP** (yang hanya untuk email login Supabase). Untuk email lisensi/komisi dari Macfyi, salin SMTP yang sama ke secret Edge bila ingin konsisten. |
 | **Konten landing** | Teks, warna, URL hosted Lynk (opsional) disimpan di **`landing_site_content`** lewat tombol **Publikasikan** di admin landing — bukan lewat secret. |
-| **Gateway checkout** | Nilai `midtrans` / `lynk` / `external` ada di **`platform_settings`** key `checkout.gateway`; diubah dari tab **Checkout** admin landing (**Simpan gateway ke server**). |
+| **Gateway checkout** | Nilai `midtrans` / `lynk` / `external` ada di **`platform_settings`** key `checkout.gateway`; diubah dari tab **Checkout** admin landing (**Simpan gateway ke server**). Untuk **Lynk.id** sebagai pembayaran utama, set ke **`lynk`** dan lengkapi secret **`LYNK_*`** dan/atau **URL tautan hosted** di konten landing (lihat § Lynk.id). |
 
 ---
 
@@ -167,6 +167,8 @@ Setelah SMTP transaksional (Resend, SES, SendGrid, dll.) sudah **teruji** dengan
 **Webhook URL** Lynk: sama seperti Midtrans — `.../payment-webhook`.
 
 **Alternatif tanpa API:** di admin landing tab **Checkout**, isi **URL tautan checkout Lynk (hosted link)**. Pengunjung diarahkan ke URL itu dengan query `email`, `name`, `phone` (tanpa memanggil Edge `create-lynk-checkout`). Cocok jika Lynk memberi satu tautan produk; harga/order server tidak lewat Macfyi.
+
+**Operasional:** jika tim memakai **Lynk.id** untuk pembayaran (bukan hanya Midtrans), pastikan gateway di server **`lynk`**, webhook Lynk mengarah ke **`payment-webhook`** yang sama, dan uji satu transaksi sampai email lisensi / halaman sukses terisi.
 
 ### Cron (`scheduled-ops`)
 

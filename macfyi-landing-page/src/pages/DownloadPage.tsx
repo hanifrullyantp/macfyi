@@ -27,6 +27,7 @@ export function DownloadPage() {
   const [downloadBusy, setDownloadBusy] = useState(false);
   const [mintBusy, setMintBusy] = useState(false);
   const autoMintOnce = useRef(false);
+  const autoDeepLinkOnce = useRef(false);
   const [authErr, setAuthErr] = useState<string | null>(null);
   const loginRedirect = useMemo(
     () => `/login?redirect=${encodeURIComponent(`/download${location.search}`)}`,
@@ -77,6 +78,21 @@ export function DownloadPage() {
   }, []);
 
   const deepLink = token ? `macfyi://demo?token=${encodeURIComponent(token)}` : "macfyi://demo";
+
+  /** If user arrived with a demo token (e.g. from email), try opening the desktop app once; no-op if app is not installed. */
+  useEffect(() => {
+    if (!token) return;
+    if (autoDeepLinkOnce.current) return;
+    autoDeepLinkOnce.current = true;
+    const id = window.setTimeout(() => {
+      try {
+        window.location.href = deepLink;
+      } catch {
+        /* ignore */
+      }
+    }, 500);
+    return () => window.clearTimeout(id);
+  }, [token, deepLink]);
 
   const copyToken = async () => {
     if (!token) return;

@@ -1,0 +1,14 @@
+/**
+ * Base marketing site (landing). Halaman `/#pricing` dan `/checkout` memakai harga dari server;
+ * gateway aktual (Midtrans Snap vs Lynk.id) mengikuti `platform_settings.checkout.gateway` / public-config.
+ */
+export function marketingSiteBase(): string {
+  return import.meta.env.VITE_MARKETING_SITE_URL?.trim().replace(/\/$/, "") || "https://macfyi.com";
+}
+
+/** Pricing/checkout entry — full URL override or `{base}/#pricing` (landing section id). */
+export function marketingPricingUrl(): string {
+  const explicit = import.meta.env.VITE_MARKETING_PRICING_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  return `${marketingSiteBase()}/#pricing`;
+}

@@ -269,38 +269,38 @@ export const AppShell = ({
               <button
                 type="button"
                 onClick={onSearchClick}
-                className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                className="p-1.5 text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/5"
                 aria-label={t("shell.search")}
               >
-                <Search size={16} />
+                <Search size={17} strokeWidth={2.25} />
               </button>
               <button
                 type="button"
                 onClick={onSettingsClick}
-                className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                className="p-1.5 text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/5"
                 aria-label={t("settings.title")}
               >
-                <Settings size={16} />
+                <Settings size={17} strokeWidth={2.25} />
               </button>
               <button
                 type="button"
                 onClick={onDeletionModeClick}
-                className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                className="p-1.5 text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/5"
                 title={t("shell.deletionModeTitle")}
                 aria-label={t("shell.deletionModeAria")}
               >
-                <SlidersHorizontal size={16} />
+                <SlidersHorizontal size={17} strokeWidth={2.25} />
               </button>
               <div className="relative" ref={diskPopoverRef}>
                 <button
                   type="button"
                   onClick={() => setDiskMenuOpen((o) => !o)}
-                  className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                  className="p-1.5 text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/5"
                   title={diskFreeLabel ? `${t("shell.disk")} ${pct}%` : t("shell.disk")}
                   aria-label={t("shell.disk")}
                   aria-expanded={diskMenuOpen}
                 >
-                  <HardDrive size={16} />
+                  <HardDrive size={17} strokeWidth={2.25} />
                 </button>
                 {diskMenuOpen && (
                   <div className="absolute right-0 top-full mt-1 w-52 rounded-xl border border-white/10 bg-[#1a1b20] shadow-xl p-3 z-[60]">
@@ -321,11 +321,11 @@ export const AppShell = ({
               <button
                 type="button"
                 onClick={onUpgradeClick}
-                className="p-1.5 text-white/40 hover:text-white transition-colors rounded-lg hover:bg-white/5"
-                title={`${t("shell.freePlan")} — ${t("shell.upgrade")}`}
-                aria-label={t("shell.upgrade")}
+                className="p-1.5 text-white/55 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+                title={t("profile.title")}
+                aria-label={t("profile.title")}
               >
-                <User size={16} />
+                <User size={17} strokeWidth={2.25} />
               </button>
               <button
                 type="button"

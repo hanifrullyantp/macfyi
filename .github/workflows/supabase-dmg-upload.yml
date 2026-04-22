@@ -1,0 +1,53 @@
+# Build macOS DMG (Tauri) and upload to Supabase Storage bucket `releases` as macfyi-latest.dmg.
+# Set GitHub secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+# Optional: set UPDATE_APP_SETTINGS secret to "true" to PATCH download_base_url after upload (or edit workflow env below).
+
+name: Upload DMG to Supabase
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-and-upload:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build DMG (Tauri)
+        run: npm run tauri:build:dmg
+
+      - name: Upload DMG to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Set to "false" if you manage download_base_url only in admin/SQL.
+          UPDATE_APP_SETTINGS: "true"
+        run: bash scripts/upload-latest-dmg-to-supabase.sh
+
+      - name: Upload bundle artifact (debug)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macfyi-bundle-on-failure
+          path: src-tauri/target/release/bundle/

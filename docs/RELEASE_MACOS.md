@@ -22,6 +22,18 @@ npx tauri icon "src-tauri/icons/logo box macfyi.png"
 
 Then rebuild (`npm run tauri:build`). More context on in-app vs Dock branding: [`docs/BRANDING_ASSETS.md`](BRANDING_ASSETS.md).
 
+## `.app` vs `.dmg` (apa yang dipakai user unduh?)
+
+- **`Macfyi.app`** (folder di `bundle/macos/`): bundle aplikasi macOS. Bisa dijalankan / disalin ke `Applications`, biasanya **bukan** file yang Anda kirim ke pelanggan mentah-mentah.
+- **`.dmg`**: image disk untuk distribusi — user **drag** `.app` ke `Applications` atau jalankan installer di dalam DMG. **Ini** yang umum dipakai sebagai “unduhan installer” di website (tombol unduh di landing).
+
+Setelah `npm run tauri:build:dmg`, cari `.dmg` di:
+
+- `src-tauri/target/release/bundle/dmg/` (target DMG), dan/atau
+- `src-tauri/target/release/bundle/macos/` (beberapa build juga menaruh DMG di sini).
+
+Skrip `scripts/upload-latest-dmg-to-supabase.sh` memilih file `.dmg` **terbaru** di kedua lokasi itu.
+
 ## Local release build
 
 ```bash
@@ -29,7 +41,7 @@ npm ci
 npm run tauri:build
 ```
 
-By default this produces **`MacFYI.app`** under `src-tauri/target/release/bundle/macos/`. The DMG target is optional because `bundle_dmg.sh` can fail intermittently (e.g. `hdiutil: Resource busy`).
+By default this produces **`Macfyi.app`** under `src-tauri/target/release/bundle/macos/`. The DMG target is optional because `bundle_dmg.sh` can fail intermittently (e.g. `hdiutil: Resource busy`).
 
 To try building a DMG as well:
 
@@ -38,6 +50,31 @@ npm run tauri:build:dmg
 ```
 
 If DMG bundling fails, distribute the signed `.app` or a `.zip` of the `.app` instead.
+
+## Otomatis: unggah DMG terbaru ke Supabase (tanpa commit file ke Git)
+
+Binary DMG **tidak** disimpan di repo. Alur yang disarankan:
+
+1. **Migrasi** membuat bucket Storage publik `releases` (baca `supabase/migrations/20260422103000_releases_storage_bucket.sql`) lalu `supabase db push`.
+2. **Sekali** pastikan baris `app_settings` punya `download_base_url` — bisa dibiarkan kosong dulu; skrip CI bisa mengisi otomatis (lihat bawah).
+3. **GitHub Actions** — workflow `Upload DMG to Supabase` (`.github/workflows/supabase-dmg-upload.yml`):
+   - Jalankan manual (**Actions → Upload DMG to Supabase → Run workflow**), atau
+   - Push **tag** `v*` (mis. `v0.2.1`) untuk rilis.
+4. **Secrets** di repo GitHub: `SUPABASE_URL` (mis. `https://xxxx.supabase.co`), `SUPABASE_SERVICE_ROLE_KEY` (Dashboard → Settings → API — **rahasia**, jangan ke frontend).
+
+Workflow menjalankan `npm run tauri:build:dmg`, lalu `scripts/upload-latest-dmg-to-supabase.sh` yang:
+
+- mengunggah ke **`releases/macfyi-latest.dmg`** (path tetap, **overwrite** setiap rilis);
+- URL publik: `https://<project>.supabase.co/storage/v1/object/public/releases/macfyi-latest.dmg`;
+- jika `UPDATE_APP_SETTINGS=true`, mem-**PATCH** `app_settings.download_base_url` ke URL itu dan menaikkan `config_version` agar klien memuat ulang `public-config`.
+
+**Lokal** setelah build:
+
+```bash
+export SUPABASE_URL="https://xxxx.supabase.co"
+export SUPABASE_SERVICE_ROLE_KEY="..."
+UPDATE_APP_SETTINGS=true ./scripts/upload-latest-dmg-to-supabase.sh
+```
 
 ## Sign the app (overview)
 

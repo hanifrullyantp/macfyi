@@ -25,7 +25,8 @@ import {
 } from "./lib/backend";
 import { addSavedThisMonth, recordScanComplete } from "./lib/storage";
 import { FolderSearch, Trash2 } from "lucide-react";
-import { getDeletionMode } from "./lib/deletion-settings";
+import { getDeletionMode, setDeletionModePersisted } from "./lib/deletion-settings";
+import { marketingPricingUrl } from "./lib/marketingUrl";
 import { appendActivity } from "./lib/activity-log";
 import { useI18n } from "./i18n/context";
 import { loadSettings } from "./components/SettingsPanel";
@@ -77,6 +78,14 @@ const FilePreviewPanel = lazy(async () => {
 const UpgradePrompt = lazy(async () => {
   const m = await import("./components/UpgradePrompt");
   return { default: m.UpgradePrompt };
+});
+const ProfileAccountPanel = lazy(async () => {
+  const m = await import("./components/ProfileAccountPanel");
+  return { default: m.ProfileAccountPanel };
+});
+const DeletionModeQuickPanel = lazy(async () => {
+  const m = await import("./components/DeletionModeQuickPanel");
+  return { default: m.DeletionModeQuickPanel };
 });
 const AppUninstallerView = lazy(async () => {
   const m = await import("./components/AppUninstallerView");
@@ -277,6 +286,8 @@ export default function App() {
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [aiActiveContext, setAiActiveContext] = useState<import("./types").AiItemContext | null>(null);
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isDeletionModePanelOpen, setIsDeletionModePanelOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [deletionMode, setDeletionMode] = useState<"trash" | "permanent">(() => getDeletionMode());
@@ -1241,11 +1252,8 @@ export default function App() {
         hideMainGlow={appState === "scanning"}
         orbSubLabel={t(activeTheme.orbSubKey)}
         deletionMode={deletionMode}
-        onDeletionModeClick={() => setIsSettingsOpen(true)}
-        onUpgradeClick={() => {
-          setUpgradeOpenedFromClean(false);
-          setIsUpgradeOpen(true);
-        }}
+        onDeletionModeClick={() => setIsDeletionModePanelOpen(true)}
+        onUpgradeClick={() => setIsProfileOpen(true)}
       >
         {content}
       </AppShell>
@@ -1329,11 +1337,41 @@ export default function App() {
               onUpgrade={() => {
                 void sendClientTelemetry("UpgradeClicked", {});
                 setIsUpgradeOpen(false);
-                const envUrl = import.meta.env.VITE_MARKETING_SITE_URL?.trim().replace(/\/$/, "");
-                const target = envUrl || "https://macfyi.com";
-                window.open(target, "_blank", "noopener,noreferrer");
+                window.open(marketingPricingUrl(), "_blank", "noopener,noreferrer");
               }}
               onMaybeLater={() => setIsUpgradeOpen(false)}
+            />
+          )}
+        </AnimatePresence>
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {isProfileOpen && (
+            <ProfileAccountPanel
+              brandLogoUrl={brandLogoUrl}
+              onClose={() => setIsProfileOpen(false)}
+              onOpenPricing={() => {
+                void sendClientTelemetry("ProfileLifetimePricingClicked", {});
+                setIsProfileOpen(false);
+                window.open(marketingPricingUrl(), "_blank", "noopener,noreferrer");
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </Suspense>
+
+      <Suspense fallback={null}>
+        <AnimatePresence>
+          {isDeletionModePanelOpen && (
+            <DeletionModeQuickPanel
+              mode={deletionMode}
+              onClose={() => setIsDeletionModePanelOpen(false)}
+              onChange={(next) => {
+                setDeletionModePersisted(next);
+                setDeletionMode(next);
+                setIsDeletionModePanelOpen(false);
+              }}
             />
           )}
         </AnimatePresence>

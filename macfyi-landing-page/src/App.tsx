@@ -1216,7 +1216,7 @@ export function LandingApp() {
                 className="text-2xl md:text-3xl font-bold text-center block text-white"
               />
               <p className="text-center text-white/45 text-sm mt-2 max-w-2xl mx-auto">
-                Harga berbayar mengikuti angka di database (sama dengan checkout Midtrans dan tampilan di app). Atur di Pengaturan → Global &amp; merek.
+                Harga berbayar mengikuti angka di database (sama dengan halaman checkout — Midtrans Snap atau Lynk.id sesuai gateway di server — dan tampilan di app). Atur di Pengaturan → Global &amp; merek.
               </p>
             </div>
             <div className="grid md:grid-cols-2 gap-0 divide-y md:divide-y-0 md:divide-x divide-white/10">
@@ -1331,7 +1331,7 @@ export function LandingApp() {
                 </div>
                 <div>
                   <div className="font-semibold text-white text-sm">Pembayaran aman</div>
-                  <div className="text-xs text-white/40">Checkout Midtrans mengikuti harga di server.</div>
+                  <div className="text-xs text-white/40">Checkout (Midtrans atau Lynk.id) mengikuti harga di server.</div>
                 </div>
               </div>
             </div>

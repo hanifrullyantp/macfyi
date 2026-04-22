@@ -706,7 +706,7 @@ export function AdminSettingsModal({
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
                 <p className="text-white/50 text-xs leading-relaxed">
                   <strong className="text-white/80">Harga lifetime (IDR)</strong> disimpan di tabel{" "}
-                  <code className="text-white/70">app_settings</code> — sama dengan nominal Midtrans, nilai di app (public-config),
+                  <code className="text-white/70">app_settings</code> — sama dengan nominal di checkout (Midtrans / Lynk.id), nilai di app (public-config),
                   dan teks harga di halaman ini setelah disimpan.
                 </p>
                 <Field label="Nominal lifetime (IDR, angka bulat)">
