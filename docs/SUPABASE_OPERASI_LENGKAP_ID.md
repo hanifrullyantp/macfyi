@@ -90,6 +90,19 @@ Checklist singkat:
 4. **Uji dari mesin lokal**: `openssl s_client -connect mail.macfyi.com:465` (atau `:587`) untuk memastikan sertifikat dan port hidup.
 5. **Alternatif andal**: transactional email (Amazon SES, Resend, SendGrid, Mailgun) dengan kredensial SMTP/API resmi sering lebih stabil daripada SMTP shared hosting untuk Auth.
 
+#### User tidak muncul di Authentication → Users (perilaku “sebelumnya” hilang)
+
+Jika **Custom SMTP di Dashboard aktif** tetapi server mail **tidak bisa dihubungi** dari cloud Supabase, Auth akan gagal mengirim email konfirmasi. Pada banyak proyek, hasilnya: **signup gagal**, baris user **tidak dibuat** (tabel **Authentication → Users** tetap kosong untuk email itu), dan Anda melihat **«Error sending confirmation email»** — ini **bukan** bug di kode Macfyi.
+
+**Supaya daftar dan email konfirmasi kembali jalan seperti saat Anda belum pakai SMTP custom (email lewat infrastruktur bawaan Supabase, dengan batas kuota):**
+
+1. Buka **Supabase Dashboard** → **Project Settings** → **Authentication** (atau **Authentication** → pengaturan **SMTP**, tergantung versi UI).
+2. Cari bagian **Custom SMTP** / **SMTP Settings**.
+3. **Nonaktifkan** opsi seperti **Enable Custom SMTP** (kembalikan ke pengiriman default Supabase). Hapus/simpan agar tidak lagi memakai `mail.macfyi.com` untuk Auth.
+4. Tunggu ±1 menit, lalu coba **Daftar** lagi dari landing — user harus muncul di **Users** dan email verifikasi dikirim (dari layanan Supabase).
+
+Setelah SMTP transaksional (Resend, SES, SendGrid, dll.) sudah **teruji** dengan kredensial benar, Anda bisa **aktifkan lagi** Custom SMTP; sampai saat itu, biarkan default Supabase agar funnel demo tidak terblokir.
+
 **HTTP 400** pada signup bisa berarti `redirect_to` tidak ada di **Redirect URLs** (Dashboard → Authentication → URL Configuration) — samakan dengan `scripts/patch-supabase-auth-urls.sh` / `supabase/config.toml` (`https://macfyi.com/**`, dll.).
 
 ### Midtrans

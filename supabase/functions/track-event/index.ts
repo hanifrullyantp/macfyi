@@ -26,6 +26,14 @@ const ALLOWED_TYPES = new Set([
   "download_clicked",
   "checkout_started",
   "purchase_completed",
+  // Landing / checkout (must match queueSiteEvent types in macfyi-landing-page)
+  "demo_modal_open",
+  "demo_download_ready",
+  "lead_form_visible",
+  "checkout_page_view",
+  "checkout_submit",
+  "lynk_static_checkout_redirect",
+  "lynk_checkout_redirect",
 ]);
 
 /** Maps event → CRM stage when stage should advance. */
