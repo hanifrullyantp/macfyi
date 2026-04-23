@@ -23,6 +23,7 @@ import LiveActivityPage from "./pages/LiveActivityPage";
 import WaTemplatesPage from "./pages/WaTemplatesPage";
 import EventsPage from "./pages/EventsPage";
 import MarketingPage from "./pages/MarketingPage";
+import { AdminSessionProvider } from "./context/AdminSessionContext";
 
 function isAdmin(session: Session | null): boolean {
   return session?.user.app_metadata?.role === "admin";
@@ -119,9 +120,10 @@ export function App() {
   }
 
   return (
-    <Router>
-      <Layout>
-        <Routes>
+    <AdminSessionProvider session={session}>
+      <Router>
+        <Layout>
+          <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
@@ -144,7 +146,8 @@ export function App() {
           <Route path="/marketing" element={<MarketingPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </Layout>
-    </Router>
+        </Layout>
+      </Router>
+    </AdminSessionProvider>
   );
 }
