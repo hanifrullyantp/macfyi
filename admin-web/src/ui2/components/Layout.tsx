@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "./Sidebar";
 import { Navbar } from "./Navbar";
 import { CommandPalette } from "./CommandPalette";
+import { AdminRouteErrorBoundary } from "../../components/AdminRouteErrorBoundary";
 
 export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -40,7 +41,7 @@ export const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) =>
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {children}
+              <AdminRouteErrorBoundary resetKey={location.pathname}>{children}</AdminRouteErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </div>

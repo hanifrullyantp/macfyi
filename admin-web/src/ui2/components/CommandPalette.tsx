@@ -24,6 +24,7 @@ import {
   Zap,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { getAdminPageTitle } from "../../lib/adminRouteMeta";
 
 type PaletteProps = {
   open: boolean;
@@ -32,31 +33,30 @@ type PaletteProps = {
 
 type CmdItem = {
   icon: typeof LayoutDashboard;
-  label: string;
   to: string;
   keywords?: string[];
 };
 
 const ITEMS: CmdItem[] = [
-  { icon: LayoutDashboard, label: "Dasbor", to: "/dashboard", keywords: ["dashboard", "home"] },
-  { icon: BarChart3, label: "Analitik", to: "/analytics", keywords: ["stats"] },
-  { icon: Activity, label: "Aktivitas langsung", to: "/live", keywords: ["live"] },
-  { icon: Key, label: "Lisensi", to: "/licenses", keywords: ["license"] },
-  { icon: CreditCard, label: "Transaksi", to: "/transactions", keywords: ["payment", "orders"] },
-  { icon: Tag, label: "Promo & harga", to: "/promo-pricing", keywords: ["pricing"] },
-  { icon: Users, label: "Afiliasi", to: "/affiliates", keywords: ["affiliate"] },
-  { icon: Wallet, label: "Penarikan", to: "/withdrawals", keywords: ["withdraw"] },
-  { icon: Contact, label: "CRM", to: "/crm", keywords: ["contacts"] },
-  { icon: Globe, label: "Halaman utama (landing)", to: "/landing", keywords: ["editor"] },
-  { icon: Settings, label: "Pengaturan aplikasi", to: "/app-settings", keywords: ["app"] },
-  { icon: Cpu, label: "Pengaturan platform", to: "/platform", keywords: ["platform"] },
-  { icon: Sparkles, label: "Marketing / public keys", to: "/marketing", keywords: ["seo", "pixel"] },
-  { icon: Calendar, label: "Promo events", to: "/events", keywords: ["calendar"] },
-  { icon: MessageSquare, label: "Template WA", to: "/wa-templates", keywords: ["whatsapp"] },
-  { icon: Megaphone, label: "Pengumuman", to: "/announcements", keywords: ["news"] },
-  { icon: Zap, label: "Edge monitor", to: "/edge-functions", keywords: ["functions"] },
-  { icon: Terminal, label: "Log sistem", to: "/logs", keywords: ["logs"] },
-  { icon: ShieldAlert, label: "Admin sistem", to: "/admin-users", keywords: ["users"] },
+  { icon: LayoutDashboard, to: "/dashboard", keywords: ["dashboard", "home"] },
+  { icon: BarChart3, to: "/analytics", keywords: ["stats"] },
+  { icon: Activity, to: "/live", keywords: ["live"] },
+  { icon: Key, to: "/licenses", keywords: ["license"] },
+  { icon: CreditCard, to: "/transactions", keywords: ["payment", "orders"] },
+  { icon: Tag, to: "/promo-pricing", keywords: ["pricing"] },
+  { icon: Users, to: "/affiliates", keywords: ["affiliate"] },
+  { icon: Wallet, to: "/withdrawals", keywords: ["withdraw"] },
+  { icon: Contact, to: "/crm", keywords: ["contacts"] },
+  { icon: Globe, to: "/landing", keywords: ["editor", "landing"] },
+  { icon: Settings, to: "/app-settings", keywords: ["app"] },
+  { icon: Cpu, to: "/platform", keywords: ["platform"] },
+  { icon: Sparkles, to: "/marketing", keywords: ["seo", "pixel", "public"] },
+  { icon: Calendar, to: "/events", keywords: ["calendar"] },
+  { icon: MessageSquare, to: "/wa-templates", keywords: ["whatsapp"] },
+  { icon: Megaphone, to: "/announcements", keywords: ["news"] },
+  { icon: Zap, to: "/edge-functions", keywords: ["functions"] },
+  { icon: Terminal, to: "/logs", keywords: ["logs"] },
+  { icon: ShieldAlert, to: "/admin-users", keywords: ["users"] },
 ];
 
 export const CommandPalette = ({ open, onOpenChange }: PaletteProps) => {
@@ -72,7 +72,9 @@ export const CommandPalette = ({ open, onOpenChange }: PaletteProps) => {
     const q = query.trim().toLowerCase();
     if (!q) return ITEMS;
     return ITEMS.filter((item) => {
-      if (item.label.toLowerCase().includes(q)) return true;
+      const label = getAdminPageTitle(item.to).toLowerCase();
+      if (label.includes(q)) return true;
+      if (item.to.toLowerCase().includes(q)) return true;
       return item.keywords?.some((k) => k.includes(q)) ?? false;
     });
   }, [query]);
@@ -163,7 +165,7 @@ export const CommandPalette = ({ open, onOpenChange }: PaletteProps) => {
                     >
                       <div className="flex items-center gap-4">
                         <item.icon size={20} className="text-white/20 group-hover:text-red-500 transition-colors" />
-                        <span className="text-[13px] font-bold text-white/80 group-hover:text-white">{item.label}</span>
+                        <span className="text-[13px] font-bold text-white/80 group-hover:text-white">{getAdminPageTitle(item.to)}</span>
                       </div>
                       <span className="text-[10px] font-mono text-white/25">{item.to}</span>
                     </button>

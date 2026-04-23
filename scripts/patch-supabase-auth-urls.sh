@@ -21,7 +21,7 @@ REF="$(tr -d '[:space:]' <"$REF_FILE")"
 TOKEN="${SUPABASE_ACCESS_TOKEN:?Set SUPABASE_ACCESS_TOKEN (Dashboard → Account → Access Tokens)}"
 
 SITE_URL="${AUTH_SITE_URL:-https://macfyi.com}"
-URI_ALLOW_LIST="${AUTH_URI_ALLOW_LIST:-https://macfyi.com/**,https://www.macfyi.com/**,http://localhost:5173/**,http://127.0.0.1:5173/**,http://localhost:3000/**,http://127.0.0.1:3000/**}"
+URI_ALLOW_LIST="${AUTH_URI_ALLOW_LIST:-https://macfyi.com/**,https://macfyi.com/admin,https://macfyi.com/admin/**,https://www.macfyi.com/**,http://localhost:5173/**,http://127.0.0.1:5173/**,http://localhost:3000/**,http://127.0.0.1:3000/**}"
 
 BODY="$(jq -nc --arg u "$SITE_URL" --arg l "$URI_ALLOW_LIST" '{site_url: $u, uri_allow_list: $l}')"
 

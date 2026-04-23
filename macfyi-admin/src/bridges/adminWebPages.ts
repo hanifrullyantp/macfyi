@@ -1,0 +1,20 @@
+/** Re-export wired admin pages from `admin-web` (shared Supabase + RLS). */
+export { default as DashboardPage } from "../../../admin-web/src/pages/DashboardPage";
+export { default as AnalyticsPage } from "../../../admin-web/src/pages/AnalyticsPage";
+export { default as LicensesPage } from "../../../admin-web/src/pages/LicensesPage";
+export { default as TransactionsPage } from "../../../admin-web/src/pages/TransactionsPage";
+export { default as CrmPage } from "../../../admin-web/src/pages/CrmPage";
+export { default as WithdrawalsPage } from "../../../admin-web/src/pages/WithdrawalsPage";
+export { default as AffiliatesPage } from "../../../admin-web/src/pages/AffiliatesPage";
+export { default as PromoAndPricingPage } from "../../../admin-web/src/pages/PromoAndPricingPage";
+export { default as LandingEditorPage } from "../../../admin-web/src/pages/LandingEditorPage";
+export { default as AppSettingsPage } from "../../../admin-web/src/pages/AppSettingsPage";
+export { default as PlatformSettingsPage } from "../../../admin-web/src/pages/PlatformSettingsPage";
+export { default as EdgeFunctionsPage } from "../../../admin-web/src/pages/EdgeFunctionsPage";
+export { default as LogsPage } from "../../../admin-web/src/pages/LogsPage";
+export { default as AdminUsersPage } from "../../../admin-web/src/pages/AdminUsersPage";
+export { default as LiveActivityPage } from "../../../admin-web/src/pages/LiveActivityPage";
+export { default as AnnouncementsPage } from "../../../admin-web/src/pages/AnnouncementsPage";
+export { default as WaTemplatesPage } from "../../../admin-web/src/pages/WaTemplatesPage";
+export { default as EventsPage } from "../../../admin-web/src/pages/EventsPage";
+export { default as MarketingPage } from "../../../admin-web/src/pages/MarketingPage";

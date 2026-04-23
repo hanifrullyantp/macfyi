@@ -38,41 +38,34 @@ const ALLOWED_TYPES = new Set([
   "download_dmg_started",
 ]);
 
-/** Maps event → CRM stage when stage should advance. */
+/** Maps event → CRM stage (must match public.crm_contacts_stage_check: lead/contacted/demo/trial/customer/churned). */
 const STAGE_MAP: Record<string, string> = {
-  cta_click: "UPGRADE_INTENT",
-  form_open: "UPGRADE_INTENT",
-  form_submitted: "UPGRADE_INTENT",
-  checkout_started: "UPGRADE_INTENT",
-  snap_opened: "UPGRADE_INTENT",
-  payment_success: "PAID",
-  purchase_completed: "PAID",
-  download_completed: "DOWNLOADED",
-  lead_submitted: "DEMO_REQUESTED",
-  affiliate_applied: "affiliate_customer",
+  cta_click: "trial",
+  form_open: "trial",
+  form_submitted: "trial",
+  checkout_started: "trial",
+  snap_opened: "trial",
+  payment_success: "customer",
+  purchase_completed: "customer",
+  download_completed: "demo",
+  lead_submitted: "demo",
+  affiliate_applied: "customer",
 };
 
-const FUNNEL_ORDER = [
-  "DEMO_REQUESTED",
-  "DOWNLOADED",
-  "DEMO_ACTIVATED",
-  "SCANNED",
-  "UPGRADE_INTENT",
-  "PAID",
-  "ACTIVATED",
-  "ARCHIVED",
-] as const;
+/** Monotonic happy-path order; churned is terminal and handled separately. */
+const FUNNEL_ORDER = ["lead", "contacted", "demo", "trial", "customer"] as const;
 
 function funnelRank(stage: string): number {
-  const i = (FUNNEL_ORDER as readonly string[]).indexOf(stage);
+  const i = (FUNNEL_ORDER as readonly string[]).indexOf(stage as (typeof FUNNEL_ORDER)[number]);
   return i < 0 ? -1 : i;
 }
 
 function maxStage(a: string, b: string): string {
-  if (a === "affiliate_customer" || b === "affiliate_customer") return "affiliate_customer";
+  if (a === "churned") return a;
+  if (b === "churned") return b;
   const ra = funnelRank(a);
   const rb = funnelRank(b);
-  if (ra < 0 && rb < 0) return "DEMO_REQUESTED";
+  if (ra < 0 && rb < 0) return "lead";
   if (ra < 0) return b;
   if (rb < 0) return a;
   return ra >= rb ? a : b;
@@ -165,7 +158,7 @@ Deno.serve(async (req) => {
       .from("crm_contacts")
       .insert({
         visitor_id: visitorId,
-        stage: "DEMO_REQUESTED",
+        stage: "lead",
         source: "direct",
         last_activity_at: now,
         metadata: { page_url: body.page_url ?? null, referrer: body.referrer ?? null },
@@ -182,20 +175,17 @@ Deno.serve(async (req) => {
     contactId = ins.id;
   }
 
-  let newStage = (existing?.stage as string) ?? "DEMO_REQUESTED";
+  let newStage = (existing?.stage as string) ?? "lead";
   for (const ev of events) {
     await supabase.from("crm_events").insert({
       contact_id: contactId,
       event_type: ev.type,
       payload: { ...(ev.payload ?? {}), page_url: body.page_url },
     });
+    if (newStage === "churned") continue;
     const mapped = STAGE_MAP[ev.type];
     if (mapped) {
-      if (mapped === "affiliate_customer") {
-        newStage = "affiliate_customer";
-      } else if (newStage !== "affiliate_customer") {
-        newStage = maxStage(newStage, mapped);
-      }
+      newStage = maxStage(newStage, mapped);
     }
   }
 

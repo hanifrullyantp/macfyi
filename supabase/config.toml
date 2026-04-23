@@ -156,6 +156,8 @@ site_url = "https://macfyi.com"
 # Wildcard ** untuk path (/download, /checkout, callback hash). www + localhost untuk dev/preview.
 additional_redirect_urls = [
   "https://macfyi.com/**",
+  "https://macfyi.com/admin",
+  "https://macfyi.com/admin/**",
   "https://www.macfyi.com/**",
   "http://localhost:5173/**",
   "http://127.0.0.1:5173/**",

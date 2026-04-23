@@ -11,17 +11,8 @@ import {
 } from "@dnd-kit/core";
 import { supabase } from "./supabase";
 
-export const CRM_STAGES = [
-  "DEMO_REQUESTED",
-  "DOWNLOADED",
-  "DEMO_ACTIVATED",
-  "SCANNED",
-  "UPGRADE_INTENT",
-  "PAID",
-  "ACTIVATED",
-  "ARCHIVED",
-  "affiliate_customer",
-] as const;
+/** Must match public.crm_contacts_stage_check (see migration 20260422190000). */
+export const CRM_STAGES = ["lead", "contacted", "demo", "trial", "customer", "churned"] as const;
 
 type Contact = {
   id: string;
