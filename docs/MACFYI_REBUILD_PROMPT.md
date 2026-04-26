@@ -28,10 +28,11 @@ Root: `macfyi/`
 - **Scripts ops/setup**: `scripts/`
 
 Docs utama yang sudah ada:
-- Setup stack: [`SETUP-GUIDE.md`](../SETUP-GUIDE.md)
-- Integrasi step-by-step: [`docs/TUTORIAL_INTEGRASI_STACK.md`](TUTORIAL_INTEGRASI_STACK.md)
-- Ecosystem marketing: [`docs/MARKETING_ECOSYSTEM.md`](MARKETING_ECOSYSTEM.md)
-- Rilis macOS: [`docs/RELEASE_MACOS.md`](RELEASE_MACOS.md)
+
+- Setup stack: `[SETUP-GUIDE.md](../SETUP-GUIDE.md)`
+- Integrasi step-by-step: `[docs/TUTORIAL_INTEGRASI_STACK.md](TUTORIAL_INTEGRASI_STACK.md)`
+- Ecosystem marketing: `[docs/MARKETING_ECOSYSTEM.md](MARKETING_ECOSYSTEM.md)`
+- Rilis macOS: `[docs/RELEASE_MACOS.md](RELEASE_MACOS.md)`
 
 ---
 
@@ -45,11 +46,12 @@ Docs utama yang sudah ada:
 - Backend bridge: `@tauri-apps/api` + commands di Rust
 
 Entrypoints utama:
-- UI root: [`src/App.tsx`](../src/App.tsx)
-- Shell/layout: [`src/components/AppShell.tsx`](../src/components/AppShell.tsx)
-- Backend adapter (invoke wrappers): [`src/lib/backend.ts`](../src/lib/backend.ts)
+
+- UI root: `[src/App.tsx](../src/App.tsx)`
+- Shell/layout: `[src/components/AppShell.tsx](../src/components/AppShell.tsx)`
+- Backend adapter (invoke wrappers): `[src/lib/backend.ts](../src/lib/backend.ts)`
 - Rust commands: folder `src-tauri/src/commands/` (whitelist roots, heuristics, move-to-Trash, disk stats)
-- **Disk Explorer** (folder-level browser + volume + export): Rust [`src-tauri/src/commands/disk_explorer.rs`](../src-tauri/src/commands/disk_explorer.rs); UI [`src/components/DiskExplorer/`](../src/components/DiskExplorer/); state [`src/store/diskExplorerStore.tsx`](../src/store/diskExplorerStore.tsx); AI helper [`src/lib/aiDiskAnalyzer.ts`](../src/lib/aiDiskAnalyzer.ts); types [`src/lib/types/diskExplorer.ts`](../src/lib/types/diskExplorer.ts). Dari Smart Care dashboard, kartu modul membuka fitur `disk-explorer`. **Wawasan folder (AI)** dibuka lewat modal agar tabel memakai lebar penuh; strip status global menjelaskan pekerjaan latar saat memuat.
+- **Disk Explorer** (folder-level browser + volume + export): Rust `[src-tauri/src/commands/disk_explorer.rs](../src-tauri/src/commands/disk_explorer.rs)`; UI `[src/components/DiskExplorer/](../src/components/DiskExplorer/)`; state `[src/store/diskExplorerStore.tsx](../src/store/diskExplorerStore.tsx)`; AI helper `[src/lib/aiDiskAnalyzer.ts](../src/lib/aiDiskAnalyzer.ts)`; types `[src/lib/types/diskExplorer.ts](../src/lib/types/diskExplorer.ts)`. Dari Smart Care dashboard, kartu modul membuka fitur `disk-explorer`. **Wawasan folder (AI)** dibuka lewat modal agar tabel memakai lebar penuh; strip status global menjelaskan pekerjaan latar saat memuat.
 - **Cold start UX**: layar splash dengan progres + teks fase sampai disk stats dan `public-config` selesai (lihat §15).
 
 ### 3.2 Prinsip safety (wajib dipertahankan)
@@ -60,23 +62,23 @@ Entrypoints utama:
 
 ### 3.3 Modul/fitur utama (ringkas tapi lengkap)
 
-1. **Storage map / breakdown**  
-   - Menunjukkan kategori yang memakan ruang (cache, large files, backups, dsb).
-2. **Safe cleanup**  
-   - Rekomendasi pembersihan; label risiko (safe/caution/risky).
-3. **Uninstaller**  
-   - Uninstall app + bereskan residu terkait (Library paths).
-4. **Trash management**  
-   - Lihat isi Trash, purge/restore via OS.
-5. **Monitor & performance**  
-   - Disk stats, RAM/perf ringkas, “maintenance” ringan (tanpa overclaim).
-6. **Disk Explorer**  
-   - Telusuri isi folder **satu level** per navigasi; ukuran agregat per entri, label jenis & risiko, daftar file terbesar di folder, ekspor laporan (JSON/txt) ke Downloads.  
-   - **Tidak ada hapus permanen** dari UI modul ini: pemindahan ke **Trash** saja (mis. via `move_paths_to_trash` / perintah setara), dengan konfirmasi ekstra untuk item **Caution/Risky**.  
-   - **Full Disk Access** (FDA): banner + buka System Settings bila perlu; beberapa path sistem tidak terbaca tanpa FDA.  
-   - **AI insight folder**: ringkasan **hanya dengan path yang disamarkan**; alur `ai_generate` + stream token, fallback template KB (`kbAnswer`) bila model off / error / timeout (lihat [`src/lib/aiDiskAnalyzer.ts`](../src/lib/aiDiskAnalyzer.ts)).
-7. **AI assistant (privacy-first, optional offline)**  
-   - Menjelaskan temuan scan, memberi saran aman, tidak mengeksekusi delete.
+1. **Storage map / breakdown**
+  - Menunjukkan kategori yang memakan ruang (cache, large files, backups, dsb).
+2. **Safe cleanup**
+  - Rekomendasi pembersihan; label risiko (safe/caution/risky).
+3. **Uninstaller**
+  - Uninstall app + bereskan residu terkait (Library paths).
+4. **Trash management**
+  - Lihat isi Trash, purge/restore via OS.
+5. **Monitor & performance**
+  - Disk stats, RAM/perf ringkas, “maintenance” ringan (tanpa overclaim).
+6. **Disk Explorer**
+  - Telusuri isi folder **satu level** per navigasi; ukuran agregat per entri, label jenis & risiko, daftar file terbesar di folder, ekspor laporan (JSON/txt) ke Downloads.  
+  - **Tidak ada hapus permanen** dari UI modul ini: pemindahan ke **Trash** saja (mis. via `move_paths_to_trash` / perintah setara), dengan konfirmasi ekstra untuk item **Caution/Risky**.  
+  - **Full Disk Access** (FDA): banner + buka System Settings bila perlu; beberapa path sistem tidak terbaca tanpa FDA.  
+  - **AI insight folder**: ringkasan **hanya dengan path yang disamarkan**; alur `ai_generate` + stream token, fallback template KB (`kbAnswer`) bila model off / error / timeout (lihat `[src/lib/aiDiskAnalyzer.ts](../src/lib/aiDiskAnalyzer.ts)`).
+7. **AI assistant (privacy-first, optional offline)**
+  - Menjelaskan temuan scan, memberi saran aman, tidak mengeksekusi delete.
 
 ### 3.4 Local AI assistant (offline)
 
@@ -88,7 +90,7 @@ Tujuan: memberi jawaban cepat di device, tanpa cloud.
 - On-demand load: load saat panel AI dibuka/ada prompt; auto-unload saat idle.
 - Fallback: bila model tidak ada/AI dimatikan/memory pressure: gunakan KB “Quick Answer”.
 
-Lihat detail di README root: [`README.md`](../README.md) bagian “Local AI Assistant”.
+Lihat detail di README root: `[README.md](../README.md)` bagian “Local AI Assistant”.
 
 ---
 
@@ -146,7 +148,7 @@ Folder: `supabase/functions/`
 - `_shared/`  
   - util bersama, termasuk resolver promo: `promoPlan.ts`
 
-Referensi detail: [`supabase/README.md`](../supabase/README.md)
+Referensi detail: `[supabase/README.md](../supabase/README.md)`
 
 ---
 
@@ -175,7 +177,7 @@ Harga efektif dan slot/coundown berasal dari `app_settings.promo_plan` + `promo_
 - checkout Snap: gross_amount mengikuti harga promo aktif
 - webhook: decrement slot jika counter diisi
 
-Dokumen deploy promo: [`docs/PROMO_PLAN_DEPLOY.md`](PROMO_PLAN_DEPLOY.md)
+Dokumen deploy promo: `[docs/PROMO_PLAN_DEPLOY.md](PROMO_PLAN_DEPLOY.md)`
 
 ---
 
@@ -207,6 +209,7 @@ Contoh animasi impact hero: `StorageImpactAnimation` di `macfyi-landing-page/src
 ### 6.4 Config & env (landing)
 
 `macfyi-landing-page/.env.example` menjelaskan:
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - opsional tracking flags
@@ -218,10 +221,11 @@ Contoh animasi impact hero: `StorageImpactAnimation` di `macfyi-landing-page/src
 Project: `admin-web/`
 
 Tujuan:
+
 - manage `app_settings`, view `licenses`, `activations`, AI provider secrets
 - admin login via Supabase Auth user yang punya `app_metadata.role = "admin"`
 
-Referensi: [`admin-web/README.md`](../admin-web/README.md)
+Referensi: `[admin-web/README.md](../admin-web/README.md)`
 
 ---
 
@@ -230,6 +234,7 @@ Referensi: [`admin-web/README.md`](../admin-web/README.md)
 Project: `member-web/`
 
 Tujuan:
+
 - member dashboard: affiliate signup, referral stats, withdrawal requests, dsb
 - menggunakan Supabase Auth standard user
 
@@ -246,7 +251,7 @@ High-level funnel:
 3. Desktop app memverifikasi token (`demo-verify`) dan menerapkan demo rules snapshot
 4. Upgrade/checkout → Midtrans Snap → license issuance → activation
 
-Referensi: [`docs/MARKETING_ECOSYSTEM.md`](MARKETING_ECOSYSTEM.md)
+Referensi: `[docs/MARKETING_ECOSYSTEM.md](MARKETING_ECOSYSTEM.md)`
 
 ---
 
@@ -254,15 +259,17 @@ Referensi: [`docs/MARKETING_ECOSYSTEM.md`](MARKETING_ECOSYSTEM.md)
 
 ### 10.1 Local dev env (contoh)
 
-Gunakan `macfyi-local.env` (jangan commit). Contoh ada di [`docs/TUTORIAL_INTEGRASI_STACK.md`](TUTORIAL_INTEGRASI_STACK.md).
+Gunakan `macfyi-local.env` (jangan commit). Contoh ada di `[docs/TUTORIAL_INTEGRASI_STACK.md](TUTORIAL_INTEGRASI_STACK.md)`.
 
 ### 10.2 Supabase secrets (Edge)
 
 Wajib untuk payments/email:
+
 - `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`
 
 Opsional:
+
 - `OPS_ALERT_EMAIL` (alert penarikan)
 - `CRON_SECRET` (scheduled-ops)
 
@@ -283,7 +290,7 @@ Set Notification URL:
 - Build: `npm run tauri:build` (bundles `.app`)
 - DMG optional: `npm run tauri:build:dmg`
 
-Signing & notarization: [`docs/RELEASE_MACOS.md`](RELEASE_MACOS.md)
+Signing & notarization: `[docs/RELEASE_MACOS.md](RELEASE_MACOS.md)`
 
 ### 11.2 Landing (Vercel)
 

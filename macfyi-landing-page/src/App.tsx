@@ -23,6 +23,7 @@ import {
   Info,
   Undo2,
   Redo2,
+  LayoutDashboard,
 } from 'lucide-react';
 import { EditableText, EditableImage, EditableVideo } from './components/Editable';
 import type { ContentData } from './types/content';
@@ -623,6 +624,12 @@ export function LandingApp() {
     else toast('URL area anggota belum diatur di pengaturan.', 'info');
   }, [data.settings.loginUrl, toast]);
 
+  /** Pintasan ke SPA admin (build terpisah di `/admin`); buka tab baru agar landing tetap terbuka. */
+  const openAdminConsole = useCallback(() => {
+    const origin = window.location.origin.replace(/\/$/, "");
+    window.open(`${origin}/admin/`, "_blank", "noopener,noreferrer");
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     clearLegacyAdminSession();
     const c = getSupabaseBrowserClient();
@@ -725,6 +732,15 @@ export function LandingApp() {
             <div className="flex items-center gap-2 flex-wrap justify-end">
               <button
                 type="button"
+                onClick={openAdminConsole}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-sm transition"
+                title="Buka Konsol Admin (tab baru)"
+              >
+                <LayoutDashboard size={14} />
+                Konsol admin
+              </button>
+              <button
+                type="button"
                 onClick={undo}
                 disabled={undoStack.length === 0}
                 className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-2.5 py-1.5 rounded text-sm transition disabled:opacity-30 disabled:pointer-events-none"
@@ -815,6 +831,17 @@ export function LandingApp() {
               if (loggedIn && sessionOk) {
                 return (
                   <>
+                    <button
+                      type="button"
+                      onClick={openAdminConsole}
+                      className={headerAuthBtn}
+                      title="Buka Konsol Admin (tab baru)"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <LayoutDashboard size={14} className="opacity-80" />
+                        Konsol admin
+                      </span>
+                    </button>
                     <button type="button" onClick={() => setIsSettingsOpen(true)} className={headerAuthBtn}>
                       Admin
                     </button>
