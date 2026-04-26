@@ -2,7 +2,9 @@ import { useState } from "react";
 import { ExternalLink, Loader2, Trash2 } from "lucide-react";
 import type { TrashListItem } from "../types";
 import { emptyTrash, openUserTrash, revealInFinder } from "../lib/backend";
+import { getIsProEntitled } from "../lib/entitlement";
 import { isDemoMode } from "../lib/demoSession";
+import { marketingCheckoutUrl } from "../lib/marketingUrl";
 import { useI18n } from "../i18n/context";
 import { LoadingButton } from "./common/LoadingButton";
 
@@ -28,8 +30,13 @@ export function UserTrashView({ items, loading, error, onRefresh }: UserTrashVie
   const total = rows.reduce((a, x) => a + x.sizeBytes, 0);
 
   const handleEmpty = async () => {
-    if (isDemoMode()) {
-      setLocalError("Demo: mengosongkan Tong Sampah tidak tersedia. Upgrade ke Pro untuk penghapusan penuh.");
+    if (!getIsProEntitled() || isDemoMode()) {
+      setLocalError(
+        isDemoMode()
+          ? "Demo: mengosongkan Tong Sampah tidak tersedia. Upgrade ke Pro."
+          : "Pro diperlukan untuk mengosongkan Tong Sampah. Buka checkout dari profil."
+      );
+      if (!getIsProEntitled()) window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
       return;
     }
     if (!window.confirm(t("trash.emptyConfirm"))) return;

@@ -9,6 +9,7 @@ import { AuthLoginPage } from "./pages/AuthLoginPage";
 import { CheckoutSuccessPage } from "./pages/CheckoutSuccessPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { LegalPage } from "./pages/LegalPage";
+import { DesktopConnectPage } from "./pages/DesktopConnectPage";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -17,6 +18,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/download" element={<DownloadPage />} />
           <Route path="/login" element={<AuthLoginPage />} />
+          <Route path="/desktop-connect" element={<DesktopConnectPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/success" element={<CheckoutSuccessPage />} />
           <Route path="/terms" element={<LegalPage />} />

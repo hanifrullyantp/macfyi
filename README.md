@@ -84,7 +84,9 @@ Script ini mengunduh `llama.cpp` release (sesuai arch mesin build) dan mengekstr
 
 ### Admin (browser, terpisah dari app desktop)
 
-Untuk mengelola data Supabase (`app_settings`, lisensi, aktivasi, rahasia AI): gunakan proyek **[`admin-web/`](./admin-web/README.md)**.
+Konsol produksi: **[`https://admin.macfyi.com`](https://admin.macfyi.com)** (build [`macfyi-admin/`](./macfyi-admin/README.md), sumber modul di **[`admin-web/`](./admin-web/README.md)**). Rincian deploy & DNS: [`docs/ADMIN_SUBDOMAIN.md`](./docs/ADMIN_SUBDOMAIN.md).
+
+Pengembangan lokal (UI Supabase + halaman data):
 
 1. `cd admin-web && npm install && npm run dev`
 2. Buka URL yang ditampilkan Vite (default **http://localhost:5173**). Jika port bentrok dengan dev app utama, jalankan:  

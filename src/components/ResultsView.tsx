@@ -31,12 +31,24 @@ import { DelayedTooltip } from "./results/DelayedTooltip";
 import { FilterPopover } from "./results/FilterPopover";
 import { TriStateCheckbox, categoryTriState } from "./results/TriStateCheckbox";
 import { ScanSummaryDashboard } from "./results/ScanSummaryDashboard";
+import { ResultCardsGrid } from "./ScanResult/ResultCardsGrid";
+import {
+  buildCardBucketsFromEnriched,
+  cardBucketsToList,
+  getSafeCleanItemIds,
+  sumBytesForIds,
+} from "../lib/scanCategories";
 import { useI18n } from "../i18n/context";
+import { sendClientTelemetry } from "../lib/telemetry";
+import { getIsProEntitled } from "../lib/entitlement";
+import { marketingCheckoutUrl } from "../lib/marketingUrl";
 import { recordDemoCleanUsage, validateDemoClean } from "../lib/demoLimits";
 
 interface ResultsViewProps {
   results: ScanResult[];
   onClean: (detail: CleanFinishDetail) => void;
+  /** When false, cleaning is blocked with upgrade CTA (non-Pro / demo scan-only). */
+  isProEntitled?: boolean;
   onBack?: () => void;
   onPreview?: (path: string) => void;
   title?: string;
@@ -53,6 +65,10 @@ interface ResultsViewProps {
   /** Start a new scan (orb + toolbar) */
   onRequestRescan?: () => void;
   onAskAi?: (ctx: AiItemContext) => void;
+}
+
+function openUpgradeCheckout() {
+  window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
 }
 
 type Stage = "summary" | "review" | "cleaning" | "done";
@@ -276,8 +292,10 @@ export const ResultsView = ({
   onOrbIntentChange,
   onRequestRescan,
   onAskAi,
+  isProEntitled: isProEntitledProp,
 }: ResultsViewProps) => {
   const { t } = useI18n();
+  const isProEntitled = isProEntitledProp !== undefined ? isProEntitledProp : getIsProEntitled();
   const [stage, setStage] = useState<Stage>("summary");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [recommendedIds, setRecommendedIds] = useState<Set<string>>(() => new Set());
@@ -310,6 +328,16 @@ export const ResultsView = ({
   const recommendedKey = useMemo(() => [...recommendedIds].sort().join(","), [recommendedIds]);
 
   const enriched = useMemo<EnrichedItem[]>(() => enrichScanResults(results), [results]);
+
+  const cardBuckets = useMemo(
+    () => cardBucketsToList(buildCardBucketsFromEnriched(enriched)),
+    [enriched]
+  );
+  const safeCleanAllIds = useMemo(() => getSafeCleanItemIds(cardBuckets), [cardBuckets]);
+  const safeCleanAllBytes = useMemo(
+    () => sumBytesForIds(enriched, safeCleanAllIds),
+    [enriched, safeCleanAllIds]
+  );
 
   useEffect(() => {
     const init = initSelectionFromScan(results);
@@ -541,14 +569,24 @@ export const ResultsView = ({
     });
   }, []);
 
-  const openCleanSheet = useCallback((ids: Set<string>) => {
-    if (ids.size === 0) return;
-    const now = Date.now();
-    if (now - cleanDebounceRef.current < 400) return;
-    cleanDebounceRef.current = now;
-    setCleanPendingIds(new Set(ids));
-    setCleanSheetOpen(true);
-  }, []);
+  const openCleanSheet = useCallback(
+    (ids: Set<string>) => {
+      if (ids.size === 0) return;
+      if (!isProEntitled) {
+        void sendClientTelemetry("CleanBlockedNonPro", { where: "sheet" });
+        setToast(t("profile.upgradeToClean"));
+        window.setTimeout(() => setToast(null), 5000);
+        openUpgradeCheckout();
+        return;
+      }
+      const now = Date.now();
+      if (now - cleanDebounceRef.current < 400) return;
+      cleanDebounceRef.current = now;
+      setCleanPendingIds(new Set(ids));
+      setCleanSheetOpen(true);
+    },
+    [isProEntitled, t]
+  );
 
   useEffect(() => {
     if (!onOrbIntentChange) return;
@@ -563,7 +601,7 @@ export const ResultsView = ({
     if (stage === "review") {
       onOrbIntentChange({
         kind: "clean",
-        disabled: totalSelectedStats.count === 0,
+        disabled: totalSelectedStats.count === 0 || !isProEntitled,
         onPress: () => openCleanSheet(new Set(selectedIds)),
       });
       return;
@@ -577,6 +615,7 @@ export const ResultsView = ({
     selectedKey,
     openCleanSheet,
     selectedIds,
+    isProEntitled,
   ]);
 
   const runClean = async (mode: DeletionModeSetting) => {
@@ -585,6 +624,7 @@ export const ResultsView = ({
     const demoGate = validateDemoClean(selected.map((x) => ({ risk: x.risk, size: x.item.size })));
     if (!demoGate.ok) {
       setCleanSheetOpen(false);
+      if (!isProEntitled) void sendClientTelemetry("CleanBlockedNonPro", {});
       setToast(demoGate.message);
       window.setTimeout(() => setToast(null), 6500);
       return;
@@ -600,12 +640,17 @@ export const ResultsView = ({
       }
       setCleanedBytes(out.freed_bytes);
       recordDemoCleanUsage(out.succeeded.length, out.freed_bytes);
+      const succeededPathSet = new Set(out.succeeded);
+      const removedItemIds = selected
+        .filter((x) => succeededPathSet.has(x.item.path))
+        .map((x) => x.item.id);
       onClean({
         freedBytes: out.freed_bytes,
         succeededCount: out.succeeded.length,
         failedCount: out.failed.length,
         mode,
         sampleNames: selected.slice(0, 50).map((x) => x.item.name),
+        removedItemIds,
       });
       setStage("done");
     } catch (err) {
@@ -689,20 +734,34 @@ export const ResultsView = ({
 
   if (stage === "summary") {
     return (
-      <ScanSummaryDashboard
-        title={title}
-        enriched={enriched}
-        results={results}
-        recommendedBytes={recommendedBytes}
-        diskTotalGb={diskTotalGb}
-        freeGb={freeGb}
-        showWhy={showWhy}
-        onToggleWhy={() => setShowWhy((v) => !v)}
-        onReview={() => setStage("review")}
-        onCleanSafely={() =>
-          openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
-        }
-      />
+      <div className="h-full min-h-0 flex flex-col overflow-hidden">
+        <div className="shrink-0 max-h-[min(52vh,480px)] overflow-y-auto custom-scrollbar border-b border-white/10">
+          <ResultCardsGrid
+            buckets={cardBuckets}
+            onReview={() => setStage("review")}
+            onClean={(ids) => openCleanSheet(new Set(ids))}
+            onRescan={onRequestRescan}
+            safeCleanAllIds={safeCleanAllIds}
+            safeCleanAllBytes={safeCleanAllBytes}
+          />
+        </div>
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+          <ScanSummaryDashboard
+            title={title}
+            enriched={enriched}
+            results={results}
+            recommendedBytes={recommendedBytes}
+            diskTotalGb={diskTotalGb}
+            freeGb={freeGb}
+            showWhy={showWhy}
+            onToggleWhy={() => setShowWhy((v) => !v)}
+            onReview={() => setStage("review")}
+            onCleanSafely={() =>
+              openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
+            }
+          />
+        </div>
+      </div>
     );
   }
 

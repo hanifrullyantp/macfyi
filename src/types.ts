@@ -111,6 +111,8 @@ export interface CleanFinishDetail {
   failedCount: number;
   mode: "trash" | "permanent";
   sampleNames: string[];
+  /** IDs removed on disk; parent drops them from `scanResults` for badges and persist. */
+  removedItemIds: string[];
 }
 
 /** Drives main orb during Smart Care / results review */

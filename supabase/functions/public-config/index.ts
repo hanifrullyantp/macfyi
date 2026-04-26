@@ -139,6 +139,23 @@ Deno.serve(async (req) => {
   const upGenId = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_generic_id"), "").trim();
   const upGenEn = asJsonString(await getPlatformSetting(supabase, "desktop.upgrade_paywall.subtitle_generic_en"), "").trim();
 
+  const profileCardRaw = await getPlatformSetting(supabase, "desktop.profile_card");
+  let profile_card: Record<string, unknown> | null = null;
+  if (profileCardRaw && typeof profileCardRaw === "object" && !Array.isArray(profileCardRaw)) {
+    profile_card = profileCardRaw as Record<string, unknown>;
+  }
+
+  const defaultBulletsId = [
+    "Sekali bayar, pakai selamanya — tidak ada tagihan lagi",
+    "MacBook terasa baru, tanpa install ulang",
+    "Harga akan naik setelah slot habis",
+  ];
+  const defaultBulletsEn = [
+    "One-time purchase — no recurring bill",
+    "Mac feels fresh without a full reinstall",
+    "Price goes up when promo slots run out",
+  ];
+
   const desktop = {
     upgrade_paywall: {
       use_session_clean_amount: asBool(await getPlatformSetting(supabase, "desktop.upgrade_paywall.use_session_clean_amount"), true),
@@ -146,6 +163,22 @@ Deno.serve(async (req) => {
       subtitle_with_amount_en: upAmtEn.length > 0 ? upAmtEn : null,
       subtitle_generic_id: upGenId.length > 0 ? upGenId : null,
       subtitle_generic_en: upGenEn.length > 0 ? upGenEn : null,
+    },
+    profile_card: {
+      paid_label_id: asJsonString(profile_card?.paid_label_id, "BERBAYAR"),
+      paid_label_en: asJsonString(profile_card?.paid_label_en, "PAID"),
+      title_id: asJsonString(profile_card?.title_id, "Lifetime — 1 Perangkat Mac"),
+      title_en: asJsonString(profile_card?.title_en, "Lifetime — 1 Mac"),
+      launch_label_id: asJsonString(profile_card?.launch_label_id, "HARGA PELUNCURAN TERBATAS"),
+      launch_label_en: asJsonString(profile_card?.launch_label_en, "LIMITED LAUNCH PRICING"),
+      bullets_id: Array.isArray(profile_card?.bullets_id)
+        ? (profile_card!.bullets_id as string[]).filter((x) => typeof x === "string")
+        : defaultBulletsId,
+      bullets_en: Array.isArray(profile_card?.bullets_en)
+        ? (profile_card!.bullets_en as string[]).filter((x) => typeof x === "string")
+        : defaultBulletsEn,
+      cta_id: asJsonString(profile_card?.cta_id, "Dapatkan Lifetime — {price}"),
+      cta_en: asJsonString(profile_card?.cta_en, "Get Lifetime — {price}"),
     },
   };
 

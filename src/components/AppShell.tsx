@@ -1,37 +1,23 @@
-import { ReactNode, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
-  Activity,
-  Bolt,
   ChevronLeft,
   ChevronRight,
-  CircleDashed,
-  Clock3,
   HardDrive,
-  PackageOpen,
   Search,
-  FolderTree,
   Settings,
   User,
-  Sparkles,
-  Trash2,
-  Trash,
   SlidersHorizontal,
 } from "lucide-react";
 import { ScanOrbButton, type OrbDisplayMode } from "./ScanOrbButton";
 import { useI18n } from "../i18n/context";
 import { DEFAULT_BRAND_LOGO_URL } from "../lib/defaultBrandLogo";
+import type { FeatureId } from "../lib/featureId";
+import { AI_SIDEBAR_ID } from "../lib/featureId";
+import { appendAIRow, getGroupedSidebarMenu, GROUP_LABEL_KEY } from "./Sidebar/sidebarConfig";
+import { SidebarItem } from "./Sidebar/SidebarItem";
+import type { SidebarMenuEntry, SidebarNavEntry } from "./Sidebar/sidebarConfig";
 
-export type FeatureId =
-  | "smart-care"
-  | "cleanup"
-  | "my-clutter"
-  | "uninstaller"
-  | "user-trash"
-  | "monitor"
-  | "performance"
-  | "disk-explorer"
-  | "history"
-  | "settings";
+export type { FeatureId };
 
 interface AppShellProps {
   children: ReactNode;
@@ -54,6 +40,10 @@ interface AppShellProps {
   diskUsedPercent?: number;
   freeSpaceGb?: string;
   badges?: Record<string, number>;
+  /** Short byte labels for sidebar after scan, e.g. { "smart-care": "2.1 GB" } */
+  sidebarByteBadges?: Partial<Record<FeatureId, string>>;
+  /** Highlights AI row when the assistant panel is open */
+  isAIPanelOpen?: boolean;
   inspector?: ReactNode;
   contentBackgroundClass?: string;
   orbSubLabel?: string;
@@ -67,39 +57,8 @@ interface AppShellProps {
   onUpgradeClick?: () => void;
 }
 
-interface FeatureItem {
-  id: FeatureId;
-  label: string;
-  icon: ComponentType<{ size?: number }>;
-  group: "maintenance" | "insights" | "system";
-}
-
-const FEATURE_ITEMS: FeatureItem[] = [
-  { id: "smart-care", label: "shell.smartCare", icon: Sparkles, group: "maintenance" },
-  { id: "cleanup", label: "shell.cleanup", icon: Trash, group: "maintenance" },
-  { id: "my-clutter", label: "shell.myClutter", icon: CircleDashed, group: "maintenance" },
-  { id: "disk-explorer", label: "shell.diskExplorer", icon: FolderTree, group: "maintenance" },
-  { id: "uninstaller", label: "shell.uninstaller", icon: PackageOpen, group: "maintenance" },
-  { id: "user-trash", label: "shell.userTrash", icon: Trash2, group: "maintenance" },
-  { id: "monitor", label: "shell.monitor", icon: Activity, group: "insights" },
-  { id: "performance", label: "shell.performance", icon: Bolt, group: "insights" },
-  { id: "history", label: "shell.history", icon: Clock3, group: "insights" },
-  { id: "settings", label: "shell.settings", icon: Settings, group: "system" },
-];
-
-const GROUP_LABEL_KEY: Record<FeatureItem["group"], string> = {
-  maintenance: "shell.maintenance",
-  insights: "shell.insights",
-  system: "shell.system",
-};
-
-function Badge({ count }: { count?: number }) {
-  if (!count) return null;
-  return (
-    <span className="ml-auto text-[9px] font-bold bg-[var(--color-accent-soft)] text-[var(--color-accent-text)] px-1.5 py-0.5 rounded-md tabular-nums">
-      {count > 99 ? "99+" : count}
-    </span>
-  );
+function isNavFeature(entry: SidebarNavEntry): entry is SidebarMenuEntry {
+  return entry.id !== AI_SIDEBAR_ID;
 }
 
 /** Real app chrome: full viewport, no fake macOS window frame. */
@@ -121,6 +80,8 @@ export const AppShell = ({
   diskUsedPercent = 45,
   freeSpaceGb,
   badges = {},
+  sidebarByteBadges = {},
+  isAIPanelOpen = false,
   inspector,
   contentBackgroundClass = "from-[#1c1e26] via-[#181a22] to-[#13151c]",
   orbSubLabel = "Smart + Safe",
@@ -164,14 +125,7 @@ export const AppShell = ({
 
   const scanOrbSubLabel = orbSubLabel;
 
-  const groupedItems = useMemo(
-    () =>
-      (["maintenance", "insights", "system"] as const).map((group) => ({
-        group,
-        items: FEATURE_ITEMS.filter((i) => i.group === group),
-      })),
-    []
-  );
+  const groupedItems = useMemo(() => appendAIRow(getGroupedSidebarMenu()), []);
 
   const diskFreeLabel =
     freeSpaceGb != null && freeSpaceGb.length > 0 ? t("shell.diskFree", { n: freeSpaceGb }) : null;
@@ -225,34 +179,25 @@ export const AppShell = ({
               </span>
             )}
             {items.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeFeature === item.id;
+              const key = item.id;
+              const isActive = isNavFeature(item)
+                ? activeFeature === item.id
+                : isAIPanelOpen;
+              const byteLabel = isNavFeature(item) ? sidebarByteBadges[item.id] : undefined;
+              const count = isNavFeature(item) ? badges[item.id] : undefined;
               return (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => onFeatureChange(item.id)}
-                  title={collapsed ? t(item.label) : undefined}
-                  className={`group relative w-full ${
-                    collapsed ? "justify-center" : ""
-                  } flex items-center gap-3 px-2.5 py-2 rounded-xl transition-all duration-200 text-left ${
-                    isActive
-                      ? "bg-[var(--color-sidebar-active-bg)] text-white shadow-[inset_3px_0_0_0_var(--color-sidebar-indicator)]"
-                      : "text-white/50 hover:bg-white/[0.06] hover:text-white/88 border border-transparent"
-                  }`}
-                >
-                  <span className={isActive ? "scale-105" : "group-hover:scale-105 transition-transform"}>
-                    <Icon size={16} />
-                  </span>
-                  {!collapsed && (
-                    <>
-                      <span className="text-xs font-medium flex-1">{t(item.label)}</span>
-                      {(item.id === "cleanup" || item.id === "my-clutter" || item.id === "uninstaller") && (
-                        <Badge count={badges[item.id]} />
-                      )}
-                    </>
-                  )}
-                </button>
+                <SidebarItem
+                  key={key}
+                  entry={item}
+                  isActive={isActive}
+                  collapsed={collapsed}
+                  badgeText={byteLabel}
+                  countFallback={count}
+                  onSelect={() => {
+                    if (isNavFeature(item)) onFeatureChange(item.id);
+                    else onAIButtonClick?.();
+                  }}
+                />
               );
             })}
           </div>

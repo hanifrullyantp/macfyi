@@ -41,6 +41,7 @@ export default function LicensesPage() {
   const [page, setPage] = useState(0);
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [resetActLicenseId, setResetActLicenseId] = useState<string | null>(null);
 
   const activeFilter = filter.trim();
 
@@ -112,6 +113,21 @@ export default function LicensesPage() {
       setRevokeId(null);
       setDrawerId(null);
       await qc.invalidateQueries({ queryKey: ["licenses"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resetActivationMut = useMutation({
+    mutationFn: async (licenseId: string) => {
+      const { error } = await supabase.from("activations").delete().eq("license_id", licenseId);
+      if (error) throw error;
+    },
+    onSuccess: async (_data, licenseId: string) => {
+      toast.success("Aktivasi perangkat dihapus; pembeli dapat mengaktifkan Mac baru.");
+      setResetActLicenseId(null);
+      await qc.invalidateQueries({ queryKey: ["licenses", "detail", licenseId] });
+      await qc.invalidateQueries({ queryKey: ["licenses"] });
+      await qc.invalidateQueries({ queryKey: ["dash"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -319,11 +335,41 @@ export default function LicensesPage() {
               </div>
             </div>
             {detailQuery.data.activation ? (
-              <div>
-                <div className="text-xs text-zinc-500">Activation fingerprint</div>
-                <div className="font-mono text-[11px] text-zinc-300">
-                  {maskFingerprint((detailQuery.data.activation as { device_fingerprint: string }).device_fingerprint)}
+              <div className="space-y-2">
+                <div>
+                  <div className="text-xs text-zinc-500">Perangkat (fingerprint)</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-[11px] text-zinc-300 break-all">
+                      {maskFingerprint((detailQuery.data.activation as { device_fingerprint: string }).device_fingerprint)}
+                    </span>
+                    <CopyButton
+                      text={(detailQuery.data.activation as { device_fingerprint: string }).device_fingerprint}
+                      title="Salin penuh"
+                    />
+                  </div>
                 </div>
+                <div>
+                  <div className="text-xs text-zinc-500">Terakhir terlihat (last_seen_at)</div>
+                  <div className="font-mono text-[11px] text-zinc-400">
+                    {(() => {
+                      const raw = (detailQuery.data!.activation as { last_seen_at?: string | null }).last_seen_at;
+                      if (!raw) return "—";
+                      const d = new Date(raw);
+                      return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleString("id-ID");
+                    })()}
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-amber-400 hover:text-amber-300"
+                  onClick={() => setResetActLicenseId((detailQuery.data!.license as { id: string }).id)}
+                >
+                  Reset aktivasi (ganti Mac)
+                </Button>
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  Hapus baris activation agar email yang sama bisa mengikat perangkat baru (satu lisensi = satu Mac). RLS: admin only.
+                </p>
               </div>
             ) : (
               <p className="text-xs text-zinc-500">No activation row.</p>
@@ -367,6 +413,18 @@ export default function LicensesPage() {
         confirmLabel="Revoke"
         onConfirm={async () => {
           if (revokeId) await revokeMut.mutateAsync(revokeId);
+        }}
+      />
+
+      <ConfirmDialog
+        open={Boolean(resetActLicenseId)}
+        onOpenChange={(o) => !o && setResetActLicenseId(null)}
+        title="Reset aktivasi perangkat?"
+        description="Baris di tabel activations untuk lisensi ini akan dihapus. User dapat login/pairing ulang di Mac lain."
+        danger
+        confirmLabel="Reset aktivasi"
+        onConfirm={async () => {
+          if (resetActLicenseId) await resetActivationMut.mutateAsync(resetActLicenseId);
         }}
       />
     </div>

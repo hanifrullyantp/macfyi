@@ -7,16 +7,18 @@ Dokumen ini merangkum langkah operasional yang sering dipakai untuk proyek Macfy
 - **`site_url`**: produksi memakai `https://macfyi.com` (lihat `supabase/config.toml`).
 - **`additional_redirect_urls` / URI allow list**: harus mencakup origin tempat pengguna kembali setelah magic link / OAuth / reset password, termasuk wildcard path bila perlu.
 
-### Admin produksi di `/admin`
+### Konsol admin (produksi: `admin.macfyi.com`)
 
 Pastikan URL berikut ada di **Redirect URLs** (Dashboard Supabase) dan di repo pada `supabase/config.toml` serta default **`scripts/patch-supabase-auth-urls.sh`**:
 
 | URL | Keterangan |
 |-----|------------|
-| `https://macfyi.com/admin` | Origin halaman admin (hash/query callback) |
-| `https://macfyi.com/admin/**` | Deep link & navigasi di bawah `/admin` |
+| `https://admin.macfyi.com` | Origin halaman admin |
+| `https://admin.macfyi.com/**` | Deep link & rute di bawah origin |
 
-`https://macfyi.com/**` sudah mencakup banyak path; entri eksplisit di atas memudahkan audit dan cocok dengan dokumentasi produk.
+(Opsional) URL lama `https://macfyi.com/admin` tetap ada di list selama transisi; traffic umum diarahkan 308 ke subdomain. Lihat [`ADMIN_SUBDOMAIN.md`](ADMIN_SUBDOMAIN.md).
+
+`https://macfyi.com/**` sudah mencakup banyak path; entri di atas memudahkan audit.
 
 ### Patch URL via API
 
@@ -36,6 +38,14 @@ Setelah mengedit `config.toml`, terapkan ke proyek terhubung sesuai alur tim And
 
 - Deploy: `supabase functions deploy <nama-function>` (tambahkan `--no-verify-jwt` hanya jika function memang publik dan sudah disetujui secara keamanan).
 - Log runtime: **Supabase Dashboard → Edge Functions → Logs**.
+
+### Desktop: login kode (pairing)
+
+- **Migrasi**: `supabase/migrations/20260426120000_desktop_pairing_codes.sql` — tabel `desktop_pairing_codes` (akses langsung diblok untuk klien; Edge memakai service role), plus policy **`admin_delete_activations`** agar admin bisa menghapus baris `activations` (reset ganti Mac).
+- **`create-desktop-pairing`**: dipanggil dari web setelah user Supabase login (JWT user). Menghasilkan kode pendek + `expires_at`. Deploy: `supabase functions deploy create-desktop-pairing` (verifikasi JWT aktif di Dashboard jika relevan).
+- **`exchange-desktop-pairing`**: dipanggil dari app desktop dengan **anon key** + body JSON `code`, `device_fingerprint`. Menukar kode menjadi session (`token`, `email`, `is_pro`, `license_id`). Deploy: `supabase functions deploy exchange-desktop-pairing` — biasanya **publik** (`--no-verify-jwt`) karena app mengirim anon bearer; validasi tetap di kode function.
+- **App (Vite)**: set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, dan opsional `VITE_EXCHANGE_DESKTOP_PAIRING_URL` jika URL function tidak mengikuti default `.../functions/v1/exchange-desktop-pairing`. Untuk membuka login web dari app: `VITE_WEB_LOGIN_URL` atau default ke `https://macfyi.com/login?redirect=/desktop-connect`.
+- **Admin**: halaman **Lisensi** → detail lisensi menampilkan fingerprint (disamarkan) + **Reset aktivasi** untuk mengosongkan ikatan perangkat.
 
 ## RLS & kunci
 

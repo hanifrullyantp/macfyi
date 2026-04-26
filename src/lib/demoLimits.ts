@@ -1,3 +1,4 @@
+import { getIsProEntitled } from "./entitlement";
 import { getDemoRules, isDemoMode } from "./demoSession";
 import type { RiskBand } from "./results-types";
 
@@ -48,6 +49,13 @@ function boolRule(key: string, fallback: boolean): boolean {
 export type DemoCleanSelection = { risk: RiskBand; size: number };
 
 export function validateDemoClean(selection: DemoCleanSelection[]): { ok: true } | { ok: false; message: string } {
+  if (!getIsProEntitled()) {
+    return {
+      ok: false,
+      message:
+        "Butuh Macfyi Pro untuk membersihkan. Buka Paket Lifetime di profil atau checkout di web — pemindaian tetap tersedia.",
+    };
+  }
   if (!isDemoMode()) return { ok: true };
 
   const maxItems = numRule("clean_daily_items_cap", 30);
@@ -112,6 +120,12 @@ export function recordDemoCleanUsage(itemsCleaned: number, bytesFreed: number) {
 }
 
 export function validateDemoUninstall(actions = 1): { ok: true } | { ok: false; message: string } {
+  if (!getIsProEntitled()) {
+    return {
+      ok: false,
+      message: "Pro diperlukan untuk uninstall & penghapusan sisa. Scan tetap tersedia — upgrade lewat profil.",
+    };
+  }
   if (!isDemoMode()) return { ok: true };
   const max = numRule("uninstall_actions_per_day", 1);
   if (max <= 0) {

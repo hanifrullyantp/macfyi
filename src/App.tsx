@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense, type ReactNode } from "react";
 import { AnimatePresence } from "framer-motion";
-import { AppShell, type FeatureId } from "./components/AppShell";
+import { AppShell } from "./components/AppShell";
+import type { FeatureId } from "./lib/featureId";
 import { SmartCareDashboard } from "./components/SmartCareDashboard";
 import type { OrbDisplayMode } from "./components/ScanOrbButton";
 import type {
@@ -26,7 +27,7 @@ import {
 import { addSavedThisMonth, recordScanComplete } from "./lib/storage";
 import { FolderSearch, Trash2 } from "lucide-react";
 import { getDeletionMode, setDeletionModePersisted } from "./lib/deletion-settings";
-import { marketingPricingUrl } from "./lib/marketingUrl";
+import { marketingCheckoutUrl, marketingPricingUrl } from "./lib/marketingUrl";
 import { appendActivity } from "./lib/activity-log";
 import { useI18n } from "./i18n/context";
 import { loadSettings } from "./components/SettingsPanel";
@@ -37,9 +38,10 @@ import {
   hasCompletedOnboarding,
   resetOnboardingCompletion,
 } from "./components/OnboardingTour";
-import { ActivationScreen } from "./components/ActivationScreen";
-import { getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
-import { isDemoMode, setDemoSession } from "./lib/demoSession";
+import { AccountGateScreen } from "./components/AccountGateScreen";
+import { clearLicenseSession, getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
+import { getIsProEntitled } from "./lib/entitlement";
+import { isDemoMode } from "./lib/demoSession";
 import { fetchPublicConfigWithResult, type PublicConfig } from "./lib/publicConfig";
 import { resolveUpgradePaywallSubtitle } from "./lib/upgradePaywallCopy";
 import { syncAppWebBrandingIcons } from "./lib/brandingHead";
@@ -50,6 +52,7 @@ import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
 import { AppBootSplash } from "./components/AppBootSplash";
 import { useAppActivity } from "./context/AppActivityContext";
 import { DEFAULT_BRAND_LOGO_URL } from "./lib/defaultBrandLogo";
+import { useScanStore } from "./store/scanStore";
 
 const Scanner = lazy(async () => {
   const m = await import("./components/Scanner");
@@ -296,6 +299,7 @@ export default function App() {
   const [, setSelectionSummary] = useState<{ count: number; bytesLabel: string } | null>(null);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [scanResults, setScanResults] = useState<ScanResult[]>([]);
+  const persistScan = useScanStore((s) => s.setFromScan);
   const [freeSpace, setFreeSpace] = useState(0);
   const [diskTotalGb, setDiskTotalGb] = useState(0);
   const [storageEntries, setStorageEntries] = useState<StorageEntry[]>([]);
@@ -308,6 +312,7 @@ export default function App() {
   );
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
   const [publicConfigSnapshot, setPublicConfigSnapshot] = useState<PublicConfig | null>(null);
+  const proEntitled = useMemo(() => getIsProEntitled(), [licenseGatePassed, isProfileOpen]);
   /** Label ukuran dari pemakaian bersih terakhir (mis. "1.2 GB") untuk modal Pro */
   const [paywallFreedLabel, setPaywallFreedLabel] = useState<string | null>(null);
   /** True jika modal dibuka otomatis setelah alur bersih selesai */
@@ -626,6 +631,46 @@ export default function App() {
     return out;
   }, [scanModuleCounts, uninstallerApps, uninstallerOrphans]);
 
+  const fmtSidebarBytes = useCallback((n: number) => {
+    if (n <= 0) return "";
+    if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+    if (n < 1024 ** 3) return `${Math.round(n / (1024 * 1024))} MB`;
+    return `${(n / 1024 ** 3).toFixed(1)} GB`;
+  }, []);
+
+  const sumBytes = useCallback((results: ScanResult[], catSet: Set<string>) => {
+    return results
+      .filter((r) => catSet.has(r.category))
+      .reduce((a, r) => a + r.items.reduce((b, i) => b + i.size, 0), 0);
+  }, []);
+
+  useEffect(() => {
+    if (!licenseGatePassed) return;
+    const persisted = useScanStore.getState().results;
+    if (persisted && persisted.length > 0) {
+      setScanResults(persisted);
+    }
+  }, [licenseGatePassed]);
+
+  useEffect(() => {
+    if (scanResults.length === 0) return;
+    persistScan(scanResults);
+  }, [scanResults, persistScan]);
+
+  const sidebarByteBadges = useMemo(() => {
+    if (scanResults.length === 0) return {} as Partial<Record<FeatureId, string>>;
+    const total = scanResults.reduce((a, r) => a + r.items.reduce((b, i) => b + i.size, 0), 0);
+    const out: Partial<Record<FeatureId, string>> = {};
+    if (total > 0) out["smart-care"] = fmtSidebarBytes(total);
+    const cBytes = sumBytes(scanResults, CLEANUP_CATEGORIES);
+    if (cBytes > 0) out.cleanup = fmtSidebarBytes(cBytes);
+    const mBytes = sumBytes(scanResults, CLUTTER_CATEGORIES);
+    if (mBytes > 0) out["my-clutter"] = fmtSidebarBytes(mBytes);
+    const oBytes = sumBytes(scanResults, new Set(["app_leftovers"]));
+    if (oBytes > 0) out.uninstaller = fmtSidebarBytes(oBytes);
+    return out;
+  }, [scanResults, fmtSidebarBytes, sumBytes]);
+
   const navigateFromSmartCare = useCallback((id: FeatureId) => {
     setActiveFeature(id);
     if (id === "settings") setIsSettingsOpen(true);
@@ -935,13 +980,9 @@ export default function App() {
 
   if (!licenseGatePassed) {
     return (
-      <ActivationScreen
+      <AccountGateScreen
         brandLogoUrl={brandLogoUrl?.trim() ? brandLogoUrl.trim() : DEFAULT_BRAND_LOGO_URL}
-        onActivated={() => setLicenseGatePassed(true)}
-        onDemoStart={(token, rules) => {
-          setDemoSession(token, rules);
-          setLicenseGatePassed(true);
-        }}
+        onReady={() => setLicenseGatePassed(true)}
       />
     );
   }
@@ -976,7 +1017,11 @@ export default function App() {
     } else if (appState === "scanning") {
       content = (
         <Suspense fallback={<ViewFallback />}>
-          <Scanner onFinish={handleFinishScan} onCancel={handleCancelScan} onProgress={setScanProgressPct} />
+          <ScanProgress
+            onFinish={handleFinishScan}
+            onCancel={handleCancelScan}
+            onProgress={setScanProgressPct}
+          />
         </Suspense>
       );
     } else {
@@ -994,6 +1039,7 @@ export default function App() {
             onSelectionStatsChange={setSelectionSummary}
             onOrbIntentChange={setReviewOrbIntent}
             onRequestRescan={handleStartScan}
+            isProEntitled={proEntitled}
             onAskAi={(ctx) => {
               setAiActiveContext(ctx);
               setIsAIChatOpen(true);
@@ -1016,6 +1062,7 @@ export default function App() {
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
           onRequestRescan={handleStartScan}
+          isProEntitled={proEntitled}
           onAskAi={(ctx) => {
             setAiActiveContext(ctx);
             setIsAIChatOpen(true);
@@ -1046,6 +1093,7 @@ export default function App() {
           onSelectionStatsChange={setSelectionSummary}
           onOrbIntentChange={setReviewOrbIntent}
           onRequestRescan={handleStartScan}
+          isProEntitled={proEntitled}
           onAskAi={(ctx) => {
             setAiActiveContext(ctx);
             setIsAIChatOpen(true);
@@ -1246,6 +1294,8 @@ export default function App() {
         diskUsedPercent={diskUsedPercent}
         freeSpaceGb={freeGbLabel}
         badges={featureBadges}
+        sidebarByteBadges={sidebarByteBadges}
+        isAIPanelOpen={isAIChatOpen}
         contentBackgroundClass={
           appState === "scanning" ? "from-[#0a0b0f] via-[#0a0b0f] to-[#0a0b0f]" : activeTheme.bg
         }
@@ -1337,7 +1387,7 @@ export default function App() {
               onUpgrade={() => {
                 void sendClientTelemetry("UpgradeClicked", {});
                 setIsUpgradeOpen(false);
-                window.open(marketingPricingUrl(), "_blank", "noopener,noreferrer");
+                window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
               }}
               onMaybeLater={() => setIsUpgradeOpen(false)}
             />
@@ -1350,11 +1400,17 @@ export default function App() {
           {isProfileOpen && (
             <ProfileAccountPanel
               brandLogoUrl={brandLogoUrl}
+              publicConfig={publicConfigSnapshot}
               onClose={() => setIsProfileOpen(false)}
               onOpenPricing={() => {
                 void sendClientTelemetry("ProfileLifetimePricingClicked", {});
                 setIsProfileOpen(false);
-                window.open(marketingPricingUrl(), "_blank", "noopener,noreferrer");
+                window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
+              }}
+              onLogout={() => {
+                clearLicenseSession();
+                setLicenseGatePassed(false);
+                setIsProfileOpen(false);
               }}
             />
           )}

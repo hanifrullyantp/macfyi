@@ -8,9 +8,15 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Served at https://macfyi.com/admin/ — build output copied into landing dist by `macfyi-landing-page` build script.
+/** Default: root path for subdomain deploy (e.g. https://admin.macfyi.com). Legacy: VITE_USE_ADMIN_SUBPATH=1 + base /admin/ into landing `dist/admin`. */
+const useSubpath = process.env.VITE_USE_ADMIN_SUBPATH === "1" || process.env.VITE_USE_ADMIN_SUBPATH === "true";
+const base = useSubpath ? "/admin/" : "/";
+const outDir = useSubpath
+  ? path.resolve(__dirname, "../macfyi-landing-page/dist/admin")
+  : path.resolve(__dirname, "dist");
+
 export default defineConfig({
-  base: "/admin/",
+  base,
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
     alias: {
@@ -23,7 +29,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../macfyi-landing-page/dist/admin"),
+    outDir,
     emptyOutDir: true,
   },
 });

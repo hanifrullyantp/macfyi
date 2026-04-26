@@ -158,6 +158,8 @@ additional_redirect_urls = [
   "https://macfyi.com/**",
   "https://macfyi.com/admin",
   "https://macfyi.com/admin/**",
+  "https://admin.macfyi.com",
+  "https://admin.macfyi.com/**",
   "https://www.macfyi.com/**",
   "http://localhost:5173/**",
   "http://127.0.0.1:5173/**",

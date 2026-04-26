@@ -1,20 +1,25 @@
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck, HardDrive, XCircle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ScanResult, ScanProgress } from "../types";
 import { deepScan, cancelScan, onScanProgress } from "../lib/backend";
 import { useI18n } from "../i18n/context";
+import { getDashboardScanPhase } from "../lib/scanPhaseCopy";
 
 export const Scanner = ({
   onFinish,
   onCancel,
   onProgress,
+  dashboardPhaseCopy = false,
 }: {
   onFinish: (results: ScanResult[]) => void;
   onCancel: () => void;
   onProgress?: (pct: number) => void;
+  /** Use Indonesian phase text + progress buckets (Smart Care redesign). */
+  dashboardPhaseCopy?: boolean;
 }) => {
   const { t } = useI18n();
+  const reduceMotion = useReducedMotion();
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState("Preparing scan...");
   const [phase, setPhase] = useState<string | undefined>(undefined);
@@ -83,12 +88,14 @@ export const Scanner = ({
           ? t("scanner.phaseFinalize")
           : phase;
 
+  const friendly = dashboardPhaseCopy ? getDashboardScanPhase(progress) : null;
+
   return (
     <div className="flex flex-col items-center justify-center h-full min-h-0 text-center bg-[#0a0b0f]">
       <motion.div
         className="relative w-72 h-72 flex items-center justify-center"
-        initial={{ scale: 0.9, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        initial={reduceMotion ? false : { scale: 0.9, opacity: 0 }}
+        animate={reduceMotion ? false : { scale: 1, opacity: 1 }}
       >
         <svg className="w-full h-full transform -rotate-90">
           <circle cx="144" cy="144" r="120" stroke="rgba(255,255,255,0.05)" strokeWidth="20" fill="transparent" />
@@ -121,19 +128,31 @@ export const Scanner = ({
       </motion.div>
 
       <div className="mt-12 space-y-3 px-12 max-w-md">
-        {phase && (
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]/90">
-            {phaseLabel}
-          </p>
+        {friendly ? (
+          <>
+            <p className="text-white font-semibold min-h-[1.5rem] text-base leading-snug">{friendly.label}</p>
+            <p className="text-xs text-white/45">{friendly.detail}</p>
+            <p className="text-[10px] text-white/25 font-mono truncate" title={stage}>
+              {stage}
+            </p>
+          </>
+        ) : (
+          <>
+            {phase && (
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-accent)]/90">
+                {phaseLabel}
+              </p>
+            )}
+            <motion.p
+              key={stage}
+              initial={reduceMotion ? false : { y: 5, opacity: 0 }}
+              animate={reduceMotion ? false : { y: 0, opacity: 1 }}
+              className="text-white/80 font-medium min-h-[1.5rem] text-sm"
+            >
+              {stage}
+            </motion.p>
+          </>
         )}
-        <motion.p
-          key={stage}
-          initial={{ y: 5, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-white/80 font-medium min-h-[1.5rem] text-sm"
-        >
-          {stage}
-        </motion.p>
         {currentPath && (
           <p className="text-[11px] text-white/35 font-mono truncate max-w-full" title={currentPath}>
             {currentPath}

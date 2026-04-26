@@ -128,7 +128,8 @@ pub struct FilePreviewDto {
 pub struct ScanProgressPayload {
     /// Human-readable stage line (e.g. "Scanning Caches...")
     pub stage: String,
-    /// Machine-oriented phase: `walk` | `analyze` | `finalize`
+    /// Machine-oriented phase: `walk` | `analyze` | `finalize` (stable for the web client — see
+    /// `src/lib/scanPhaseCopy.ts` and `src/components/Scanner.tsx`).
     pub phase: String,
     pub pct: f64,
     pub files_found: usize,

@@ -9,13 +9,12 @@ import {
   PackageOpen,
   RefreshCw,
   ShieldCheck,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 import { getLastScanLabel, getSavedThisMonthLabel } from "../lib/storage";
 import { StorageChart } from "./StorageChart";
-import { ScanOrbButton } from "./ScanOrbButton";
-import type { FeatureId } from "./AppShell";
+import { ScanWelcome } from "./Dashboard/ScanWelcome";
+import type { FeatureId } from "../lib/featureId";
 import type { FileItem, StorageEntry, TrashListItem, UninstallAppEntry } from "../types";
 import { useI18n } from "../i18n/context";
 
@@ -78,25 +77,27 @@ export function SmartCareDashboard({
   return (
     <div className="relative z-10 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar px-6 py-6 md:px-8 pb-28">
       <div className="max-w-5xl w-full mx-auto flex flex-col flex-1 min-h-0 gap-4">
-        <div className="shrink-0 relative rounded-2xl border border-white/[0.06] bg-[#0a0b0f]/55 px-5 py-3 backdrop-blur-md shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight flex items-center gap-2">
-              {t("dashboard.titleSmartCare")} <Sparkles className="text-[var(--color-accent-text)]" size={20} />
-            </h1>
-            <p className="text-xs sm:text-sm text-white/55 mt-0.5">{t("dashboard.heroHint")}</p>
-          </div>
+        <div className="shrink-0 flex flex-wrap items-center justify-between gap-2">
           {onRefreshOverview && (
             <button
               type="button"
               onClick={onRefreshOverview}
               disabled={overviewLoading}
-              className="btn-secondary text-xs inline-flex items-center gap-1.5 shrink-0"
+              className="btn-secondary text-xs inline-flex items-center gap-1.5 shrink-0 ml-auto"
             >
               <RefreshCw size={14} className={overviewLoading ? "animate-spin" : ""} />
               {t("dashboard.refreshOverview")}
             </button>
           )}
         </div>
+
+        <ScanWelcome
+          onStartScan={onStartScan}
+          onReview={onReview}
+          hasResults={hasResults}
+          freeGb={freeGb}
+          totalGb={totalGb}
+        />
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
           <button
@@ -173,28 +174,6 @@ export function SmartCareDashboard({
               {totalGb > 0 ? t("dashboard.metricDiskHint", { total: totalGb.toFixed(0) }) : ""}
             </p>
           </button>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-5 py-4 shrink-0">
-          <div className="relative scale-[1.05] sm:scale-[1.12]">
-            <ScanOrbButton
-              mode="idle_scan"
-              mainText={t("orb.scan")}
-              subLabel={t("orb.subSmart")}
-              onClick={onStartScan}
-              className="!w-[156px] !h-[156px] sm:!w-[168px] sm:!h-[168px]"
-            />
-          </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {hasResults && onReview && (
-              <button type="button" onClick={onReview} className="btn-secondary text-sm inline-flex items-center gap-1.5">
-                {t("dashboard.reviewItems")} <ArrowRight size={14} />
-              </button>
-            )}
-            <button type="button" onClick={onStartScan} className="btn-primary text-sm sm:inline-flex">
-              {t("dashboard.runSmartScan")}
-            </button>
-          </div>
         </div>
 
         <motion.div

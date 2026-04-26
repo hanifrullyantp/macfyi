@@ -16,10 +16,30 @@ export type PublicConfig = {
   pricing: { lifetime_price_idr: number; currency: string };
   download_url: string | null;
   checkout_success_base_url: string | null;
+  /** Checkout preview from public-config. */
+  checkout?: {
+    compare_at_idr: number | null;
+    base_lifetime_idr: number;
+    final_with_auto_idr?: number | null;
+    gateway?: string;
+  };
+  promo?: { compare_at_idr: number | null; active?: boolean };
   demo: Record<string, unknown>;
   ai: Record<string, unknown>;
   desktop?: {
     upgrade_paywall?: UpgradePaywallPublic;
+    profile_card?: {
+      paid_label_id: string;
+      paid_label_en: string;
+      title_id: string;
+      title_en: string;
+      launch_label_id: string;
+      launch_label_en: string;
+      bullets_id: string[];
+      bullets_en: string[];
+      cta_id: string;
+      cta_en: string;
+    };
   };
 };
 

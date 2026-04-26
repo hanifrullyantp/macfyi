@@ -31,7 +31,8 @@
     "react-dom": "19.2.3",
     "react-router-dom": "^7.9.6",
     "recharts": "^2.15.0",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
     "@tailwindcss/vite": "4.1.17",

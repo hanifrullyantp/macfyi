@@ -624,10 +624,11 @@ export function LandingApp() {
     else toast('URL area anggota belum diatur di pengaturan.', 'info');
   }, [data.settings.loginUrl, toast]);
 
-  /** Pintasan ke SPA admin (build terpisah di `/admin`); buka tab baru agar landing tetap terbuka. */
+  /** Pintasan ke konsol admin — deploy terpisah di `https://admin.macfyi.com` (override: `VITE_ADMIN_APP_URL`). */
   const openAdminConsole = useCallback(() => {
-    const origin = window.location.origin.replace(/\/$/, "");
-    window.open(`${origin}/admin/`, "_blank", "noopener,noreferrer");
+    const fromEnv = import.meta.env.VITE_ADMIN_APP_URL?.trim().replace(/\/$/, "");
+    const url = (fromEnv && fromEnv.length > 0 ? fromEnv : "https://admin.macfyi.com") + "/";
+    window.open(url, "_blank", "noopener,noreferrer");
   }, []);
 
   const handleSignOut = useCallback(async () => {

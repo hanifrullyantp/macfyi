@@ -33,6 +33,14 @@ function isAdmin(session: Session | null): boolean {
   return session?.user.app_metadata?.role === "admin";
 }
 
+/** Vite `base` is `/` on admin subdomain or `/admin/` when nested on main site. */
+function routerBasename(): string | undefined {
+  const b = import.meta.env.BASE_URL;
+  if (b === "/" || b === "./") return undefined;
+  const trimmed = b.replace(/\/$/, "");
+  return trimmed === "" ? undefined : trimmed;
+}
+
 const PageSkeleton = () => (
   <div className="p-8 space-y-6 animate-pulse">
     <div className="h-8 w-48 bg-white/5 rounded" />
@@ -234,7 +242,7 @@ function AppShell() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/admin">
+      <BrowserRouter basename={routerBasename()}>
         <AppShell />
       </BrowserRouter>
       <Toaster richColors position="bottom-right" />

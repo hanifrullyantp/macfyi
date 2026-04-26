@@ -12,3 +12,21 @@ export function marketingPricingUrl(): string {
   if (explicit) return explicit.replace(/\/$/, "");
   return `${marketingSiteBase()}/#pricing`;
 }
+
+/** Direct checkout on landing (Lynk/Midtrans flow). */
+export function marketingCheckoutUrl(): string {
+  const explicit = import.meta.env.VITE_MARKETING_CHECKOUT_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  return `${marketingSiteBase()}/checkout`;
+}
+
+const memberBase = (): string =>
+  import.meta.env.VITE_MEMBER_BASE_URL?.trim().replace(/\/$/, "") || marketingSiteBase();
+
+/** Member area — affiliate program (Pro). Returns empty if disabled. */
+export function marketingMemberAffiliateUrl(): string {
+  if (import.meta.env.VITE_MEMBER_AFFILIATE_URL?.trim()) {
+    return import.meta.env.VITE_MEMBER_AFFILIATE_URL.trim();
+  }
+  return `${memberBase()}/member/affiliate`;
+}
