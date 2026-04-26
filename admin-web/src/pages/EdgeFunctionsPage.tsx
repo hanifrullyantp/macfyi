@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { EDGE_FUNCTIONS_IN_REPO } from "../lib/edgeFunctionsCatalog";
 import { healthCheckEdgeFunction } from "../lib/publicConfigClient";
 import { useAdminSession } from "../hooks/useAdminSession";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 export default function EdgeFunctionsPage() {
   const session = useAdminSession();
@@ -16,7 +17,7 @@ export default function EdgeFunctionsPage() {
     setBusy(name);
     try {
       if (name !== "public-config") {
-        toast.message("Skipped", { description: "Only safe GET public-config is auto-pinged from browser." });
+        toast.message("Dilewati", { description: "Hanya GET public-config yang aman di-ping dari browser." });
         setLast((x) => ({ ...x, [name]: "use Dashboard" }));
         return;
       }
@@ -32,23 +33,23 @@ export default function EdgeFunctionsPage() {
   };
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Edge functions</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Supabase does not expose per-function invocation metrics to the anon/JWT browser client. MVP: list functions from repo + ping{" "}
-          <code className="text-zinc-400">public-config</code>; use Dashboard for logs and latency.
-        </p>
-      </div>
-      <Card className="divide-y divide-zinc-800">
+    <AdminPageFrame
+      description={
+        <>
+          Metrik invokasi per fungsi tidak tersedia untuk klien anon/JWT. MVP: daftar fungsi di repo + health{" "}
+          <code>public-config</code>; log &amp; latency lewat Supabase Dashboard.
+        </>
+      }
+    >
+      <Card className="overflow-hidden rounded-3xl border border-white/5 bg-[#16161C] divide-y divide-white/[0.06]">
         {EDGE_FUNCTIONS_IN_REPO.map((name) => (
-          <div key={name} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <div className="flex items-center gap-2 font-mono text-sm text-zinc-300">
-              <Zap className="h-4 w-4 text-violet-400" />
+          <div key={name} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+            <div className="flex items-center gap-2 font-mono text-sm text-white/70">
+              <Zap className="h-4 w-4 text-red-500/80" />
               {name}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {last[name] ? <span className="max-w-md truncate text-[10px] text-zinc-500">{last[name]}</span> : null}
+              {last[name] ? <span className="max-w-md truncate text-[10px] text-white/30">{last[name]}</span> : null}
               <Button variant="secondary" size="sm" disabled={busy !== null} onClick={() => void ping(name)}>
                 {busy === name ? "…" : name === "public-config" ? "Health" : "Info"}
               </Button>
@@ -60,10 +61,10 @@ export default function EdgeFunctionsPage() {
         href="https://supabase.com/dashboard"
         target="_blank"
         rel="noreferrer"
-        className="inline-flex items-center gap-1 text-sm text-violet-400 hover:underline"
+        className="inline-flex items-center gap-1.5 text-sm text-red-400/80 hover:text-red-300"
       >
-        Open Supabase Dashboard <ExternalLink className="h-3.5 w-3.5" />
+        Buka Supabase Dashboard <ExternalLink className="h-3.5 w-3.5" />
       </a>
-    </div>
+    </AdminPageFrame>
   );
 }

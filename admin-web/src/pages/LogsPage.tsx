@@ -1,10 +1,10 @@
 import { ErrorsLogsAdmin } from "../ErrorsLogsAdmin";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 export default function LogsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-zinc-100">Logs</h1>
+    <AdminPageFrame description="Akar masalah klien / Edge (best-effort; bergantung tabel &amp; RLS).">
       <ErrorsLogsAdmin />
-    </div>
+    </AdminPageFrame>
   );
 }

@@ -5,6 +5,7 @@ import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { GROUP_ORDER, groupKeyForSetting, PLATFORM_SETTING_GROUPS, PLATFORM_SETTING_HINTS } from "../lib/platformSettingsMeta";
 import { supabase } from "../supabase";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 type Row = { key: string; value: unknown };
 
@@ -66,25 +67,23 @@ export default function PlatformSettingsPage() {
   const groupLabel = (id: string) => PLATFORM_SETTING_GROUPS.find((g) => g.id === id)?.label ?? "Other";
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Platform settings</h1>
-        <p className="mt-1 text-sm text-zinc-500">JSON values in platform_settings. Saving bumps config_version.</p>
-      </div>
-      {q.isError ? <p className="text-sm text-red-400">{(q.error as Error).message}</p> : null}
+    <AdminPageFrame description="Nilai JSON di platform_settings. Menyimpan satu kunci akan menaikkan config_version di app_settings.">
+      {q.isError ? <p className="text-sm text-red-400/90">{(q.error as Error).message}</p> : null}
       {GROUP_ORDER.map((gid) => {
         const list = grouped.get(gid) ?? [];
         if (!list.length) return null;
         return (
-          <Card key={gid} className="space-y-3 p-4">
-            <h2 className="text-sm font-semibold text-violet-300">{groupLabel(gid)}</h2>
+          <Card key={gid} className="space-y-3 rounded-3xl border border-white/5 p-4">
+            <h2 className="text-sm font-bold uppercase tracking-widest text-red-500/80">{groupLabel(gid)}</h2>
             <ul className="space-y-3">
               {list.map((r) => (
-                <li key={r.key} className="rounded-lg border border-zinc-800 p-3">
-                  <div className="mb-1 font-mono text-[11px] text-zinc-400">{r.key}</div>
-                  {PLATFORM_SETTING_HINTS[r.key] ? <p className="mb-2 text-[11px] leading-relaxed text-zinc-500">{PLATFORM_SETTING_HINTS[r.key]}</p> : null}
+                <li key={r.key} className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+                  <div className="mb-1 font-mono text-[11px] text-white/45">{r.key}</div>
+                  {PLATFORM_SETTING_HINTS[r.key] ? (
+                    <p className="mb-2 text-[11px] leading-relaxed text-white/40">{PLATFORM_SETTING_HINTS[r.key]}</p>
+                  ) : null}
                   <textarea
-                    className="min-h-[48px] w-full rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 font-mono text-xs"
+                    className="admin-textarea-compact w-full"
                     value={edit[r.key] ?? ""}
                     onChange={(e) => setEdit((x) => ({ ...x, [r.key]: e.target.value }))}
                     spellCheck={false}
@@ -98,6 +97,6 @@ export default function PlatformSettingsPage() {
           </Card>
         );
       })}
-    </div>
+    </AdminPageFrame>
   );
 }

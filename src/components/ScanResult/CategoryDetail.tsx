@@ -2,7 +2,8 @@ import type { CardBucket } from "../../lib/scanCategories";
 
 /**
  * Per-category review uses the same engine as `ResultsView` (review stage + filters).
- * Card **Tinjau** navigates to that screen; a dedicated sub-route is not required for V1.
+ * **Tinjau** on a result card opens review with the list scoped to that card; use
+ * “Show all items” in the banner to return to the full list.
  */
 export function getCategoryDetailCopy(bucket: CardBucket): { title: string; body: string } {
   return {

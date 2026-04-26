@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ExternalLink, Loader2, Trash2 } from "lucide-react";
+import { ExternalLink, Loader2, Trash2, X } from "lucide-react";
 import type { TrashListItem } from "../types";
 import { emptyTrash, openUserTrash, revealInFinder } from "../lib/backend";
 import { getIsProEntitled } from "../lib/entitlement";
@@ -21,15 +21,22 @@ export type UserTrashViewProps = {
   onRefresh: () => Promise<void>;
 };
 
+type EmptyStep = "closed" | "warn" | "confirm";
+
 export function UserTrashView({ items, loading, error, onRefresh }: UserTrashViewProps) {
   const { t } = useI18n();
   const [busy, setBusy] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [emptyStep, setEmptyStep] = useState<EmptyStep>("closed");
+  const [typeConfirm, setTypeConfirm] = useState("");
   const rows = items ?? [];
   const hasLoaded = items !== null;
   const total = rows.reduce((a, x) => a + x.sizeBytes, 0);
 
-  const handleEmpty = async () => {
+  const phrase = t("trash.emptyPhrase");
+  const canSubmitEmpty = typeConfirm.trim() === phrase;
+
+  const runEmpty = async () => {
     if (!getIsProEntitled() || isDemoMode()) {
       setLocalError(
         isDemoMode()
@@ -39,12 +46,14 @@ export function UserTrashView({ items, loading, error, onRefresh }: UserTrashVie
       if (!getIsProEntitled()) window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
       return;
     }
-    if (!window.confirm(t("trash.emptyConfirm"))) return;
+    if (!canSubmitEmpty) return;
     setBusy(true);
     setLocalError(null);
     try {
       await emptyTrash();
       await onRefresh();
+      setEmptyStep("closed");
+      setTypeConfirm("");
     } catch (e) {
       setLocalError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -54,6 +63,96 @@ export function UserTrashView({ items, loading, error, onRefresh }: UserTrashVie
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar px-6 py-6 md:px-8">
+      {emptyStep !== "closed" && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm">
+          <div
+            className="absolute inset-0"
+            onClick={busy ? undefined : () => setEmptyStep("closed")}
+            role="presentation"
+            aria-hidden
+          />
+          <div
+            className="relative w-full max-w-md rounded-2xl border border-red-500/30 bg-[#14151c] p-6 shadow-2xl space-y-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="trash-empty-title"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <h2 id="trash-empty-title" className="text-lg font-bold text-red-200">
+                {emptyStep === "warn" ? t("trash.emptyStep1Title") : t("trash.emptyStep2Title")}
+              </h2>
+              <button
+                type="button"
+                className="p-1 text-white/45 hover:text-white disabled:opacity-40"
+                onClick={() => !busy && setEmptyStep("closed")}
+                aria-label={t("common.close")}
+                disabled={busy}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            {emptyStep === "warn" ? (
+              <>
+                <p className="text-sm text-white/70">
+                  {t("trash.emptyStep1Body", { count: rows.length, size: formatBytes(total) })}
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEmptyStep("closed")}
+                    className="flex-1 py-2.5 rounded-xl text-sm bg-white/10 hover:bg-white/15 text-white/85"
+                  >
+                    {t("trash.emptyStep1Back")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEmptyStep("confirm")}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-600/90 hover:bg-red-600 text-white"
+                  >
+                    {t("trash.emptyStep1Continue")}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-amber-100/90">
+                  {t("trash.emptyStep2Hint", { phrase: `“${phrase}”` })}
+                </p>
+                <input
+                  value={typeConfirm}
+                  onChange={(e) => setTypeConfirm(e.target.value)}
+                  autoComplete="off"
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2.5 text-sm text-white"
+                  placeholder={phrase}
+                />
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEmptyStep("warn");
+                      setTypeConfirm("");
+                    }}
+                    disabled={busy}
+                    className="flex-1 py-2.5 rounded-xl text-sm bg-white/10 hover:bg-white/15 text-white/85"
+                  >
+                    {t("trash.emptyStep2Cancel")}
+                  </button>
+                  <LoadingButton
+                    loading={busy}
+                    loadingLabel="…"
+                    onClick={() => void runEmpty()}
+                    disabled={!canSubmitEmpty}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-red-600 hover:bg-red-500 text-white disabled:opacity-40"
+                  >
+                    {t("trash.emptyStep2Submit")}
+                  </LoadingButton>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="max-w-3xl mx-auto space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -67,7 +166,19 @@ export function UserTrashView({ items, loading, error, onRefresh }: UserTrashVie
             <LoadingButton
               loading={busy}
               loadingLabel="…"
-              onClick={handleEmpty}
+              onClick={() => {
+                if (!getIsProEntitled() || isDemoMode()) {
+                  setLocalError(
+                    isDemoMode()
+                      ? "Demo: mengosongkan Tong Sampah tidak tersedia. Upgrade ke Pro."
+                      : "Pro diperlukan untuk mengosongkan Tong Sampah. Buka checkout dari profil."
+                  );
+                  if (!getIsProEntitled()) window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
+                  return;
+                }
+                setTypeConfirm("");
+                setEmptyStep("warn");
+              }}
               disabled={!hasLoaded || rows.length === 0 || loading}
               className="btn-secondary text-sm px-4 py-2"
             >

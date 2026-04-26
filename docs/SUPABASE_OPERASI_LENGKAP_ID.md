@@ -7,16 +7,18 @@ Dokumen ini merangkum langkah operasional yang sering dipakai untuk proyek Macfy
 - **`site_url`**: produksi memakai `https://macfyi.com` (lihat `supabase/config.toml`).
 - **`additional_redirect_urls` / URI allow list**: harus mencakup origin tempat pengguna kembali setelah magic link / OAuth / reset password, termasuk wildcard path bila perlu.
 
-### Konsol admin (produksi: `admin.macfyi.com`)
+### Konsol admin (path + opsional subdomain)
 
 Pastikan URL berikut ada di **Redirect URLs** (Dashboard Supabase) dan di repo pada `supabase/config.toml` serta default **`scripts/patch-supabase-auth-urls.sh`**:
 
 | URL | Keterangan |
 |-----|------------|
-| `https://admin.macfyi.com` | Origin halaman admin |
-| `https://admin.macfyi.com/**` | Deep link & rute di bawah origin |
+| `https://macfyi.com/admin` | Konsol di path (SPA di situs marketing) |
+| `https://macfyi.com/admin/**` | Rute bawah /admin |
+| `https://adm.macfyi.com` | Opsi host terpisah |
+| `https://adm.macfyi.com/**` | Rute bawah origin adm |
 
-(Opsional) URL lama `https://macfyi.com/admin` tetap ada di list selama transisi; traffic umum diarahkan 308 ke subdomain. Lihat [`ADMIN_SUBDOMAIN.md`](ADMIN_SUBDOMAIN.md).
+Lihat [`ADMIN_SUBDOMAIN.md`](ADMIN_SUBDOMAIN.md).
 
 `https://macfyi.com/**` sudah mencakup banyak path; entri di atas memudahkan audit.
 

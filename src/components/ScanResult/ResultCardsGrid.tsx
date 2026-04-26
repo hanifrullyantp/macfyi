@@ -3,6 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { CardBucket } from "../../lib/scanCategories";
 import { ResultCard } from "./ResultCard";
 import { CleanAllSafeButton } from "./CleanAllSafeButton";
+import { useI18n } from "../../i18n/context";
 
 function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
@@ -12,7 +13,7 @@ function formatBytes(bytes: number): string {
 
 export function ResultCardsGrid({
   buckets,
-  onReview,
+  onReviewCard,
   onClean,
   onRescan,
   safeCleanAllIds,
@@ -26,6 +27,7 @@ export function ResultCardsGrid({
   safeCleanAllIds: string[];
   safeCleanAllBytes: number;
 }) {
+  const { t } = useI18n();
   const reduceMotion = useReducedMotion();
   const { safe, caution, safeTotal, cautionTotal } = useMemo(() => {
     const safeB = buckets.filter((b) => b.def.riskLevel === "safe" && b.totalSize > 0);
@@ -49,7 +51,9 @@ export function ResultCardsGrid({
         {onRescan && (
           <button
             type="button"
-            onClick={onRescan}
+            onClick={() => {
+              if (window.confirm(t("results.rescanConfirm"))) onRescan();
+            }}
             className="text-xs text-white/50 hover:text-white/90"
           >
             Scan ulang
@@ -68,7 +72,7 @@ export function ResultCardsGrid({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {safe.map((b) => (
-              <ResultCard key={b.def.id} bucket={b} onClean={onClean} onReview={onReview} />
+              <ResultCard key={b.def.id} bucket={b} onClean={onClean} onReview={onReviewCard} />
             ))}
           </div>
           <CleanAllSafeButton
@@ -90,7 +94,7 @@ export function ResultCardsGrid({
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {caution.map((b) => (
-              <ResultCard key={b.def.id} bucket={b} onClean={onClean} onReview={onReview} />
+              <ResultCard key={b.def.id} bucket={b} onClean={onClean} onReview={onReviewCard} />
             ))}
           </div>
         </section>

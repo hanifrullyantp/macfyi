@@ -66,11 +66,11 @@ export function WithdrawalsAdmin({ session }: { session: Session }) {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-white">Penarikan affiliate</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="overflow-x-auto rounded-xl border border-zinc-800">
-        <table className="w-full text-sm text-left">
-          <thead className="text-zinc-500 border-b border-zinc-800">
+      <h2 className="admin-section-title text-base">Penarikan affiliate</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
+      <div className="admin-table-shell text-sm">
+        <table className="w-full text-left text-white/80">
+          <thead className="admin-table-head">
             <tr>
               <th className="p-2">Affiliate</th>
               <th className="p-2">Jumlah</th>
@@ -80,7 +80,7 @@ export function WithdrawalsAdmin({ session }: { session: Session }) {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-zinc-800/80">
+              <tr key={r.id} className="admin-table-row">
                 <td className="p-2 font-mono text-xs">{r.slug}</td>
                 <td className="p-2">Rp {(Number(r.amount_idr) || 0).toLocaleString("id-ID")}</td>
                 <td className="p-2">
@@ -151,11 +151,11 @@ export function AffiliatesAdmin() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-white">Affiliate</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="overflow-x-auto rounded-xl border border-zinc-800 text-sm">
-        <table className="w-full text-left">
-          <thead className="text-zinc-500 border-b border-zinc-800">
+      <h2 className="admin-section-title text-base">Affiliate</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
+      <div className="admin-table-shell text-sm">
+        <table className="w-full text-left text-white/80">
+          <thead className="admin-table-head">
             <tr>
               <th className="p-2">Slug</th>
               <th className="p-2">Status</th>
@@ -166,7 +166,7 @@ export function AffiliatesAdmin() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-b border-zinc-800/80">
+              <tr key={r.id} className="admin-table-row">
                 <td className="p-2 font-mono text-xs">{r.slug}</td>
                 <td className="p-2">
                   <StatusBadge status={r.status} />
@@ -240,30 +240,34 @@ export function EventsAdmin() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium text-white">Acara promo</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="flex flex-wrap gap-2 items-end rounded-xl border border-zinc-800 p-4">
-        <label className="text-xs text-zinc-500">
+      <h2 className="admin-section-title text-base">Acara promo</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
+      <div className="flex flex-wrap items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <label className="block admin-label-text">
           Judul
-          <input className="block mt-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input className="mt-1 admin-input" value={title} onChange={(e) => setTitle(e.target.value)} />
         </label>
-        <label className="text-xs text-zinc-500">
+        <label className="block admin-label-text">
           Mulai
-          <input type="datetime-local" className="block mt-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" value={starts} onChange={(e) => setStarts(e.target.value)} />
+          <input type="datetime-local" className="mt-1 admin-input" value={starts} onChange={(e) => setStarts(e.target.value)} />
         </label>
-        <label className="text-xs text-zinc-500">
+        <label className="block admin-label-text">
           Selesai
-          <input type="datetime-local" className="block mt-1 rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" value={ends} onChange={(e) => setEnds(e.target.value)} />
+          <input type="datetime-local" className="mt-1 admin-input" value={ends} onChange={(e) => setEnds(e.target.value)} />
         </label>
-        <button type="button" className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white" onClick={() => void create()}>
+        <button
+          type="button"
+          className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-500"
+          onClick={() => void create()}
+        >
           Buat draft
         </button>
       </div>
       <ul className="space-y-2 text-sm">
         {rows.map((r) => (
-          <li key={r.id} className="flex flex-wrap items-center gap-2 border border-zinc-800 rounded-lg p-3">
+          <li key={r.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-white/85">
             <span className="font-medium">{r.title}</span>
-            <span className="text-zinc-500 text-xs">{r.status}</span>
+            <span className="text-xs text-white/40">{r.status}</span>
             <button type="button" className="text-xs text-emerald-400 underline" onClick={() => void setStatus(r.id, "active")}>
               Aktifkan
             </button>
@@ -312,20 +316,24 @@ export function AnnouncementsAdmin() {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-medium text-white">Pengumuman</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="space-y-2 rounded-xl border border-zinc-800 p-4">
-        <input className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} />
-        <textarea className="w-full min-h-[80px] rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" placeholder="Isi" value={content} onChange={(e) => setContent(e.target.value)} />
-        <button type="button" className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white" onClick={() => void create()}>
+      <h2 className="admin-section-title text-base">Pengumuman</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <input className="admin-input" placeholder="Judul" value={title} onChange={(e) => setTitle(e.target.value)} />
+        <textarea className="admin-textarea min-h-[80px] w-full" placeholder="Isi" value={content} onChange={(e) => setContent(e.target.value)} />
+        <button
+          type="button"
+          className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-500"
+          onClick={() => void create()}
+        >
           Publikasikan
         </button>
       </div>
-      <ul className="text-sm space-y-2">
+      <ul className="space-y-2 text-sm">
         {rows.map((r) => (
-          <li key={r.id} className="border border-zinc-800 rounded-lg p-2">
-            {r.pinned && <span className="text-xs text-amber-500">pin </span>}
-            {r.title} <span className="text-zinc-500">({r.type})</span>
+          <li key={r.id} className="rounded-2xl border border-white/10 bg-white/[0.02] p-2 text-white/80">
+            {r.pinned && <span className="text-xs text-red-400/90">pin </span>}
+            {r.title} <span className="text-white/40">({r.type})</span>
           </li>
         ))}
       </ul>

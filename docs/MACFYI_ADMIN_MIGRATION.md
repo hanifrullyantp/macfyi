@@ -1,25 +1,22 @@
 # Macfyi Admin + Supabase
 
-**Produksi (disarankan):** shell **`macfyi-admin`** di-host di **`https://admin.macfyi.com`** (build `base: /`, output `macfyi-admin/dist/`). Situs marketing mengarahkan `macfyi.com/admin` → subdomain tersebut. Rincian: [`ADMIN_SUBDOMAIN.md`](ADMIN_SUBDOMAIN.md).
-
-**Legacy:** subpath `https://macfyi.com/admin` (Vite `VITE_USE_ADMIN_SUBPATH=1`, output `macfyi-landing-page/dist/admin/`).
+**Produksi default:** path **`https://macfyi.com/admin`** — bundle dari `macfyi-landing-page` (`npm run build` termasuk `build:admin` → `dist/admin/`) + rewrite Vercel. **Opsional** host terpisah **`https://adm.macfyi.com`** (build `macfyi-admin` dengan `base: /`). Rincian: [`ADMIN_SUBDOMAIN.md`](ADMIN_SUBDOMAIN.md).
 
 `macfyi-admin` memakai autentikasi Supabase (JWT + `app_metadata.role === "admin"`) dan **mengimpor modul dari `admin-web`**.
 
 ## Build & deploy
 
-- **Vite (default / subdomain):** `base: "/"`, `outDir`: **`macfyi-admin/dist`**. Dari `macfyi-admin`: `npm run build`.
-- **Legacy nested di landing:** `VITE_USE_ADMIN_SUBPATH=1 npm run build` → `base: "/admin/"`, out ke `macfyi-landing-page/dist/admin/`. Atau dari `macfyi-landing-page`: `npm run build:admin` (lalu `build:all` = landing + admin nested).
-- **Vercel marketing** (`macfyi-landing-page/vercel.json`): **redirect 308** `/admin` → `https://admin.macfyi.com` (bukan lagi SPA di path itu).
-- **Vercel admin:** proyek terpisah, root `macfyi-admin`, output `dist`, domain `admin.macfyi.com` — lihat [`macfyi-admin/README.md`](../macfyi-admin/README.md).
+- **Bersama landing (path /admin):** dari `macfyi-landing-page`, **`npm run build`** = landing + `build:admin` (`VITE_USE_ADMIN_SUBPATH=1` → `macfyi-landing-page/dist/admin/`).
+- **Hanya landing:** `npm run build:landing-only`.
+- **Subdomain `adm.macfyi.com`:** dari `macfyi-admin`, **`npm run build`** (`base: /`, out `macfyi-admin/dist/`) + proyek Vercel terpisah.
+- **Vercel marketing** (`vercel.json`): **rewrite** `/admin` → `admin/index.html` (bukan redirect keluar).
 
 ## Supabase Auth (redirect)
 
-Tambahkan ke **Redirect URLs** proyek (Dashboard → Authentication → URL Configuration) dan/atau `supabase/config.toml` + `supabase config push`:
+Tambahkan ke **Redirect URLs** (dan `supabase/config.toml` + `config push`):
 
-- `https://admin.macfyi.com`
-- `https://admin.macfyi.com/**`
-- (opsional, transisi) `https://macfyi.com/admin`, `https://macfyi.com/admin/**`
+- `https://macfyi.com/admin`, `https://macfyi.com/admin/**` (konsol di domain marketing)
+- jika memakai subdomain: `https://adm.macfyi.com`, `https://adm.macfyi.com/**`
 
 Skrip **`scripts/patch-supabase-auth-urls.sh`** memuat entri yang sama pada `uri_allow_list` bila Anda memakai Management API.
 

@@ -4,6 +4,7 @@ import { Card } from "../components/ui/Card";
 import { useAdminSession } from "../hooks/useAdminSession";
 import { useAffiliatesKpis } from "../hooks/useAffiliatesKpis";
 import { formatIdr } from "../lib/formatters";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 export default function AffiliatesPage() {
   const session = useAdminSession();
@@ -24,11 +25,7 @@ export default function AffiliatesPage() {
   const k = kpis.data;
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h1 className="text-4xl font-black text-white tracking-tight">Afiliasi</h1>
-        <p className="text-white/40 font-medium">Program afiliasi, saldo, dan penarikan.</p>
-      </div>
+    <AdminPageFrame description="Program afiliasi, saldo, dan penarikan.">
       {kpis.isError ? <p className="text-xs text-red-400">{(kpis.error as Error).message}</p> : null}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-3xl border border-white/5 bg-[#16161C] p-5">
@@ -56,6 +53,6 @@ export default function AffiliatesPage() {
       <div className="rounded-3xl border border-white/5 bg-[#16161C] p-6">
         {tab === "affiliates" ? <AffiliatesAdmin /> : <WithdrawalsAdmin session={session} />}
       </div>
-    </div>
+    </AdminPageFrame>
   );
 }

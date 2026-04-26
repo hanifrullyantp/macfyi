@@ -84,7 +84,7 @@ Script ini mengunduh `llama.cpp` release (sesuai arch mesin build) dan mengekstr
 
 ### Admin (browser, terpisah dari app desktop)
 
-Konsol produksi: **[`https://admin.macfyi.com`](https://admin.macfyi.com)** (build [`macfyi-admin/`](./macfyi-admin/README.md), sumber modul di **[`admin-web/`](./admin-web/README.md)**). Rincian deploy & DNS: [`docs/ADMIN_SUBDOMAIN.md`](./docs/ADMIN_SUBDOMAIN.md).
+Konsol admin di produksi: biasanya **`https://macfyi.com/admin`** (bundle dari [`macfyi-landing-page`](./macfyi-landing-page) + build admin); opsional host terpisah **[`https://adm.macfyi.com`](https://adm.macfyi.com)**. Modul sumber: [`admin-web/`](./admin-web/README.md), shell bundle: [`macfyi-admin/`](./macfyi-admin/README.md). Rincian: [`docs/ADMIN_SUBDOMAIN.md`](./docs/ADMIN_SUBDOMAIN.md).
 
 Pengembangan lokal (UI Supabase + halaman data):
 

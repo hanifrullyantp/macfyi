@@ -35,6 +35,7 @@ export function AppUninstallerView({
   /** `null` idle, `"bulk"` / `"uninstall"`, or a single orphan path being removed */
   const [busy, setBusy] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [relatedPick, setRelatedPick] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
@@ -89,6 +90,11 @@ export function AppUninstallerView({
     try {
       await removeOrphanPaths(paths, useTrash);
       recordDemoUninstallUsage(paths.length);
+      setActionError(null);
+      setSuccessMessage(
+        mode === "bulk" ? t("uninstallerPanel.leftoversCleaned", { n: paths.length }) : t("uninstallerPanel.oneLeftoverCleaned")
+      );
+      window.setTimeout(() => setSuccessMessage(null), 5000);
       await onRefresh();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -132,10 +138,13 @@ export function AppUninstallerView({
     }
     setBusy("uninstall");
     setActionError(null);
+    setSuccessMessage(null);
     try {
       await uninstallAppBundle(selected.appPath, selected.bundleId, extra, useTrash);
       setRelatedPick({});
       recordDemoUninstallUsage(1);
+      setSuccessMessage(t("uninstallerPanel.uninstallSuccess", { name: selected.name }));
+      window.setTimeout(() => setSuccessMessage(null), 6000);
       await onRefresh();
     } catch (e) {
       setActionError(e instanceof Error ? e.message : String(e));
@@ -150,6 +159,11 @@ export function AppUninstallerView({
 
   return (
     <div className="h-full flex flex-col min-h-0">
+      {topBanner && (
+        <p className="shrink-0 px-4 py-2 text-sm text-emerald-200 border-b border-emerald-500/20 bg-emerald-950/30">
+          {topBanner}
+        </p>
+      )}
       {bannerError && (
         <p className="shrink-0 px-4 py-2 text-sm text-amber-300 border-b border-white/10 bg-black/40">{bannerError}</p>
       )}

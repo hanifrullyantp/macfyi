@@ -286,7 +286,7 @@ export const id: MessageTree = {
     emptyStep1Back: "Batal",
     emptyStep1Continue: "Saya mengerti, lanjutkan",
     emptyStep2Title: "Ketik frasa untuk konfirmasi",
-    emptyStep2Hint: "Ketik {phrase} persis untuk mengaktifkan tombol di bawah.",
+    emptyStep2Hint: "Ketik {phrase} di kolom bawah. Penghapusan permanen — tidak dapat dibatalkan.",
     emptyStep2Cancel: "Batal",
     emptyStep2Submit: "Kosongkan sekarang",
     emptyPhrase: "KOSONGKAN",
@@ -359,6 +359,9 @@ export const id: MessageTree = {
       "Hapus “{name}”{extra}? Mengikuti mode penghapusan di Pengaturan (Tong Sampah vs permanen).",
     uninstallExtraRelated: " dan data pendukung terpilih",
     selectRelatedHint: "Juga hapus data pendukung yang dipilih di bawah (opsional).",
+    uninstallSuccess: "“{name}” dihapus. Daftar diperbarui.",
+    leftoversCleaned: "{n} file sisa dipindahkan. Daftar diperbarui.",
+    oneLeftoverCleaned: "File sisa dihapus. Daftar diperbarui.",
   },
   monitor: {
     title: "Monitor",
@@ -500,6 +503,7 @@ export const id: MessageTree = {
     actionClear: "Hapus pilihan",
     actionSelectSafe: "Pilih baris AMAN",
     exportDone: "Laporan disimpan ke:",
+    exportFailed: "Gagal menyimpan ekspor. Periksa Full Disk Access atau coba lagi.",
     trashConfirm: "Pindahkan {count} item ke Tong Sampah?",
     trashConfirmRisky:
       "Beberapa item terpilih berlabel Waspada atau Berisiko. Item akan dipindahkan ke Tong Sampah (bisa dipulihkan), bukan dihapus permanen. Lanjutkan?",

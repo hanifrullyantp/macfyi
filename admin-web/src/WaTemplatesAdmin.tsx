@@ -39,23 +39,27 @@ export function WaTemplatesAdmin() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-white">WhatsApp templates</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
-      <div className="rounded-xl border border-zinc-800 p-4 space-y-2">
-        <input className="w-full rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
-        <textarea className="w-full min-h-[100px] rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-sm" placeholder="Body — gunakan {name} {email} …" value={body} onChange={(e) => setBody(e.target.value)} />
-        <button type="button" className="rounded-lg bg-amber-600 px-3 py-2 text-sm text-white" onClick={() => void create()}>
+      <h2 className="admin-section-title text-base">WhatsApp templates</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+        <input className="admin-input" placeholder="Nama" value={name} onChange={(e) => setName(e.target.value)} />
+        <textarea className="admin-textarea min-h-[100px] w-full" placeholder="Body — gunakan {name} {email} …" value={body} onChange={(e) => setBody(e.target.value)} />
+        <button
+          type="button"
+          className="rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 hover:bg-red-500"
+          onClick={() => void create()}
+        >
           Tambah
         </button>
       </div>
       <ul className="space-y-2 text-sm">
         {rows.map((r) => (
-          <li key={r.id} className="flex justify-between gap-2 border border-zinc-800 rounded-lg p-3">
+          <li key={r.id} className="flex justify-between gap-2 rounded-2xl border border-white/10 bg-white/[0.02] p-3 text-white/85">
             <div>
               <div className="font-medium">{r.name}</div>
-              <div className="text-zinc-500 text-xs mt-1 whitespace-pre-wrap">{r.body}</div>
+              <div className="mt-1 text-xs text-white/40 whitespace-pre-wrap">{r.body}</div>
             </div>
-            <button type="button" className="text-red-400 text-xs shrink-0" onClick={() => void del(r.id)}>
+            <button type="button" className="shrink-0 text-xs text-red-400/90 hover:text-red-300" onClick={() => void del(r.id)}>
               Hapus
             </button>
           </li>

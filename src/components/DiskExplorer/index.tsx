@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, RefreshCw } from "lucide-react";
 import { DiskExplorerProvider, useDiskExplorerStore } from "../../store/diskExplorerStore";
 import { useI18n } from "../../i18n/context";
@@ -17,6 +17,12 @@ function DiskExplorerInner() {
   const s = useDiskExplorerStore();
   const { registerActivity } = useAppActivity();
   const [aiModalOpen, setAiModalOpen] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     registerActivity("disk-explorer-folder", s.loading ? t("activity.diskFolder") : null);
@@ -46,7 +52,14 @@ function DiskExplorerInner() {
 
   const handleExport = async (format: "json" | "txt") => {
     const path = await s.exportReport(format);
-    if (path) window.alert(`${t("diskExplorer.exportDone")}\n${path}`);
+    if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
+    if (path) {
+      setExportNotice(`${t("diskExplorer.exportDone")} ${path}`);
+      exportTimerRef.current = setTimeout(() => setExportNotice(null), 8000);
+    } else {
+      setExportNotice(t("diskExplorer.exportFailed"));
+      exportTimerRef.current = setTimeout(() => setExportNotice(null), 5000);
+    }
   };
 
   return (
@@ -83,6 +96,12 @@ function DiskExplorerInner() {
       ) : null}
 
       <DiskExplorerBreadcrumbs items={s.breadcrumbs} onNavigate={(i) => void s.navigateBreadcrumb(i)} />
+
+      {exportNotice && (
+        <p className="text-sm text-emerald-200/90 rounded-lg border border-emerald-500/25 bg-emerald-950/20 px-3 py-2" role="status">
+          {exportNotice}
+        </p>
+      )}
 
       {s.error ? (
         <p className="text-sm text-rose-300/90">

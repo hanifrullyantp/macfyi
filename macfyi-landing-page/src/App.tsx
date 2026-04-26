@@ -624,11 +624,18 @@ export function LandingApp() {
     else toast('URL area anggota belum diatur di pengaturan.', 'info');
   }, [data.settings.loginUrl, toast]);
 
-  /** Pintasan ke konsol admin — deploy terpisah di `https://admin.macfyi.com` (override: `VITE_ADMIN_APP_URL`). */
+  /**
+   * Konsol admin: default buka `/admin/` di origin yang sama (bundle dari `npm run build`).
+   * Opsional `VITE_ADMIN_APP_URL` (mis. https://adm.macfyi.com) untuk tab ke deploy subdomain.
+   */
   const openAdminConsole = useCallback(() => {
     const fromEnv = import.meta.env.VITE_ADMIN_APP_URL?.trim().replace(/\/$/, "");
-    const url = (fromEnv && fromEnv.length > 0 ? fromEnv : "https://admin.macfyi.com") + "/";
-    window.open(url, "_blank", "noopener,noreferrer");
+    if (fromEnv && fromEnv.length > 0) {
+      window.open(`${fromEnv}/`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const origin = window.location.origin.replace(/\/$/, "");
+    window.open(`${origin}/admin/`, "_blank", "noopener,noreferrer");
   }, []);
 
   const handleSignOut = useCallback(async () => {

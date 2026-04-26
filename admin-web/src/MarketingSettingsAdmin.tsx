@@ -83,22 +83,26 @@ export function MarketingSettingsAdmin() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-medium text-white">Marketing, demo &amp; AI (platform_settings)</h2>
-      <p className="text-xs text-zinc-500">
+      <h2 className="admin-section-title text-base">Marketing, demo &amp; AI (platform_settings)</h2>
+      <p className="admin-help max-w-2xl">
         Nilai JSON valid (boolean angka tanpa kutip, string pakai kutip). Setelah simpan, config_version naik agar landing/app refetch public-config (~30 detik cache).
       </p>
-      {err && <p className="text-sm text-red-400">{err}</p>}
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
       <ul className="space-y-3">
         {KEYS.map((k) => (
-          <li key={k} className="rounded-xl border border-zinc-800 p-3">
-            <div className="text-xs font-mono text-amber-500 mb-1">{k}</div>
-            {KEY_HINTS[k] ? <p className="text-[11px] text-zinc-400 mb-2 leading-snug">{KEY_HINTS[k]}</p> : null}
+          <li key={k} className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+            <div className="mb-1 text-xs font-mono text-red-400/80">{k}</div>
+            {KEY_HINTS[k] ? <p className="mb-2 text-[11px] leading-snug text-white/40">{KEY_HINTS[k]}</p> : null}
             <textarea
-              className="w-full min-h-[48px] rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs font-mono"
+              className="admin-textarea-compact w-full"
               value={edit[k] ?? ""}
               onChange={(e) => setEdit((x) => ({ ...x, [k]: e.target.value }))}
             />
-            <button type="button" className="mt-2 text-xs text-amber-500 underline" onClick={() => void saveKey(k)}>
+            <button
+              type="button"
+              className="mt-3 text-xs font-bold uppercase tracking-widest text-red-400/90 underline decoration-red-500/30 decoration-1 underline-offset-2 hover:text-red-300"
+              onClick={() => void saveKey(k)}
+            >
               Simpan
             </button>
           </li>

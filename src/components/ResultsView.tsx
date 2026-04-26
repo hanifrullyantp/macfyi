@@ -319,6 +319,9 @@ export const ResultsView = ({
   const [listGroupMode, setListGroupMode] = useState<"risk" | "app">("risk");
   const [inspectorAiText, setInspectorAiText] = useState<string | null>(null);
   const [inspectorAiLoading, setInspectorAiLoading] = useState(false);
+  /** When set, review list is limited to items from a result card (Tinjau). */
+  const [reviewCardScopeIds, setReviewCardScopeIds] = useState<Set<string> | null>(null);
+  const [reviewCardLabel, setReviewCardLabel] = useState<string | null>(null);
 
   const [appliedFilter, setAppliedFilter] = useState<FilterState>(() => defaultFilterState());
   const [draftFilter, setDraftFilter] = useState<FilterState>(() => defaultFilterState());
@@ -346,6 +349,11 @@ export const ResultsView = ({
   }, [scanSessionId]);
 
   useEffect(() => {
+    setReviewCardScopeIds(null);
+    setReviewCardLabel(null);
+  }, [scanSessionId]);
+
+  useEffect(() => {
     setSelectedInspectorId((prev) => {
       if (prev && enriched.some((e) => e.item.id === prev)) return prev;
       return enriched[0]?.item.id ?? null;
@@ -370,7 +378,13 @@ export const ResultsView = ({
 
   const appOptions = useMemo(() => buildAppFileGroups(enriched).map((g) => g.appName).filter((n) => n !== "Other"), [enriched]);
 
-  const filtered = useMemo(() => filterEnriched(enriched, appliedFilter), [enriched, appliedFilter]);
+  const filtered = useMemo(() => {
+    let base = filterEnriched(enriched, appliedFilter);
+    if (reviewCardScopeIds && reviewCardScopeIds.size > 0) {
+      base = base.filter((x) => reviewCardScopeIds.has(x.item.id));
+    }
+    return base;
+  }, [enriched, appliedFilter, reviewCardScopeIds]);
 
   const filterActive = isFilterActive(appliedFilter);
   const activeFilterCount = countActiveFilterDimensions(appliedFilter);
@@ -738,7 +752,11 @@ export const ResultsView = ({
         <div className="shrink-0 max-h-[min(52vh,480px)] overflow-y-auto custom-scrollbar border-b border-white/10">
           <ResultCardsGrid
             buckets={cardBuckets}
-            onReview={() => setStage("review")}
+            onReviewCard={(b) => {
+              setReviewCardScopeIds(new Set(b.itemIds));
+              setReviewCardLabel(b.def.label);
+              setStage("review");
+            }}
             onClean={(ids) => openCleanSheet(new Set(ids))}
             onRescan={onRequestRescan}
             safeCleanAllIds={safeCleanAllIds}
@@ -755,7 +773,11 @@ export const ResultsView = ({
             freeGb={freeGb}
             showWhy={showWhy}
             onToggleWhy={() => setShowWhy((v) => !v)}
-            onReview={() => setStage("review")}
+            onReview={() => {
+              setReviewCardScopeIds(null);
+              setReviewCardLabel(null);
+              setStage("review");
+            }}
             onCleanSafely={() =>
               openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
             }
@@ -804,12 +826,35 @@ export const ResultsView = ({
                 {t("results.why")}
               </button>
               {onRequestRescan && (
-                <button type="button" onClick={() => onRequestRescan()} className="btn-secondary px-3 py-1.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(t("results.rescanConfirm"))) onRequestRescan();
+                  }}
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                >
                   {t("results.rescanToolbar")}
                 </button>
               )}
             </div>
           </div>
+          {reviewCardLabel && (
+            <div className="px-4 py-2 flex flex-wrap items-center justify-between gap-2 border-b border-cyan-500/15 bg-cyan-500/5 text-[11px]">
+              <span className="text-cyan-100/90">
+                {t("results.cardReviewBanner", { name: reviewCardLabel })}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setReviewCardScopeIds(null);
+                  setReviewCardLabel(null);
+                }}
+                className="shrink-0 text-cyan-300 hover:text-cyan-200 underline font-medium"
+              >
+                {t("results.showAllCategories")}
+              </button>
+            </div>
+          )}
           <div className="px-4 pb-2 flex flex-wrap items-center gap-2">
             <span className="text-[10px] uppercase tracking-[0.12em] text-white/40">Cleaning mode</span>
             <div className="bg-white/5 p-0.5 rounded-lg inline-flex">

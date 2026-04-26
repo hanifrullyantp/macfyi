@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { Card } from "../components/ui/Card";
 import { Button } from "../components/ui/Button";
 import { supabase } from "../supabase";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 type AppSettingsRow = {
   id: string;
@@ -185,92 +186,91 @@ export default function AppSettingsPage() {
       key={id}
       type="button"
       onClick={() => setTab(id)}
-      className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === id ? "bg-violet-600 text-white" : "text-zinc-400 hover:bg-zinc-800"}`}
+      className={`rounded-2xl px-4 py-2.5 text-xs font-black uppercase tracking-widest transition-all ${
+        tab === id
+          ? "bg-red-500/10 text-red-400 border border-red-500/20 shadow-[inset_0_0_0_1px_rgba(225,6,0,0.2)]"
+          : "text-white/35 hover:text-white hover:bg-white/[0.04] border border-white/5"
+      }`}
     >
       {label}
     </button>
   );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">App settings</h1>
-        <p className="mt-1 text-sm text-zinc-500">Business links, AI secrets, demo caps in platform_settings.</p>
-      </div>
+    <AdminPageFrame description="Tautan bisnis, rahasia AI, dan batasan demo (sebagian di platform_settings + app_settings).">
+      {q.isLoading ? <p className="text-sm text-white/35">Memuat…</p> : null}
 
-      {q.isLoading ? <p className="text-sm text-zinc-500">Loading…</p> : null}
-
-      <div className="flex flex-wrap gap-2 border-b border-zinc-800 pb-2">
+      <div className="flex flex-wrap gap-2 border-b border-white/[0.06] pb-3">
         {tabBtn("general", "General")}
         {tabBtn("ai", "AI secrets")}
         {tabBtn("demo", "Demo limits")}
       </div>
 
       {tab === "general" && settings && (
-        <Card className="space-y-4 p-6">
-          <h2 className="text-sm font-medium text-zinc-200">Business &amp; links</h2>
+        <Card className="space-y-4 rounded-3xl border border-white/5 p-6">
+          <h2 className="admin-section-title">Business &amp; links</h2>
           <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <label className="block">
-              <span className="text-zinc-500">Lifetime price (IDR)</span>
+              <span className="admin-label-text">Lifetime price (IDR)</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.lifetime_price_idr}
                 onChange={(e) => setSettings({ ...settings, lifetime_price_idr: Number(e.target.value) })}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Product version</span>
+              <span className="admin-label-text">Product version</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.product_version}
                 onChange={(e) => setSettings({ ...settings, product_version: e.target.value })}
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="text-zinc-500">Download base URL</span>
+              <span className="admin-label-text">Download base URL</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.download_base_url ?? ""}
                 onChange={(e) => setSettings({ ...settings, download_base_url: e.target.value || null })}
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="text-zinc-500">Checkout success base URL</span>
+              <span className="admin-label-text">Checkout success base URL</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.checkout_success_base_url ?? ""}
                 onChange={(e) => setSettings({ ...settings, checkout_success_base_url: e.target.value || null })}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Terms URL</span>
+              <span className="admin-label-text">Terms URL</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.terms_url ?? ""}
                 onChange={(e) => setSettings({ ...settings, terms_url: e.target.value || null })}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Privacy URL</span>
+              <span className="admin-label-text">Privacy URL</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.privacy_url ?? ""}
                 onChange={(e) => setSettings({ ...settings, privacy_url: e.target.value || null })}
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="text-zinc-500">CRM webhook URL</span>
+              <span className="admin-label-text">CRM webhook URL</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.crm_webhook_url ?? ""}
                 onChange={(e) => setSettings({ ...settings, crm_webhook_url: e.target.value || null })}
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="text-zinc-500">Email from display name</span>
+              <span className="admin-label-text">Email from display name</span>
               <input
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={settings.email_from_name ?? ""}
                 onChange={(e) => setSettings({ ...settings, email_from_name: e.target.value || null })}
               />
@@ -283,24 +283,24 @@ export default function AppSettingsPage() {
       )}
 
       {tab === "ai" && (
-        <Card className="space-y-4 p-6">
-          <p className="text-xs text-zinc-500">Opaque strings in DB — protect with Vault / column encryption in production.</p>
+        <Card className="space-y-4 rounded-3xl border border-white/5 p-6">
+          <p className="admin-help">Opaque strings in DB — protect with Vault / column encryption in production.</p>
           <ul className="space-y-2 text-sm">
             {secrets.map((s) => (
-              <li key={s.id} className="font-mono text-xs text-zinc-400">
+              <li key={s.id} className="font-mono text-xs text-white/45">
                 {s.provider} — {s.api_key_encrypted.slice(0, 6)}… (updated {s.updated_at?.slice(0, 10)})
               </li>
             ))}
           </ul>
           <div className="flex flex-wrap gap-2">
             <input
-              className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className="admin-input min-w-[120px] flex-1"
               placeholder="Provider label"
               value={newSecretProvider}
               onChange={(e) => setNewSecretProvider(e.target.value)}
             />
             <input
-              className="min-w-[200px] flex-[2] rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className="admin-input min-w-[200px] flex-[2]"
               placeholder="API key"
               type="password"
               value={newSecretKey}
@@ -317,58 +317,58 @@ export default function AppSettingsPage() {
       )}
 
       {tab === "demo" && (
-        <Card className="space-y-4 p-6">
-          <p className="text-xs text-zinc-500">Keys in platform_settings (demo.*).</p>
+        <Card className="space-y-4 rounded-3xl border border-white/5 p-6">
+          <p className="admin-help">Keys in platform_settings (demo.*).</p>
           <div className="grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
             <label className="block">
-              <span className="text-zinc-500">Token TTL (days)</span>
+              <span className="admin-label-text">Token TTL (days)</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.token_ttl_days"] ?? ""}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.token_ttl_days": e.target.value }))}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Clean demo max GB / day</span>
+              <span className="admin-label-text">Clean demo max GB / day</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.clean_daily_gb_cap"] ?? ""}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_daily_gb_cap": e.target.value }))}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Clean demo max items / day</span>
+              <span className="admin-label-text">Clean demo max items / day</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.clean_daily_items_cap"] ?? ""}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_daily_items_cap": e.target.value }))}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Uninstall actions / day</span>
+              <span className="admin-label-text">Uninstall actions / day</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.uninstall_actions_per_day"] ?? ""}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.uninstall_actions_per_day": e.target.value }))}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">AI questions / day (demo)</span>
+              <span className="admin-label-text">AI questions / day (demo)</span>
               <input
                 type="number"
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.ai_questions_per_day"] ?? ""}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.ai_questions_per_day": e.target.value }))}
               />
             </label>
             <label className="block">
-              <span className="text-zinc-500">Clean: safe risk only</span>
+              <span className="admin-label-text">Clean: safe risk only</span>
               <select
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.clean_safe_risk_only"] === "true" ? "true" : "false"}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.clean_safe_risk_only": e.target.value }))}
               >
@@ -377,9 +377,9 @@ export default function AppSettingsPage() {
               </select>
             </label>
             <label className="block md:col-span-2">
-              <span className="text-zinc-500">Allow anonymous demo request</span>
+              <span className="admin-label-text">Allow anonymous demo request</span>
               <select
-                className="mt-1 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2"
+                className="mt-1 admin-input"
                 value={demoPlatform["demo.allow_anonymous_demo_request"] === "true" ? "true" : "false"}
                 onChange={(e) => setDemoPlatform((p) => ({ ...p, "demo.allow_anonymous_demo_request": e.target.value }))}
               >
@@ -393,6 +393,6 @@ export default function AppSettingsPage() {
           </Button>
         </Card>
       )}
-    </div>
+    </AdminPageFrame>
   );
 }

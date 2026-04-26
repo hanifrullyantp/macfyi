@@ -282,7 +282,7 @@ export const en = {
     emptyStep1Back: "Back",
     emptyStep1Continue: "I understand, continue",
     emptyStep2Title: "Type the phrase to confirm",
-    emptyStep2Hint: "Type {phrase} exactly to enable the button below.",
+    emptyStep2Hint: "Type {phrase} in the field below. This permanently deletes those items — cannot be undone.",
     emptyStep2Cancel: "Cancel",
     emptyStep2Submit: "Empty Trash now",
     emptyPhrase: "EMPTY TRASH",
@@ -356,6 +356,8 @@ export const en = {
     uninstallExtraRelated: " and selected support data",
     selectRelatedHint: "Also remove selected support data below (optional).",
     uninstallSuccess: "“{name}” was removed. Lists refreshed.",
+    leftoversCleaned: "Moved {n} leftover item(s). Lists refreshed.",
+    oneLeftoverCleaned: "Leftover item removed. Lists refreshed.",
   },
   monitor: {
     title: "Monitor",
@@ -496,6 +498,7 @@ export const en = {
     actionClear: "Clear selection",
     actionSelectSafe: "Select SAFE rows",
     exportDone: "Report saved to:",
+    exportFailed: "Could not save export. Check Full Disk Access or try again.",
     trashConfirm: "Move {count} item(s) to Trash?",
     trashConfirmRisky:
       "Some selected items are marked Caution or Risky. They will be moved to Trash (recoverable), not permanently deleted. Continue?",

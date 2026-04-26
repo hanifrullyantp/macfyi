@@ -7,6 +7,7 @@ import { ConfirmDialog } from "../components/shared/ConfirmDialog";
 import { useAdminSession } from "../hooks/useAdminSession";
 import { findActivePhase, parsePromoPlan, resolvePromoContext } from "../lib/promoPlanClient";
 import { supabase } from "../supabase";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 type AppRow = Record<string, unknown>;
 
@@ -131,41 +132,40 @@ export default function PromoAndPricingPage() {
   });
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-zinc-100">Promo &amp; pricing</h1>
-        <p className="mt-1 text-sm text-zinc-500">
-          Edits bump <code className="text-zinc-400">config_version</code> so clients refetch public-config. DB audit is{" "}
-          <code className="text-zinc-400">updated_at</code> only unless you add a log table.
-        </p>
-      </div>
+    <AdminPageFrame
+      description={
+        <>
+          Perubahan menaikkan <code>config_version</code> agar klien memuat ulang public-config. Audit DB saat ini mengandalkan <code>updated_at</code> kecuali ada
+          tabel log.
+        </>
+      }
+    >
+      {q.isError ? <p className="text-sm text-red-400/90">{(q.error as Error).message}</p> : null}
 
-      {q.isError ? <p className="text-sm text-red-400">{(q.error as Error).message}</p> : null}
-
-      <Card className="space-y-2 p-4 text-xs text-zinc-500">
+      <Card className="space-y-2 rounded-3xl border border-white/5 p-4 text-xs text-white/40">
         <div>
           Lifetime IDR (edit in App settings):{" "}
-          <span className="font-mono text-zinc-300">{row ? String(row.lifetime_price_idr ?? "—") : "…"}</span>
+          <span className="font-mono text-white/75">{row ? String(row.lifetime_price_idr ?? "—") : "…"}</span>
         </div>
         <div>
-          config_version: <span className="font-mono text-zinc-300">{row ? String(row.config_version ?? "—") : "…"}</span>
+          config_version: <span className="font-mono text-white/75">{row ? String(row.config_version ?? "—") : "…"}</span>
         </div>
         <div>updated_at: {row ? String(row.updated_at ?? "") : "…"}</div>
       </Card>
 
-      <Card className="space-y-3 p-4">
-        <h2 className="text-sm font-medium text-zinc-200">Structured controls</h2>
-        <p className="text-xs text-zinc-500">
-          Active phase is derived client-side from <code className="text-zinc-400">phases</code> and current time — align with server{" "}
-          <code className="text-zinc-400">resolvePromoContext</code> in <code className="text-zinc-400">supabase/functions/_shared/promoPlan.ts</code>.
+      <Card className="space-y-3 rounded-3xl border border-white/5 p-4">
+        <h2 className="admin-section-title">Structured controls</h2>
+        <p className="admin-help">
+          Active phase is derived client-side from <code className="text-white/50">phases</code> and current time — align with server{" "}
+          <code className="text-white/50">resolvePromoContext</code> in <code className="text-white/50">supabase/functions/_shared/promoPlan.ts</code>.
         </p>
-        <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 text-xs text-zinc-400">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs text-white/50">
           <div>
-            <span className="text-zinc-500">Promo active: </span>
-            <span className="font-mono text-zinc-200">{resolved.active ? "yes" : "no"}</span>
+            <span className="text-white/35">Promo active: </span>
+            <span className="font-mono text-white/85">{resolved.active ? "yes" : "no"}</span>
           </div>
           {activePhase ? (
-            <div className="mt-1 space-y-0.5 font-mono text-[11px]">
+            <div className="mt-1 space-y-0.5 font-mono text-[11px] text-white/55">
               <div>
                 window: {activePhase.starts_at.slice(0, 10)} → {activePhase.ends_at.slice(0, 10)}
               </div>
@@ -175,53 +175,58 @@ export default function PromoAndPricingPage() {
               </div>
             </div>
           ) : (
-            <div className="mt-1 text-zinc-500">No phase covers &quot;now&quot; (or JSON invalid).</div>
+            <div className="mt-1 text-white/40">No phase covers &quot;now&quot; (or JSON invalid).</div>
           )}
-          <div className="mt-2 text-zinc-500">
+          <div className="mt-2 text-white/40">
             Resolved slots_remaining (DB counter):{" "}
-            <span className="font-mono text-zinc-200">{resolved.slots_remaining == null ? "null" : String(resolved.slots_remaining)}</span>
+            <span className="font-mono text-white/80">{resolved.slots_remaining == null ? "null" : String(resolved.slots_remaining)}</span>
           </div>
         </div>
-        <label className="flex cursor-pointer items-center gap-2 text-sm text-zinc-300">
-          <input type="checkbox" className="rounded border-zinc-600" checked={blockCheckout} onChange={(e) => setBlockCheckout(e.target.checked)} />
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-white/80">
+          <input
+            type="checkbox"
+            className="rounded border-white/20 bg-white/5 text-red-600 focus:ring-red-500/40"
+            checked={blockCheckout}
+            onChange={(e) => setBlockCheckout(e.target.checked)}
+          />
           <span>
-            <code className="text-violet-300">block_checkout_when_slots_zero</code> — block checkout when live slot counter hits zero.
+            <code className="text-red-400/90">block_checkout_when_slots_zero</code> — block checkout when live slot counter hits zero.
           </span>
         </label>
         <div className="flex flex-wrap gap-2">
           <Button variant="secondary" size="sm" type="button" onClick={() => resetSlotsFromActivePhase()}>
             Reset slots field → active phase <code className="text-[10px]">slots_initial</code>
           </Button>
-          <span className="text-[11px] text-zinc-500">
+          <span className="text-[11px] text-white/40">
             This only changes the numeric field below until you publish; it overrides the live counter in DB when saved.
           </span>
         </div>
       </Card>
 
-      <Card className="space-y-2 p-4">
-        <label className="text-xs font-medium text-zinc-400">promo_plan (JSON)</label>
+      <Card className="space-y-2 rounded-3xl border border-white/5 p-4">
+        <label className="text-xs font-medium text-white/45">promo_plan (JSON)</label>
         <textarea
-          className="min-h-[180px] w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 font-mono text-xs text-zinc-200"
+          className="admin-textarea min-h-[180px] w-full"
           value={promoPlanJson}
           onChange={(e) => setPromoPlanJson(e.target.value)}
           spellCheck={false}
         />
       </Card>
 
-      <Card className="space-y-2 p-4">
-        <label className="text-xs font-medium text-zinc-400">promo_slots_remaining (empty = null)</label>
+      <Card className="space-y-2 rounded-3xl border border-white/5 p-4">
+        <label className="text-xs font-medium text-white/45">promo_slots_remaining (empty = null)</label>
         <input
-          className="w-full max-w-xs rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          className="admin-input mt-0 max-w-xs"
           value={slots}
           onChange={(e) => setSlots(e.target.value)}
           placeholder="e.g. 42"
         />
       </Card>
 
-      <Card className="space-y-2 p-4">
-        <label className="text-xs font-medium text-zinc-400">checkout_coupons (JSON)</label>
+      <Card className="space-y-2 rounded-3xl border border-white/5 p-4">
+        <label className="text-xs font-medium text-white/45">checkout_coupons (JSON)</label>
         <textarea
-          className="min-h-[200px] w-full rounded-lg border border-zinc-700 bg-zinc-950 p-3 font-mono text-xs text-zinc-200"
+          className="admin-textarea min-h-[200px] w-full"
           value={couponsJson}
           onChange={(e) => setCouponsJson(e.target.value)}
           spellCheck={false}
@@ -242,6 +247,6 @@ export default function PromoAndPricingPage() {
           await saveMut.mutateAsync();
         }}
       />
-    </div>
+    </AdminPageFrame>
   );
 }

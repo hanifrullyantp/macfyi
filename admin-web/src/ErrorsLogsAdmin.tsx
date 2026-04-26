@@ -36,14 +36,14 @@ export function ErrorsLogsAdmin() {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-lg font-medium text-white">Error &amp; telemetry</h2>
-      {err && <p className="text-sm text-red-400">{err}</p>}
+      <h2 className="admin-section-title text-base">Error &amp; telemetry</h2>
+      {err && <p className="text-sm text-red-400/90">{err}</p>}
 
       <section>
-        <h3 className="text-sm text-zinc-400 mb-2">app_error_reports</h3>
-        <div className="overflow-x-auto rounded-xl border border-zinc-800 text-xs">
+        <h3 className="mb-2 text-sm font-medium text-white/50">app_error_reports</h3>
+        <div className="admin-table-shell text-xs text-white/75">
           <table className="w-full text-left">
-            <thead className="text-zinc-500 border-b border-zinc-800">
+            <thead className="admin-table-head">
               <tr>
                 <th className="p-2">Waktu</th>
                 <th className="p-2">Sumber</th>
@@ -54,7 +54,7 @@ export function ErrorsLogsAdmin() {
             </thead>
             <tbody>
               {errors.map((r) => (
-                <tr key={r.id} className="border-b border-zinc-800/80">
+                <tr key={r.id} className="admin-table-row">
                   <td className="p-2 whitespace-nowrap">{r.created_at.slice(0, 19)}</td>
                   <td className="p-2">{r.source}</td>
                   <td className="p-2">{r.severity}</td>
@@ -74,10 +74,10 @@ export function ErrorsLogsAdmin() {
       </section>
 
       <section>
-        <h3 className="text-sm text-zinc-400 mb-2">client_telemetry</h3>
-        <div className="overflow-x-auto rounded-xl border border-zinc-800 text-xs">
+        <h3 className="mb-2 text-sm font-medium text-white/50">client_telemetry</h3>
+        <div className="admin-table-shell text-xs text-white/75">
           <table className="w-full text-left">
-            <thead className="text-zinc-500 border-b border-zinc-800">
+            <thead className="admin-table-head">
               <tr>
                 <th className="p-2">Waktu</th>
                 <th className="p-2">Event</th>
@@ -86,7 +86,7 @@ export function ErrorsLogsAdmin() {
             </thead>
             <tbody>
               {telemetry.map((r) => (
-                <tr key={r.id} className="border-b border-zinc-800/80">
+                <tr key={r.id} className="admin-table-row">
                   <td className="p-2">{r.created_at.slice(0, 19)}</td>
                   <td className="p-2">{r.event_type}</td>
                   <td className="p-2">{r.source}</td>

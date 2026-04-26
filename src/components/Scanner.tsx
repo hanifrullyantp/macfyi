@@ -74,6 +74,7 @@ export const Scanner = ({
   }, [onFinish, onCancel, onProgress]);
 
   const handleCancel = () => {
+    if (!window.confirm(t("scanner.cancelScanConfirm"))) return;
     doneRef.current = true;
     cancelScan();
     onCancel();

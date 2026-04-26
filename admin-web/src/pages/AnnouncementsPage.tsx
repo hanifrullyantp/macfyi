@@ -1,10 +1,10 @@
 import { AnnouncementsAdmin } from "../AdminExtraPages";
+import { AdminPageFrame } from "../ui2/components/AdminPageFrame";
 
 export default function AnnouncementsPage() {
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-zinc-100">Announcements</h1>
+    <AdminPageFrame description="Pengumuman in-app / banner (sesuai data Supabase + komponen admin).">
       <AnnouncementsAdmin />
-    </div>
+    </AdminPageFrame>
   );
 }

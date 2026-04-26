@@ -49,6 +49,49 @@
   .bg-gradient-red-hover {
     @apply hover:from-[#FF3B3B] hover:to-[#E10600] transition-all duration-300;
   }
+
+  /* Form controls — selaras tema ui2 gelap */
+  .admin-input {
+    @apply w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2.5 text-sm text-white/90;
+    @apply outline-none transition-colors;
+    @apply focus:border-red-500/40 focus:ring-1 focus:ring-red-500/35;
+  }
+
+  .admin-textarea {
+    @apply w-full min-h-[100px] resize-y rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-xs leading-relaxed text-white/90;
+    @apply outline-none transition-colors;
+    @apply focus:border-red-500/40 focus:ring-1 focus:ring-red-500/35;
+  }
+
+  .admin-textarea-compact {
+    @apply w-full min-h-[48px] resize-y rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-xs text-white/90;
+    @apply outline-none transition-colors;
+    @apply focus:border-red-500/40 focus:ring-1 focus:ring-red-500/35;
+  }
+
+  .admin-label-text {
+    @apply text-xs font-medium text-white/40;
+  }
+
+  .admin-section-title {
+    @apply text-sm font-semibold text-white/85;
+  }
+
+  .admin-help {
+    @apply text-xs text-white/40;
+  }
+
+  .admin-table-shell {
+    @apply overflow-x-auto rounded-2xl border border-white/10 text-xs;
+  }
+
+  .admin-table-head {
+    @apply border-b border-white/10 text-white/40;
+  }
+
+  .admin-table-row {
+    @apply border-b border-white/[0.06] hover:bg-white/[0.02];
+  }
 }
 
 /* Custom Scrollbar */
