@@ -37,7 +37,17 @@ export function loadActivities(): ActivityEntry[] {
 }
 
 function save(entries: ActivityEntry[]) {
-  localStorage.setItem(KEY, JSON.stringify(entries.slice(0, MAX)));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(entries.slice(0, MAX)));
+  } catch (e) {
+    if (e instanceof DOMException && e.name === "QuotaExceededError") {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(entries.slice(0, Math.min(20, MAX))));
+      } catch {
+        /* ignore */
+      }
+    }
+  }
 }
 
 export function appendActivity(entry: Omit<ActivityEntry, "id" | "at"> & { id?: string; at?: number }): void {

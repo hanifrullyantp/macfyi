@@ -27,9 +27,11 @@ export const Scanner = ({
   const [filesFound, setFilesFound] = useState(0);
   const [itemsFlagged, setItemsFlagged] = useState(0);
   const doneRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
     doneRef.current = false;
+    mountedRef.current = true;
     let unlisten: (() => void) | null = null;
 
     const setup = async () => {
@@ -48,9 +50,11 @@ export const Scanner = ({
         const results = await deepScan();
         if (doneRef.current) return;
         doneRef.current = true;
-        setProgress(100);
-        onProgress?.(100);
-        setStage("Done");
+        if (mountedRef.current) {
+          setProgress(100);
+          onProgress?.(100);
+          setStage("Done");
+        }
         setTimeout(() => onFinish(results), 400);
       } catch (e) {
         if (doneRef.current) return;
@@ -59,8 +63,10 @@ export const Scanner = ({
         if (msg.includes("cancelled")) {
           onCancel();
         } else {
-          setStage(`Scan failed: ${msg}`);
-          setProgress(0);
+          if (mountedRef.current) {
+            setStage(`Scan failed: ${msg}`);
+            setProgress(0);
+          }
         }
       }
     };
@@ -68,7 +74,7 @@ export const Scanner = ({
     setup();
 
     return () => {
-      doneRef.current = true;
+      mountedRef.current = false;
       if (unlisten) unlisten();
     };
   }, [onFinish, onCancel, onProgress]);

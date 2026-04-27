@@ -104,6 +104,10 @@ export const id: MessageTree = {
     reviewItems: "Tinjau item",
     runSmartScan: "Jalankan Smart Scan",
     refreshOverview: "Muat ulang ringkasan",
+    overviewIdleTitle: "Muat ringkasan Smart Care",
+    overviewIdleBody:
+      "Daftar aplikasi, sisa file, dan Tong Sampah tidak diambil otomatis. Muat sekali untuk mengisi kartu di atas — pindaian disk tidak jalan sampai Anda memilih.",
+    loadOverview: "Muat ringkasan",
     notLoaded: "—",
     loadErrorShort: "Gagal memuat",
     aiSummaryLabel: "Ringkasan AI",
@@ -504,6 +508,10 @@ export const id: MessageTree = {
     actionSelectSafe: "Pilih baris AMAN",
     exportDone: "Laporan disimpan ke:",
     exportFailed: "Gagal menyimpan ekspor. Periksa Full Disk Access atau coba lagi.",
+    idleTitle: "Siap saat Anda siap",
+    idleBody:
+      "Ukuran folder dan label risiko hanya dimuat setelah Anda mulai. Menghindari kerja latar setiap kali Disk Explorer dibuka.",
+    idleScanCta: "Pindai folder beranda",
     trashConfirm: "Pindahkan {count} item ke Tong Sampah?",
     trashConfirmRisky:
       "Beberapa item terpilih berlabel Waspada atau Berisiko. Item akan dipindahkan ke Tong Sampah (bisa dipulihkan), bukan dihapus permanen. Lanjutkan?",

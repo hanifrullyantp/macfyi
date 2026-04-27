@@ -336,8 +336,6 @@ export default function App() {
   const [aiBannerVisible, setAiBannerVisible] = useState(false);
   const [aiBannerIndex, setAiBannerIndex] = useState(0);
   const [smartCareOverviewLoading, setSmartCareOverviewLoading] = useState(false);
-  /** Defer Smart Care overview prefetch until first user gesture (pointer/key) after boot. */
-  const [smartCareOverviewPrefetchUnlocked, setSmartCareOverviewPrefetchUnlocked] = useState(false);
   const lastOverviewPrefetchRef = useRef(0);
   const overviewPrefetchInFlightRef = useRef(false);
   const [publicConfigOfflineOpen, setPublicConfigOfflineOpen] = useState(false);
@@ -408,54 +406,7 @@ export default function App() {
     }
   }, []);
 
-  /** First interaction after app is ready — then allow idle prefetch of Smart Care overview. */
-  useEffect(() => {
-    if (!licenseGatePassed || !appBootReady || smartCareOverviewPrefetchUnlocked) return;
-    const unlock = () => setSmartCareOverviewPrefetchUnlocked(true);
-    window.addEventListener("pointerdown", unlock, { once: true, passive: true });
-    window.addEventListener("keydown", unlock, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", unlock);
-      window.removeEventListener("keydown", unlock);
-    };
-  }, [licenseGatePassed, appBootReady, smartCareOverviewPrefetchUnlocked]);
-
-  useEffect(() => {
-    if (!licenseGatePassed) return;
-    if (!smartCareOverviewPrefetchUnlocked) return;
-    if (activeFeature !== "smart-care" || appState !== "idle") return;
-
-    const run = () => {
-      void prefetchSmartCareOverview(false);
-    };
-    let idleId: number | undefined;
-    let timeoutId: number | undefined;
-    if (typeof window.requestIdleCallback === "function") {
-      idleId = window.requestIdleCallback(run, { timeout: 2500 });
-    } else {
-      timeoutId = window.setTimeout(run, 500);
-    }
-    return () => {
-      if (idleId !== undefined && typeof window.cancelIdleCallback === "function") {
-        window.cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-    };
-  }, [
-    licenseGatePassed,
-    smartCareOverviewPrefetchUnlocked,
-    activeFeature,
-    appState,
-    prefetchSmartCareOverview,
-  ]);
-
-  /** Storage breakdown for dashboard chart — non-blocking when empty */
-  useEffect(() => {
-    if (!licenseGatePassed) return;
-    if (activeFeature !== "smart-care" || appState !== "idle") return;
-    if (storageEntries.length > 0) return;
-    void getStorageBreakdown().then(setStorageEntries).catch(() => {});
-  }, [licenseGatePassed, activeFeature, appState, storageEntries.length]);
+  /** No automatic page scan/prefetch; user triggers via explicit buttons. */
 
   useEffect(() => {
     if (isAIChatOpen) {
@@ -1017,7 +968,7 @@ export default function App() {
     } else if (appState === "scanning") {
       content = (
         <Suspense fallback={<ViewFallback />}>
-          <ScanProgress
+          <Scanner
             onFinish={handleFinishScan}
             onCancel={handleCancelScan}
             onProgress={setScanProgressPct}

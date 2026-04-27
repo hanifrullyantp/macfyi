@@ -17,6 +17,8 @@ function DiskExplorerInner() {
   const s = useDiskExplorerStore();
   const { registerActivity } = useAppActivity();
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const exportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -110,28 +112,43 @@ function DiskExplorerInner() {
       ) : null}
 
       <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
-        <div className="relative min-h-0 flex flex-col gap-3 overflow-hidden flex-1">
-          <ScanningOverlay show={s.loading} />
-          <div className="flex-1 min-h-0 overflow-auto pr-1">
-            <DiskNodeTable
-              nodes={s.nodes}
-              selectedPaths={s.selectedPaths}
-              onToggle={s.toggleSelect}
-              onOpenDir={(n) => void s.navigateTo(n.path, n.displayName)}
-              onTopFiles={(p) => void s.openFileModal(p)}
+        {!s.hasScanned ? (
+          <div className="surface-card p-6 md:p-8 max-w-3xl">
+            <h2 className="text-xl font-semibold text-white">{t("diskExplorer.idleTitle")}</h2>
+            <p className="text-sm text-white/60 mt-2 leading-relaxed">{t("diskExplorer.idleBody")}</p>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button type="button" className="btn-primary px-4 py-2" onClick={() => void s.startInitialScan()}>
+                {t("diskExplorer.idleScanCta")}
+              </button>
+              <button type="button" className="btn-secondary px-4 py-2" onClick={() => void s.openFda()}>
+                {t("diskExplorer.openFda")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="relative min-h-0 flex flex-col gap-3 overflow-hidden flex-1">
+            <ScanningOverlay show={s.loading} />
+            <div className="flex-1 min-h-0 overflow-auto pr-1">
+              <DiskNodeTable
+                nodes={s.nodes}
+                selectedPaths={s.selectedPaths}
+                onToggle={s.toggleSelect}
+                onOpenDir={(n) => void s.navigateTo(n.path, n.displayName)}
+                onTopFiles={(p) => void s.openFileModal(p)}
+              />
+            </div>
+            <DiskActionBar
+              selectedCount={s.selectedPaths.length}
+              savingsBytes={s.savingsBytes}
+              onReveal={() => void s.revealSelected()}
+              onTrash={() => void handleTrash()}
+              onExportJson={() => void handleExport("json")}
+              onExportTxt={() => void handleExport("txt")}
+              onClear={s.clearSelection}
+              onSelectSafe={s.selectAllSafe}
             />
           </div>
-          <DiskActionBar
-            selectedCount={s.selectedPaths.length}
-            savingsBytes={s.savingsBytes}
-            onReveal={() => void s.revealSelected()}
-            onTrash={() => void handleTrash()}
-            onExportJson={() => void handleExport("json")}
-            onExportTxt={() => void handleExport("txt")}
-            onClear={s.clearSelection}
-            onSelectSafe={s.selectAllSafe}
-          />
-        </div>
+        )}
       </div>
 
       <DiskAiModal

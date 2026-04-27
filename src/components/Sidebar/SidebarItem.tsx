@@ -66,10 +66,16 @@ export function SidebarItem({
       )}
     >
       <span
-        className={cn("text-lg w-7 text-center flex-shrink-0 leading-none", collapsed && "w-8 text-xl")}
+        className={cn(
+          "w-7 h-7 rounded-lg border flex items-center justify-center flex-shrink-0",
+          isActive
+            ? "bg-white/12 border-white/20 text-white"
+            : "bg-white/[0.04] border-white/10 text-white/70",
+          collapsed && "w-8 h-8"
+        )}
         aria-hidden
       >
-        {entry.emoji}
+        <Icon size={collapsed ? 16 : 15} />
       </span>
       {!collapsed && (
         <div className="flex-1 min-w-0 text-left">

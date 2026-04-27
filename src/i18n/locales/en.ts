@@ -102,6 +102,10 @@ export const en = {
     reviewItems: "Review items",
     runSmartScan: "Run Smart Scan",
     refreshOverview: "Refresh overview",
+    overviewIdleTitle: "Load Smart Care overview",
+    overviewIdleBody:
+      "Apps, leftovers, and Trash are not fetched automatically. Load once to fill the tiles above — no disk scan runs until you choose.",
+    loadOverview: "Load overview",
     notLoaded: "—",
     loadErrorShort: "Could not load",
     aiSummaryLabel: "AI summary",
@@ -499,6 +503,10 @@ export const en = {
     actionSelectSafe: "Select SAFE rows",
     exportDone: "Report saved to:",
     exportFailed: "Could not save export. Check Full Disk Access or try again.",
+    idleTitle: "Ready when you are",
+    idleBody:
+      "Folder sizes and risk labels load only after you start. This avoids background work every time you open Disk Explorer.",
+    idleScanCta: "Scan home folder",
     trashConfirm: "Move {count} item(s) to Trash?",
     trashConfirmRisky:
       "Some selected items are marked Caution or Risky. They will be moved to Trash (recoverable), not permanently deleted. Continue?",

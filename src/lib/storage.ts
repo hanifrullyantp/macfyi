@@ -16,7 +16,11 @@ export function getLastScanLabel(): string | null {
 }
 
 export function recordScanComplete(): void {
-  localStorage.setItem(KEY_LAST_SCAN, String(Date.now()));
+  try {
+    localStorage.setItem(KEY_LAST_SCAN, String(Date.now()));
+  } catch {
+    /* QuotaExceededError: ignore */
+  }
 }
 
 export function addSavedThisMonth(bytes: number): void {
@@ -35,10 +39,14 @@ export function addSavedThisMonth(bytes: number): void {
       /* reset month */
     }
   }
-  localStorage.setItem(
-    KEY_MONTH_BYTES,
-    JSON.stringify({ monthStart, bytes: prevBytes + bytes })
-  );
+  try {
+    localStorage.setItem(
+      KEY_MONTH_BYTES,
+      JSON.stringify({ monthStart, bytes: prevBytes + bytes })
+    );
+  } catch {
+    /* QuotaExceededError: ignore */
+  }
 }
 
 export function getSavedThisMonthLabel(): string {

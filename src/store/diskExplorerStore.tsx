@@ -29,6 +29,7 @@ type DiskExplorerContextValue = {
   currentPath: string;
   nodes: DiskNode[];
   loading: boolean;
+  hasScanned: boolean;
   error: string | null;
   fdaOk: boolean | null;
   volume: { totalBytes: number; usedBytes: number; freeBytes: number } | null;
@@ -37,6 +38,7 @@ type DiskExplorerContextValue = {
   clearSelection: () => void;
   selectAllSafe: () => void;
   refreshAll: () => Promise<void>;
+  startInitialScan: () => Promise<void>;
   navigateTo: (path: string, label: string) => Promise<void>;
   navigateBreadcrumb: (index: number) => Promise<void>;
   openFda: () => Promise<void>;
@@ -62,6 +64,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const [currentPath, setCurrentPath] = useState("~");
   const [nodes, setNodes] = useState<DiskNode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fdaOk, setFdaOk] = useState<boolean | null>(null);
   const [volume, setVolume] = useState<DiskExplorerContextValue["volume"]>(null);
@@ -81,6 +84,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     try {
       const rows = await diskExplorerScanLevel(path);
       setNodes(rows);
+      setHasScanned(true);
     } catch (e) {
       setNodes([]);
       setError(e instanceof Error ? e.message : String(e));
@@ -102,6 +106,10 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     }
     await loadScan(currentPath);
   }, [currentPath, loadScan]);
+
+  const startInitialScan = useCallback(async () => {
+    await refreshAll();
+  }, [refreshAll]);
 
   const navigateTo = useCallback(
     async (path: string, label: string) => {
@@ -225,7 +233,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       } catch {
         setVolume(null);
       }
-      await loadScan("~");
+      setNodes([]);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial mount only
   }, []);
@@ -235,6 +243,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     currentPath,
     nodes,
     loading,
+    hasScanned,
     error,
     fdaOk,
     volume,
@@ -243,6 +252,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     clearSelection,
     selectAllSafe,
     refreshAll,
+    startInitialScan,
     navigateTo,
     navigateBreadcrumb,
     openFda,

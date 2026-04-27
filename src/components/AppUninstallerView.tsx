@@ -37,6 +37,7 @@ export function AppUninstallerView({
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [relatedPick, setRelatedPick] = useState<Record<string, boolean>>({});
+  const topBanner = successMessage;
 
   useEffect(() => {
     if (apps === null) {

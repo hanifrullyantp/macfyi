@@ -73,6 +73,7 @@ export function SmartCareDashboard({
   const orphanBytes = orphans?.reduce((s, o) => s + o.size, 0) ?? 0;
   const trashCount = trashItems?.length ?? null;
   const trashBytes = trashItems?.reduce((s, x) => s + x.sizeBytes, 0) ?? 0;
+  const overviewReady = apps !== null && orphans !== null && trashItems !== null;
 
   return (
     <div className="relative z-10 flex flex-col h-full min-h-0 overflow-y-auto custom-scrollbar px-6 py-6 md:px-8 pb-28">
@@ -98,6 +99,22 @@ export function SmartCareDashboard({
           freeGb={freeGb}
           totalGb={totalGb}
         />
+
+        {onRefreshOverview && !overviewReady && !overviewLoading ? (
+          <div className="shrink-0 surface-card border border-white/10 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-white">{t("dashboard.overviewIdleTitle")}</p>
+              <p className="text-xs text-white/50 mt-1 leading-relaxed">{t("dashboard.overviewIdleBody")}</p>
+            </div>
+            <button
+              type="button"
+              onClick={onRefreshOverview}
+              className="btn-primary text-sm px-4 py-2.5 shrink-0 self-start sm:self-center"
+            >
+              {t("dashboard.loadOverview")}
+            </button>
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 shrink-0">
           <button

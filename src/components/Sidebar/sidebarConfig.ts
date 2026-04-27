@@ -23,10 +23,9 @@ export interface SidebarMenuEntry {
   id: FeatureId;
   label: string;
   sublabel: string;
-  emoji: string;
   accent: SidebarAccent;
   group: SidebarGroup;
-  /** Lucide fallback when sidebar is collapsed (emoji also shown when expanded). */
+  /** Premium icon used for both expanded and collapsed states. */
   icon: ComponentType<{ size?: number; className?: string }>;
   /** If true, show count badge (from App `badges` prop) when no byte badge. */
   useCountFallback?: boolean;
@@ -38,7 +37,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "smart-care",
     label: "Dashboard",
     sublabel: "Hasil ringkas & scan",
-    emoji: "🏠",
     accent: "purple",
     group: "maintenance",
     icon: Sparkles,
@@ -47,7 +45,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "cleanup",
     label: "Junk Cleanup",
     sublabel: "Cache & file sampah",
-    emoji: "🧹",
     accent: "green",
     group: "maintenance",
     icon: Trash,
@@ -57,7 +54,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "my-clutter",
     label: "My Files",
     sublabel: "Download, duplikat, file besar",
-    emoji: "📁",
     accent: "blue",
     group: "maintenance",
     icon: CircleDashed,
@@ -67,7 +63,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "disk-explorer",
     label: "Disk Explorer",
     sublabel: "Telusuri isi folder",
-    emoji: "🔍",
     accent: "indigo",
     group: "maintenance",
     icon: FolderTree,
@@ -76,7 +71,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "uninstaller",
     label: "App Uninstaller",
     sublabel: "Hapus app + sisa file",
-    emoji: "🗑",
     accent: "orange",
     group: "maintenance",
     icon: PackageOpen,
@@ -86,7 +80,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "user-trash",
     label: "Trash Manager",
     sublabel: "Kosongkan & pulihkan",
-    emoji: "🗂",
     accent: "slate",
     group: "maintenance",
     icon: Trash2,
@@ -95,7 +88,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "monitor",
     label: "Monitor",
     sublabel: "RAM, CPU, & disk",
-    emoji: "📊",
     accent: "yellow",
     group: "insights",
     icon: Activity,
@@ -104,7 +96,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "performance",
     label: "Performance",
     sublabel: "Grafik beban & storage",
-    emoji: "⚡",
     accent: "yellow",
     group: "insights",
     icon: Bolt,
@@ -113,7 +104,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "history",
     label: "History",
     sublabel: "Aktivitas sebelumnya",
-    emoji: "🕐",
     accent: "slate",
     group: "insights",
     icon: Clock3,
@@ -122,7 +112,6 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
     id: "settings",
     label: "Settings",
     sublabel: "Pengaturan app",
-    emoji: "⚙️",
     accent: "slate",
     group: "system",
     icon: Settings,
@@ -133,7 +122,6 @@ export interface SidebarAIRow {
   id: typeof AI_SIDEBAR_ID;
   label: string;
   sublabel: string;
-  emoji: string;
   accent: SidebarAccent;
   group: "maintenance";
   icon: ComponentType<{ size?: number; className?: string }>;
@@ -143,7 +131,6 @@ export const SIDEBAR_AI_ROW: SidebarAIRow = {
   id: AI_SIDEBAR_ID,
   label: "AI Assistant",
   sublabel: "Tanya soal storage Mac",
-  emoji: "🤖",
   accent: "pink",
   group: "maintenance",
   icon: Bot,
