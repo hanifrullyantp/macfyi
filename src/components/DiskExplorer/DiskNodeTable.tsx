@@ -21,12 +21,14 @@ export function DiskNodeTable({
   onToggle,
   onOpenDir,
   onTopFiles,
+  blockDeepNavigation,
 }: {
   nodes: DiskNode[];
   selectedPaths: string[];
   onToggle: (path: string) => void;
   onOpenDir: (node: DiskNode) => void;
   onTopFiles: (path: string) => void;
+  blockDeepNavigation?: boolean;
 }) {
   const { t } = useI18n();
 
@@ -59,26 +61,34 @@ export function DiskNodeTable({
           {nodes.map((n) => {
             const checked = selectedPaths.includes(n.path);
             const locked = n.riskLevel === "Locked" || !n.isAccessible;
+            const depthBlocked = !!blockDeepNavigation && n.isExpandable;
             return (
-              <tr key={n.path} className="border-t border-white/5 hover:bg-white/[0.03]">
+              <tr
+                key={n.path}
+                className={`border-t border-white/5 hover:bg-white/[0.03] ${
+                  depthBlocked ? "opacity-70 blur-[1px]" : ""
+                }`}
+              >
                 <td className="px-3 py-2 align-middle">
                   <input
                     type="checkbox"
                     className="rounded border-white/20 bg-transparent"
                     checked={checked}
-                    disabled={locked}
+                    disabled={locked || depthBlocked}
                     onChange={() => onToggle(n.path)}
                   />
                 </td>
                 <td className="px-3 py-2 align-middle">
                   <button
                     type="button"
-                    disabled={!n.isExpandable}
+                    disabled={!n.isExpandable || depthBlocked}
                     onClick={() => {
-                      if (n.isExpandable) onOpenDir(n);
+                      if (n.isExpandable && !depthBlocked) onOpenDir(n);
                     }}
                     className={`inline-flex items-center gap-2 text-left ${
-                      n.isExpandable ? "text-white hover:text-emerald-300" : "text-white/70 cursor-default"
+                      n.isExpandable && !depthBlocked
+                        ? "text-white hover:text-emerald-300"
+                        : "text-white/70 cursor-default"
                     }`}
                   >
                     <span className="text-white/35">{n.isExpandable ? <Folder className="w-4 h-4" /> : <FileText className="w-4 h-4" />}</span>
@@ -98,8 +108,11 @@ export function DiskNodeTable({
                   {n.isExpandable ? (
                     <button
                       type="button"
+                      disabled={depthBlocked}
                       onClick={() => onTopFiles(n.path)}
-                      className="text-[10px] sm:text-xs text-emerald-300/90 hover:text-emerald-200"
+                      className={`text-[10px] sm:text-xs ${
+                        depthBlocked ? "text-white/25 cursor-not-allowed" : "text-emerald-300/90 hover:text-emerald-200"
+                      }`}
                     >
                       {t("diskExplorer.topFiles")}
                     </button>

@@ -38,10 +38,8 @@ import {
   hasCompletedOnboarding,
   resetOnboardingCompletion,
 } from "./components/OnboardingTour";
-import { AccountGateScreen } from "./components/AccountGateScreen";
-import { clearLicenseSession, getStoredLicenseToken, shouldSkipLicenseGate } from "./lib/activation";
+import { clearLicenseSession } from "./lib/activation";
 import { getIsProEntitled } from "./lib/entitlement";
-import { isDemoMode } from "./lib/demoSession";
 import { fetchPublicConfigWithResult, type PublicConfig } from "./lib/publicConfig";
 import { resolveUpgradePaywallSubtitle } from "./lib/upgradePaywallCopy";
 import { syncAppWebBrandingIcons } from "./lib/brandingHead";
@@ -51,7 +49,6 @@ import { MonitorDashboard } from "./components/MonitorDashboard";
 import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
 import { AppBootSplash } from "./components/AppBootSplash";
 import { useAppActivity } from "./context/AppActivityContext";
-import { DEFAULT_BRAND_LOGO_URL } from "./lib/defaultBrandLogo";
 import { useScanStore } from "./store/scanStore";
 
 const Scanner = lazy(async () => {
@@ -307,9 +304,8 @@ export default function App() {
   const [monitorRefreshNonce, setMonitorRefreshNonce] = useState(0);
   const [perfLoading, setPerfLoading] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
-  const [licenseGatePassed, setLicenseGatePassed] = useState(
-    () => shouldSkipLicenseGate() || !!getStoredLicenseToken() || isDemoMode()
-  );
+  // Product decision: app remains usable in demo mode without mandatory login.
+  const [licenseGatePassed, setLicenseGatePassed] = useState(true);
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
   const [publicConfigSnapshot, setPublicConfigSnapshot] = useState<PublicConfig | null>(null);
   const proEntitled = useMemo(() => getIsProEntitled(), [licenseGatePassed, isProfileOpen]);
@@ -929,15 +925,6 @@ export default function App() {
     return <AppBootSplash progress={bootProgress} message={bootMessage || t("boot.phaseDisk")} />;
   }
 
-  if (!licenseGatePassed) {
-    return (
-      <AccountGateScreen
-        brandLogoUrl={brandLogoUrl?.trim() ? brandLogoUrl.trim() : DEFAULT_BRAND_LOGO_URL}
-        onReady={() => setLicenseGatePassed(true)}
-      />
-    );
-  }
-
   const featuredResults = filterByFeature(scanResults, activeFeature);
   const hasFeatureResults = featuredResults.length > 0;
 
@@ -1360,7 +1347,7 @@ export default function App() {
               }}
               onLogout={() => {
                 clearLicenseSession();
-                setLicenseGatePassed(false);
+                setLicenseGatePassed(true);
                 setIsProfileOpen(false);
               }}
             />

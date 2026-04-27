@@ -7,6 +7,8 @@ import {
   type ActivityEntry,
 } from "../lib/activity-log";
 import { useI18n } from "../i18n/context";
+import { getIsProEntitled } from "../lib/entitlement";
+import { marketingCheckoutUrl } from "../lib/marketingUrl";
 
 function formatBytes(n: number): string {
   if (n >= 1024 ** 3) return `${(n / 1024 ** 3).toFixed(1)} GB`;
@@ -53,12 +55,22 @@ export function ActivityHistoryView() {
   }, [refresh]);
 
   const onDeleteOne = (id: string) => {
+    if (!getIsProEntitled()) {
+      window.alert(t("history.proOnlyDelete"));
+      window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
+      return;
+    }
     if (!window.confirm(t("history.deleteOneConfirm"))) return;
     removeActivity(id);
     refresh();
   };
 
   const onClearAll = () => {
+    if (!getIsProEntitled()) {
+      window.alert(t("history.proOnlyDelete"));
+      window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
+      return;
+    }
     if (!window.confirm(t("history.clearAllConfirm", { n: rows.length }))) return;
     clearAllActivities();
     refresh();

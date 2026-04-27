@@ -1,3 +1,5 @@
+import { getIsProEntitled } from "./entitlement";
+
 export type ActivityKind = "scan_complete" | "cleanup_complete";
 
 export interface ActivityEntry {
@@ -62,6 +64,7 @@ export function appendActivity(entry: Omit<ActivityEntry, "id" | "at"> & { id?: 
 
 /** Remove one entry by id. Returns true if an entry was removed. */
 export function removeActivity(id: string): boolean {
+  if (!getIsProEntitled()) return false;
   const prev = loadActivities();
   const next = prev.filter((e) => e.id !== id);
   if (next.length === prev.length) return false;
@@ -70,6 +73,7 @@ export function removeActivity(id: string): boolean {
 }
 
 export function clearAllActivities(): void {
+  if (!getIsProEntitled()) return;
   save([]);
 }
 

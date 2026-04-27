@@ -19,6 +19,7 @@ import {
   revealInFinder,
   type TrashResult,
 } from "../lib/backend";
+import { getIsProEntitled } from "../lib/entitlement";
 import type { DiskExplorerFileInfo } from "../lib/types/diskExplorer";
 import { analyzeDiskExplorerFolder, calculateSavingsBytes } from "../lib/aiDiskAnalyzer";
 
@@ -55,11 +56,16 @@ type DiskExplorerContextValue = {
   aiLoading: boolean;
   runAiInsight: () => Promise<void>;
   savingsBytes: number;
+  isDemoLimited: boolean;
+  maxDemoDepth: number;
+  currentDepth: number;
+  depthLimitReached: boolean;
 };
 
 const DiskExplorerContext = createContext<DiskExplorerContextValue | null>(null);
 
 export function DiskExplorerProvider({ children }: { children: ReactNode }) {
+  const MAX_DEMO_DEPTH = 2;
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([{ label: "~", path: "~" }]);
   const [currentPath, setCurrentPath] = useState("~");
   const [nodes, setNodes] = useState<DiskNode[]>([]);
@@ -77,6 +83,9 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const [aiLoading, setAiLoading] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
+  const isDemoLimited = !getIsProEntitled();
+  const currentDepth = Math.max(0, breadcrumbs.length - 1);
+  const depthLimitReached = isDemoLimited && currentDepth >= MAX_DEMO_DEPTH;
 
   const loadScan = useCallback(async (path: string) => {
     setLoading(true);
@@ -113,6 +122,11 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
 
   const navigateTo = useCallback(
     async (path: string, label: string) => {
+      const nextDepth = Math.max(0, breadcrumbs.length);
+      if (isDemoLimited && nextDepth > MAX_DEMO_DEPTH) {
+        setError(`DEMO_DEPTH_LIMIT:${MAX_DEMO_DEPTH}`);
+        return;
+      }
       setCurrentPath(path);
       setBreadcrumbs((prev) => [...prev, { label, path }]);
       setSelectedPaths([]);
@@ -120,7 +134,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       setAiSource("idle");
       await loadScan(path);
     },
-    [loadScan]
+    [MAX_DEMO_DEPTH, breadcrumbs.length, isDemoLimited, loadScan]
   );
 
   const navigateBreadcrumb = useCallback(
@@ -169,6 +183,9 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
 
   const trashSelected = useCallback(async (): Promise<TrashResult | null> => {
     if (selectedPaths.length === 0) return null;
+    if (!getIsProEntitled()) {
+      throw new Error("Penghapusan hanya tersedia untuk Pro.");
+    }
     const res = await movePathsToTrash(selectedPaths);
     setSelectedPaths([]);
     await loadScan(currentPath);
@@ -269,6 +286,10 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     aiLoading,
     runAiInsight,
     savingsBytes,
+    isDemoLimited,
+    maxDemoDepth: MAX_DEMO_DEPTH,
+    currentDepth,
+    depthLimitReached,
   };
 
   return <DiskExplorerContext.Provider value={value}>{children}</DiskExplorerContext.Provider>;

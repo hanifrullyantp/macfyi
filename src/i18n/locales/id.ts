@@ -314,6 +314,7 @@ export const id: MessageTree = {
     deleteOneConfirm: "Hapus entri aktivitas ini dari daftar?",
     clearAll: "Hapus semua",
     clearAllConfirm: "Hapus semua {n} entri aktivitas? Tindakan ini tidak dapat dibatalkan.",
+    proOnlyDelete: "Menghapus riwayat hanya tersedia untuk Pro. Membuka checkout…",
   },
   settings: {
     title: "Pengaturan",
@@ -515,6 +516,8 @@ export const id: MessageTree = {
     trashConfirm: "Pindahkan {count} item ke Tong Sampah?",
     trashConfirmRisky:
       "Beberapa item terpilih berlabel Waspada atau Berisiko. Item akan dipindahkan ke Tong Sampah (bisa dipulihkan), bukan dihapus permanen. Lanjutkan?",
+    proOnlyDelete: "Aksi hapus hanya tersedia untuk Pro. Membuka checkout…",
+    demoDepthLimit: "Mode demo hanya bisa menelusuri sampai {max} level folder. Upgrade ke Pro untuk membuka level lebih dalam.",
     modalTitle: "File terbesar",
     modalLoading: "Memuat daftar file…",
     modalEmpty: "Tidak ada file atau folder tidak dapat diakses.",

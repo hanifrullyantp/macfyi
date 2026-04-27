@@ -3,6 +3,7 @@ import { Bot, RefreshCw } from "lucide-react";
 import { DiskExplorerProvider, useDiskExplorerStore } from "../../store/diskExplorerStore";
 import { useI18n } from "../../i18n/context";
 import { useAppActivity } from "../../context/AppActivityContext";
+import { marketingCheckoutUrl } from "../../lib/marketingUrl";
 import { DiskExplorerBanner } from "./DiskExplorerBanner";
 import { DiskUsageBar } from "./DiskUsageBar";
 import { DiskExplorerBreadcrumbs } from "./Breadcrumbs";
@@ -18,6 +19,14 @@ function DiskExplorerInner() {
   const { registerActivity } = useAppActivity();
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const displayError = (() => {
+    if (!s.error) return null;
+    if (s.error.startsWith("DEMO_DEPTH_LIMIT:")) {
+      return t("diskExplorer.demoDepthLimit", { max: s.maxDemoDepth });
+    }
+    return s.error;
+  })();
+
   const exportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -38,6 +47,13 @@ function DiskExplorerInner() {
 
   const handleTrash = async () => {
     if (s.selectedPaths.length === 0) return;
+    if (!s.isDemoLimited) {
+      // continue
+    } else {
+      window.alert(t("diskExplorer.proOnlyDelete"));
+      window.open(marketingCheckoutUrl(), "_blank", "noopener,noreferrer");
+      return;
+    }
     const msg = t("diskExplorer.trashConfirm", { count: s.selectedPaths.length });
     if (!window.confirm(msg)) return;
     const risky = s.nodes.some(
@@ -105,9 +121,14 @@ function DiskExplorerInner() {
         </p>
       )}
 
-      {s.error ? (
+      {displayError ? (
         <p className="text-sm text-rose-300/90">
-          {t("diskExplorer.errorPrefix")} {s.error}
+          {t("diskExplorer.errorPrefix")} {displayError}
+        </p>
+      ) : null}
+      {s.depthLimitReached ? (
+        <p className="text-sm text-amber-200/90 rounded-lg border border-amber-500/25 bg-amber-950/25 px-3 py-2">
+          {t("diskExplorer.demoDepthLimit", { max: s.maxDemoDepth })}
         </p>
       ) : null}
 
@@ -135,6 +156,7 @@ function DiskExplorerInner() {
                 onToggle={s.toggleSelect}
                 onOpenDir={(n) => void s.navigateTo(n.path, n.displayName)}
                 onTopFiles={(p) => void s.openFileModal(p)}
+                blockDeepNavigation={s.depthLimitReached}
               />
             </div>
             <DiskActionBar

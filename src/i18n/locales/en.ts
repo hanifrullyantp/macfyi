@@ -310,6 +310,7 @@ export const en = {
     deleteOneConfirm: "Remove this activity entry from the list?",
     clearAll: "Clear all",
     clearAllConfirm: "Remove all {n} activity entries? This cannot be undone.",
+    proOnlyDelete: "Deleting history is available for Pro only. Opening checkout…",
   },
   settings: {
     title: "Settings",
@@ -510,6 +511,8 @@ export const en = {
     trashConfirm: "Move {count} item(s) to Trash?",
     trashConfirmRisky:
       "Some selected items are marked Caution or Risky. They will be moved to Trash (recoverable), not permanently deleted. Continue?",
+    proOnlyDelete: "Delete actions are available for Pro only. Opening checkout…",
+    demoDepthLimit: "Demo mode can browse up to {max} folder levels. Upgrade to Pro for deeper navigation.",
     modalTitle: "Largest files",
     modalLoading: "Loading file list…",
     modalEmpty: "No files found or folder not accessible.",
