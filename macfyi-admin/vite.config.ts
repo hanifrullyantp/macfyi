@@ -19,6 +19,7 @@ export default defineConfig({
   base,
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
+    dedupe: ["react", "react-dom"],
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
@@ -27,6 +28,8 @@ export default defineConfig({
     fs: {
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
+    /** Avoid clashing with landing `vite dev` (5173) when developing under `/admin` via proxy. */
+    ...(useSubpath ? { port: 5174, strictPort: true } : {}),
   },
   build: {
     outDir,

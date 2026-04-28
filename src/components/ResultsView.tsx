@@ -31,6 +31,7 @@ import { DelayedTooltip } from "./results/DelayedTooltip";
 import { FilterPopover } from "./results/FilterPopover";
 import { TriStateCheckbox, categoryTriState } from "./results/TriStateCheckbox";
 import { ScanSummaryDashboard } from "./results/ScanSummaryDashboard";
+import { CompactSummaryPanelV2 } from "./SummaryPanel/CompactSummaryPanelV2";
 import { ResultCardsGrid } from "./ScanResult/ResultCardsGrid";
 import {
   buildCardBucketsFromEnriched,
@@ -43,6 +44,8 @@ import { sendClientTelemetry } from "../lib/telemetry";
 import { getIsProEntitled } from "../lib/entitlement";
 import { marketingCheckoutUrl } from "../lib/marketingUrl";
 import { recordDemoCleanUsage, validateDemoClean } from "../lib/demoLimits";
+import { FEATURE_FLAGS } from "../lib/featureFlags";
+import { inferSummaryContext, transformToSummaryData } from "../lib/transformSummaryData";
 
 interface ResultsViewProps {
   results: ScanResult[];
@@ -335,6 +338,19 @@ export const ResultsView = ({
   const cardBuckets = useMemo(
     () => cardBucketsToList(buildCardBucketsFromEnriched(enriched)),
     [enriched]
+  );
+  const compactSummaryContext = useMemo(
+    () => inferSummaryContext(title, results.map((r) => r.category)),
+    [title, results]
+  );
+  const compactSummaryData = useMemo(
+    () =>
+      transformToSummaryData(enriched, {
+        diskTotalGb,
+        freeGb,
+        context: compactSummaryContext,
+      }),
+    [enriched, diskTotalGb, freeGb, compactSummaryContext]
   );
   const safeCleanAllIds = useMemo(() => getSafeCleanItemIds(cardBuckets), [cardBuckets]);
   const safeCleanAllBytes = useMemo(
@@ -749,7 +765,19 @@ export const ResultsView = ({
   if (stage === "summary") {
     return (
       <div className="h-full min-h-0 flex flex-col overflow-hidden">
-        <div className="shrink-0 max-h-[min(52vh,480px)] overflow-y-auto custom-scrollbar border-b border-white/10">
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar border-b border-white/10 px-4 py-4">
+          <div
+            className={
+              FEATURE_FLAGS.USE_COMPACT_SUMMARY_PANEL
+                ? "block shrink-0"
+                : "hidden shrink-0"
+            }
+          >
+            <CompactSummaryPanelV2
+              data={compactSummaryData}
+              context={compactSummaryContext}
+            />
+          </div>
           <ResultCardsGrid
             buckets={cardBuckets}
             onReviewCard={(b) => {
@@ -762,26 +790,32 @@ export const ResultsView = ({
             safeCleanAllIds={safeCleanAllIds}
             safeCleanAllBytes={safeCleanAllBytes}
           />
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-          <ScanSummaryDashboard
-            title={title}
-            enriched={enriched}
-            results={results}
-            recommendedBytes={recommendedBytes}
-            diskTotalGb={diskTotalGb}
-            freeGb={freeGb}
-            showWhy={showWhy}
-            onToggleWhy={() => setShowWhy((v) => !v)}
-            onReview={() => {
-              setReviewCardScopeIds(null);
-              setReviewCardLabel(null);
-              setStage("review");
-            }}
-            onCleanSafely={() =>
-              openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
+          <div
+            className={
+              FEATURE_FLAGS.USE_COMPACT_SUMMARY_PANEL
+                ? "hidden"
+                : "block"
             }
-          />
+          >
+            <ScanSummaryDashboard
+              title={title}
+              enriched={enriched}
+              results={results}
+              recommendedBytes={recommendedBytes}
+              diskTotalGb={diskTotalGb}
+              freeGb={freeGb}
+              showWhy={showWhy}
+              onToggleWhy={() => setShowWhy((v) => !v)}
+              onReview={() => {
+                setReviewCardScopeIds(null);
+                setReviewCardLabel(null);
+                setStage("review");
+              }}
+              onCleanSafely={() =>
+                openCleanSheet(new Set(enriched.filter((x) => x.item.recommended).map((x) => x.item.id)))
+              }
+            />
+          </div>
         </div>
       </div>
     );

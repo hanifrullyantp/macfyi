@@ -4,13 +4,21 @@ SPA React + Vite; halaman sumber sebagian besar dari [`../admin-web`](../admin-w
 
 ## Deploy subdomain (opsional): `adm.macfyi.com`
 
-1. **Build lokal / CI:** `npm ci && npm run build` — output `dist/` dengan `base: /` (bukan di bawah `/admin`).
-2. **Vercel:** proyek dengan **Root Directory** = `macfyi-admin`, **Build** = `npm run build`, **Output** = `dist`, **Environment** = `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`.
-3. **Domain** → **`adm.macfyi.com`** (CNAME / A sesuai Vercel).
-4. **Supabase Auth** → *Redirect URLs*: `https://adm.macfyi.com` dan `https://adm.macfyi.com/**`
+1. **Build lokal / CI:** `npm ci && npm run build` — output `dist/` dengan `base: /` (bukan di bawah `/admin`). Jangan set `VITE_USE_ADMIN_SUBPATH` di deploy ini.
+2. **Vercel (penting):** **Root Directory** harus **`macfyi-admin`** (folder yang memuat `package.json` ini), **bukan** root monorepo dan **bukan** folder `admin-web` lama. Tanpa itu, `npm install` tidak memasang `react` di tempat yang benar dan build bisa gagal dengan error **`react/jsx-runtime`**.
+3. **Build** = `npm run build`, **Output** = `dist`, **Environment** = `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. File [`vercel.json`](./vercel.json) memakai `npm ci` + rewrite SPA.
+4. **Domain** → **`adm.macfyi.com`** (CNAME / A sesuai Vercel).
+5. **Supabase Auth** → *Redirect URLs*: `https://adm.macfyi.com` dan `https://adm.macfyi.com/**`
 
 Lihat juga [`../docs/ADMIN_SUBDOMAIN.md`](../docs/ADMIN_SUBDOMAIN.md).
 
 ## Bersama landing: path `macfyi.com/admin`
 
 Dari `macfyi-landing-page`, **`npm run build`** (default) sudah memanggil `build:admin` → output ke `macfyi-landing-page/dist/admin` dengan `VITE_USE_ADMIN_SUBPATH=1` (`base: /admin/`). Tanpa proyek subdomain, konsol tampil di path itu.
+
+### Dev: landing + admin di `/admin`
+
+1. Terminal A — `cd macfyi-landing-page && npm run dev` (biasanya `http://localhost:5173`).
+2. **Pilih salah satu:**
+   - **Live HMR:** Terminal B — `cd macfyi-admin && VITE_USE_ADMIN_SUBPATH=1 npm run dev` (port **5174**); landing mem-**proxy** `/admin` ke sini.
+   - **Satu terminal:** dari `macfyi-landing-page` jalankan `npm run build:admin` sekali, lalu `npm run dev` — `/admin` dilayani dari `dist/admin` jika port 5174 tidak aktif.

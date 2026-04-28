@@ -626,12 +626,12 @@ export function LandingApp() {
 
   /**
    * Konsol admin: default buka `/admin/` di origin yang sama (bundle dari `npm run build`).
-   * Opsional `VITE_ADMIN_APP_URL` (mis. https://adm.macfyi.com) untuk tab ke deploy subdomain.
+   * Hanya jika `VITE_ADMIN_CONSOLE_EXTERNAL_URL` diset (mis. https://adm.macfyi.com) tab membuka host itu.
    */
   const openAdminConsole = useCallback(() => {
-    const fromEnv = import.meta.env.VITE_ADMIN_APP_URL?.trim().replace(/\/$/, "");
-    if (fromEnv && fromEnv.length > 0) {
-      window.open(`${fromEnv}/`, "_blank", "noopener,noreferrer");
+    const external = import.meta.env.VITE_ADMIN_CONSOLE_EXTERNAL_URL?.trim().replace(/\/$/, "");
+    if (external && external.length > 0) {
+      window.open(`${external}/`, "_blank", "noopener,noreferrer");
       return;
     }
     const origin = window.location.origin.replace(/\/$/, "");
