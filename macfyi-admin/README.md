@@ -6,7 +6,7 @@ SPA React + Vite; halaman sumber sebagian besar dari [`../admin-web`](../admin-w
 
 1. **Build lokal / CI:** `npm ci && npm run build` — output `dist/` dengan `base: /` (bukan di bawah `/admin`). Jangan set `VITE_USE_ADMIN_SUBPATH` di deploy ini.
 2. **Vercel (penting):** **Root Directory** harus **`macfyi-admin`** (folder yang memuat `package.json` ini), **bukan** root monorepo dan **bukan** folder `admin-web` lama. Tanpa itu, `npm install` tidak memasang `react` di tempat yang benar dan build bisa gagal dengan error **`react/jsx-runtime`**.
-3. **Build** = `npm run build`, **Output** = `dist`, **Environment** = `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. File [`vercel.json`](./vercel.json) memakai `npm ci` + rewrite SPA.
+3. **Build** = `npm run build`, **Output** = `dist`, **Environment** = `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`. [`vercel.json`](./vercel.json) menjalankan **`npm ci` di sini dan `npm ci --prefix ../admin-web`**, karena [`src/bridges/adminWebPages.ts`](./src/bridges/adminWebPages.ts) mengimpor dari **`admin-web`** — tanpa `node_modules` di `admin-web`, Rollup gagal memuat `@supabase/supabase-js` dan paket lain dari sumber itu.
 4. **Domain** → **`adm.macfyi.com`** (CNAME / A sesuai Vercel).
 5. **Supabase Auth** → *Redirect URLs*: `https://adm.macfyi.com` dan `https://adm.macfyi.com/**`
 

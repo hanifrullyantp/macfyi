@@ -1,4 +1,4 @@
 {
-  "installCommand": "npm ci",
+  "installCommand": "npm ci && npm ci --prefix ../admin-web",
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

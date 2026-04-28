@@ -12,7 +12,7 @@ Jika hanya butuh perubahan landing tanpa build admin: `npm run build:landing-onl
 
 Deploy proyek terpisah dengan **Root Directory** = [`macfyi-admin`](../macfyi-admin) (bukan root repo, bukan [`admin-web`](../admin-web) kecuali Anda memang masih memelihara proyek lama itu). `npm run build` bawaan memakai **`base: /`** → output `macfyi-admin/dist/`. Vercel: domain **`adm.macfyi.com`**, env `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY`.
 
-**Build Vercel gagal (`react/jsx-runtime`):** biasanya **Root Directory** salah sehingga dependensi tidak terpasang di folder build. Atur ke `macfyi-admin` dan redeploy; [`macfyi-admin/vercel.json`](../macfyi-admin/vercel.json) memaksa `npm ci` di root proyek itu.
+**Build Vercel gagal (`react/jsx-runtime` atau `@supabase/supabase-js`):** **Root Directory** harus `macfyi-admin`. Konsol juga mengimpor sumber dari [`admin-web`](../admin-web) lewat bridge; [`macfyi-admin/vercel.json`](../macfyi-admin/vercel.json) menjalankan **`npm ci --prefix ../admin-web`** agar `admin-web/node_modules` ada saat Rollup memproses file itu.
 
 - Untuk membuat tombol “Konsol admin” di landing membuka tab ke subdomain (bukan `/admin/`), set di build landing:  
   **`VITE_ADMIN_CONSOLE_EXTERNAL_URL=https://adm.macfyi.com`**  

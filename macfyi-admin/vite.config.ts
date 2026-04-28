@@ -19,7 +19,7 @@ export default defineConfig({
   base,
   plugins: [react(), tailwindcss(), viteSingleFile()],
   resolve: {
-    dedupe: ["react", "react-dom"],
+    dedupe: ["react", "react-dom", "@supabase/supabase-js"],
     alias: {
       "@": path.resolve(__dirname, "src"),
     },
