@@ -1,4 +1,5 @@
 .env
+.env.local
 .env.*.local
 
 # Secrets integrasi lokal (isi manual; jangan commit)

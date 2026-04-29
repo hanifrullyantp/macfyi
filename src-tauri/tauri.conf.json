@@ -61,9 +61,6 @@
       "minimumSystemVersion": "11.0",
       "signingIdentity": null
     },
-    "resources": [
-      "resources/llama/*",
-      "resources/models.json"
-    ]
+    "resources": []
   }
 }

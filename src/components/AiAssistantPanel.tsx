@@ -1,30 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Bot, Download, Trash2, X, Loader2 } from "lucide-react";
-import type { AiItemContext, AiRequest, AiRiskLabel, ScanResult } from "../types";
-import {
-  aiCancelDownload,
-  aiCancelGeneration,
-  aiDeleteModel,
-  aiDownloadModel,
-  aiEnable,
-  aiGenerate,
-  aiModelsDir,
-  aiOpenPanel,
-  aiRuntimeStatus,
-  aiSetModel,
-  aiStatus,
-  aiVerifyModel,
-  onAiDownloadProgress,
-  onAiToken,
-  type AiModelId,
-  type AiStatus,
-} from "../lib/backend";
-import { kbAnswer } from "../lib/ai-kb";
+import type { AiItemContext, AiRiskLabel, ScanResult } from "../types";
+import { askAI, type AIProvider, type ChatMessage } from "../lib/aiService";
 
-type ChatMessage =
-  | { role: "user"; text: string }
-  | { role: "ai"; text: string; label?: "local" | "kb" };
+const PROVIDER_LABEL: Record<AIProvider, string> = {
+  gemini: "Gemini AI",
+  groq: "Groq AI",
+  kb: "Mode Panduan",
+};
+
+const PROVIDER_COLOR: Record<AIProvider, string> = {
+  gemini: "text-blue-400",
+  groq: "text-orange-400",
+  kb: "text-yellow-400",
+};
 
 function riskFromBand(band: "safe" | "caution" | "risky"): AiRiskLabel {
   if (band === "safe") return "SAFE";
@@ -59,163 +48,87 @@ export function AiAssistantPanel({
   activeContext: AiItemContext | null;
   scanSummary?: ScanResult[] | null;
 }) {
-  const [status, setStatus] = useState<AiStatus | null>(null);
-  const [runtimeState, setRuntimeState] = useState<string>("Unloaded");
-  const [downloadPct, setDownloadPct] = useState<number | null>(null);
-  const [downloading, setDownloading] = useState(false);
-  const [verifying, setVerifying] = useState(false);
-  const [modelsDir, setModelsDir] = useState<string | null>(null);
-
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: "ai",
-      text:
-        "Saya bisa jelaskan item hasil scan dengan privasi terjaga. Path file penuh tidak dikirim.\n\nPilih Quick Action di bawah atau ketik pertanyaan Anda.",
-      label: "kb",
-    },
-  ]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [activeModel, setActiveModel] = useState<AiModelId>("lite");
-
-  const currentContext = useMemo(() => {
-    return (
-      activeContext ?? {
-        category: "cache",
-        sizeBytes: 0,
-        riskLabel: "SAFE" as const,
-        shortExplanation: scanSummary?.[0]?.recommendation,
-      }
-    );
-  }, [activeContext, scanSummary]);
-
+  const [loading, setLoading] = useState(false);
+  const [provider, setProvider] = useState<AIProvider>("gemini");
+  const [remaining, setRemaining] = useState<number | null>(null);
+  const [limit, setLimit] = useState<number | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
+  const [rateLimitMsg, setRateLimitMsg] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (messages.length > 0) return;
+    setMessages([
+      {
+        id: "welcome",
+        role: "assistant",
+        content:
+          "Halo! Saya Macfyi AI. Saya bantu jelaskan hasil scan dan saran pembersihan aman.\n\nPath file disamarkan sebelum dikirim ke server.",
+        provider: "gemini",
+        timestamp: new Date(),
+      },
+    ]);
+  }, [messages.length]);
+
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, busy, downloading]);
+  }, [messages, loading]);
 
-  const refreshStatus = async () => {
-    try {
-      const s = await aiStatus();
-      setStatus(s);
-      setActiveModel(s.selectedModel);
-      const r = await aiRuntimeStatus();
-      setRuntimeState(r.state);
-    } catch {
-      // ignore
-    }
-  };
-
-  useEffect(() => {
-    void refreshStatus();
-    void aiOpenPanel().catch(() => {});
-    void aiModelsDir().then(setModelsDir).catch(() => {});
-    const id = window.setInterval(() => void refreshStatus(), 3000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    let unlisten1: (() => void) | null = null;
-    let unlisten2: (() => void) | null = null;
-    onAiDownloadProgress((p) => {
-      setDownloading(true);
-      setDownloadPct(p.pct);
-    }).then((u) => (unlisten1 = u));
-    onAiToken((tok) => {
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (!last || last.role !== "ai") return [...prev, { role: "ai", text: tok.text, label: "local" }];
-        return [...prev.slice(0, -1), { ...last, text: last.text + tok.text }];
-      });
-    }).then((u) => (unlisten2 = u));
-    return () => {
-      unlisten1?.();
-      unlisten2?.();
+  const buildContext = useCallback((): string | undefined => {
+    const ctx = activeContext ?? {
+      category: "cache",
+      sizeBytes: 0,
+      riskLabel: "SAFE" as const,
+      shortExplanation: scanSummary?.[0]?.recommendation,
     };
-  }, []);
+    const parts = [`Kategori: ${ctx.category}`, `Risk: ${ctx.riskLabel}`, `Ukuran: ${ctx.sizeBytes}`];
+    if (ctx.appHint) parts.push(`App: ${ctx.appHint}`);
+    if (ctx.basenameHint) parts.push(`Nama: ${ctx.basenameHint}`);
+    if (ctx.shortExplanation) parts.push(`Catatan: ${ctx.shortExplanation}`);
+    return parts.join(" | ");
+  }, [activeContext, scanSummary]);
 
-  const canUseLocalAi =
-    status?.enabled &&
-    !status?.memoryPressureHigh &&
-    (activeModel === "lite" ? status?.liteInstalled : status?.betterInstalled);
-
-  const runKb = (req: AiRequest) => {
-    const text = kbAnswer(req);
-    setMessages((prev) => [...prev, { role: "ai", text, label: "kb" }]);
-  };
-
-  const ask = async (req: AiRequest) => {
-    setBusy(true);
-    const userLabel =
-      req.questionType === "custom"
-        ? (req.customQuestion ?? "")
-        : ({
-            what_is_this: "Apa ini?",
-            why_recommended: "Kenapa disarankan?",
-            is_it_safe: "Aman dibersihkan?",
-            impact: "Apa dampaknya?",
-            custom: "",
-          }[req.questionType] ?? "");
-
-    setMessages((prev) => [...prev, { role: "user", text: userLabel }]);
-
-    const useLocal = canUseLocalAi;
-    if (useLocal) {
-      setMessages((prev) => [...prev, { role: "ai", text: "", label: "local" }]);
-    }
+  const send = useCallback(async (question: string) => {
+    const msg = question.trim();
+    if (!msg || loading) return;
+    setRateLimitMsg(null);
+    setMessages((prev) => [...prev, { id: `u_${Date.now()}`, role: "user", content: msg, timestamp: new Date() }]);
+    setLoading(true);
+    setInput("");
     try {
-      if (!useLocal) {
-        runKb(req);
-        return;
-      }
-      await aiGenerate(req);
-    } catch (e) {
-      setMessages((prev) => {
-        const last = prev[prev.length - 1];
-        if (last?.role === "ai" && last.text.trim() === "") return prev.slice(0, -1);
-        return prev;
-      });
-      runKb(req);
+      const result = await askAI(msg, buildContext());
+      setProvider(result.provider);
+      setRemaining(result.remainingToday);
+      setLimit(result.dailyLimit);
+      setIsDemo(result.isDemo);
+      if (result.error === "RATE_LIMIT") setRateLimitMsg(result.response);
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `a_${Date.now()}`,
+          role: "assistant",
+          content: result.response,
+          provider: result.provider,
+          timestamp: new Date(),
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `e_${Date.now()}`,
+          role: "assistant",
+          content: "Terjadi kesalahan. Coba lagi sebentar.",
+          provider: "kb",
+          timestamp: new Date(),
+        },
+      ]);
     } finally {
-      setBusy(false);
-      void refreshStatus();
+      setLoading(false);
     }
-  };
-
-  const quickAsk = (questionType: AiRequest["questionType"]) =>
-    ask({
-      questionType,
-      itemContext: currentContext,
-    });
-
-  const download = async (modelId: AiModelId) => {
-    setDownloadPct(0);
-    setDownloading(true);
-    setVerifying(false);
-    try {
-      await aiDownloadModel(modelId);
-      setVerifying(true);
-    } finally {
-      setDownloading(false);
-      setDownloadPct(null);
-      void refreshStatus();
-    }
-  };
-
-  const verify = async (modelId: AiModelId) => {
-    setVerifying(true);
-    try {
-      await aiVerifyModel(modelId);
-    } finally {
-      void refreshStatus();
-      // Let the UI show "verifying" briefly; it will clear via effect below once installed is true.
-    }
-  };
-
-  const isInstalled = activeModel === "lite" ? Boolean(status?.liteInstalled) : Boolean(status?.betterInstalled);
-  useEffect(() => {
-    if (verifying && isInstalled) setVerifying(false);
-  }, [verifying, isInstalled]);
+  }, [buildContext, loading]);
 
   return (
     <motion.div
@@ -224,213 +137,55 @@ export function AiAssistantPanel({
       exit={{ x: 300, opacity: 0 }}
       className="fixed top-4 right-4 bottom-4 w-[360px] bg-[#12141a]/95 backdrop-blur-sm border border-white/20 rounded-2xl flex flex-col z-[320] shadow-2xl overflow-hidden"
     >
-      <div className="flex items-center justify-between p-3 border-b border-white/10 shrink-0">
-        <div className="flex items-center gap-2">
-          <Bot size={18} className="text-emerald-400" />
-          <span className="font-semibold text-white text-sm">Local AI Assistant</span>
+      <div className="flex items-center justify-between p-3 border-b border-white/10 shrink-0 bg-gradient-to-r from-blue-600/10 to-indigo-600/10">
+        <div>
+          <p className="text-sm font-semibold text-white">Macfyi AI</p>
+          <p className={`text-[10px] ${PROVIDER_COLOR[provider]}`}>{loading ? "Sedang berpikir..." : PROVIDER_LABEL[provider]}</p>
         </div>
-        <button type="button" onClick={onClose} className="p-1.5 text-white/50 hover:text-white transition-colors">
-          <X size={18} />
-        </button>
+        <button type="button" onClick={onClose} className="w-7 h-7 rounded-lg bg-white/8 hover:bg-white/15 text-gray-300">×</button>
       </div>
 
-      <div className="px-3 py-2 border-b border-white/5 bg-white/[0.03] space-y-1 shrink-0">
-        <div className="flex items-center justify-between text-[11px] text-white/55">
-          <span>Status</span>
-          <span className="text-white/75">
-            {status?.enabled ? "AI On" : "AI Off"} · {activeModel} · {runtimeState}
-          </span>
-        </div>
-        <p className="text-[10px] text-white/45 leading-snug">
-          AI lokal membutuhkan RAM. Mode <b>Lite</b> disarankan untuk Mac 8GB. Model disimpan di komputer Anda (sekali download, bisa dipakai lagi).
-        </p>
-        {modelsDir ? (
-          <p className="text-[10px] text-white/35 leading-snug font-mono truncate" title={modelsDir}>
-            {modelsDir}
-          </p>
-        ) : null}
-        {status?.memoryPressureHigh && (
-          <p className="text-[10px] text-amber-300/90">
-            AI dimatikan sementara untuk menjaga performa (memory pressure tinggi). Jawaban memakai Quick Answer.
-          </p>
-        )}
-      </div>
+      {isDemo && <p className="px-3 py-2 text-[11px] text-yellow-400 bg-yellow-500/10 border-b border-yellow-500/20">Mode Demo: {remaining ?? 0}/{limit ?? 0} pertanyaan tersisa hari ini.</p>}
+      <p className="px-3 py-2 text-[10px] text-white/50 border-b border-white/10">Path file disamarkan sebelum dikirim ke server.</p>
 
-      <div className="p-3 border-b border-white/10 shrink-0 space-y-2">
-        <div className="flex items-center justify-between">
-          <label className="text-xs text-white/70">Enable AI lokal</label>
-          <input
-            type="checkbox"
-            checked={Boolean(status?.enabled)}
-            onChange={(e) => void aiEnable(e.target.checked).then(refreshStatus)}
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void aiSetModel("lite").then(refreshStatus)}
-            className={`px-2 py-1 rounded-lg text-[11px] border ${
-              activeModel === "lite" ? "bg-white/10 border-white/20 text-white" : "border-white/10 text-white/60"
-            }`}
-          >
-            Lite (3B)
-          </button>
-          <button
-            type="button"
-            onClick={() => void aiSetModel("better").then(refreshStatus)}
-            className={`px-2 py-1 rounded-lg text-[11px] border ${
-              activeModel === "better" ? "bg-white/10 border-white/20 text-white" : "border-white/10 text-white/60"
-            }`}
-            title="Better membutuhkan RAM lebih besar"
-          >
-            Better (7B)
-          </button>
-          <button
-            type="button"
-            onClick={() => void aiDeleteModel().then(refreshStatus)}
-            className="ml-auto p-1.5 rounded-lg border border-white/10 text-white/55 hover:text-white hover:bg-white/5"
-            title="Delete model files"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {activeModel === "lite" && !status?.liteInstalled && (
-            <button
-              type="button"
-              onClick={() => void download("lite")}
-              className="btn-secondary text-xs inline-flex items-center gap-2"
-              disabled={downloading || verifying}
-            >
-              <Download size={14} /> Download Lite
-            </button>
-          )}
-          {activeModel === "better" && !status?.betterInstalled && (
-            <button
-              type="button"
-              onClick={() => void download("better")}
-              className="btn-secondary text-xs inline-flex items-center gap-2"
-              disabled={downloading || verifying}
-            >
-              <Download size={14} /> Download Better
-            </button>
-          )}
-          {downloading && (
-            <button
-              type="button"
-              onClick={() => void aiCancelDownload().catch(() => {})}
-              className="text-xs text-white/60 underline"
-            >
-              Cancel
-            </button>
-          )}
-          {downloading && downloadPct != null && (
-            <span className="text-[11px] text-white/55 inline-flex items-center gap-1">
-              <Loader2 size={12} className="animate-spin" /> {downloadPct.toFixed(0)}%
-            </span>
-          )}
-          {verifying && (
-            <span className="text-[11px] text-white/55 inline-flex items-center gap-1">
-              <Loader2 size={12} className="animate-spin" /> Verifying…
-            </span>
-          )}
-          {!downloading && !isInstalled && !status?.downloadInProgress && (
-            <button
-              type="button"
-              onClick={() => void verify(activeModel)}
-              className="text-xs text-white/60 underline"
-              disabled={verifying}
-              title="Verify local model files (no re-download if valid)"
-            >
-              Verify local files
-            </button>
-          )}
-        </div>
+      <div className="p-3 grid grid-cols-2 gap-2">
+        <button type="button" className="btn-secondary text-xs" onClick={() => void send("Apa ini?")}>Apa ini?</button>
+        <button type="button" className="btn-secondary text-xs" onClick={() => void send("Kenapa disarankan?")}>Kenapa disarankan?</button>
+        <button type="button" className="btn-secondary text-xs" onClick={() => void send("Aman dibersihkan?")}>Aman dibersihkan?</button>
+        <button type="button" className="btn-secondary text-xs" onClick={() => void send("Apa dampaknya?")}>Dampaknya?</button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => void quickAsk("what_is_this")} className="btn-secondary text-xs">
-            Apa ini?
-          </button>
-          <button type="button" onClick={() => void quickAsk("why_recommended")} className="btn-secondary text-xs">
-            Kenapa disarankan?
-          </button>
-          <button type="button" onClick={() => void quickAsk("is_it_safe")} className="btn-secondary text-xs">
-            Aman dibersihkan?
-          </button>
-          <button type="button" onClick={() => void quickAsk("impact")} className="btn-secondary text-xs">
-            Dampaknya?
-          </button>
-        </div>
-
-        {messages.map((m, i) => (
-          <div key={i} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
-            <div
-              className={`max-w-[92%] p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${
-                m.role === "user"
-                  ? "bg-blue-600 text-white rounded-tr-none"
-                  : "bg-white/10 text-white/90 rounded-tl-none border border-white/10"
-              }`}
-            >
-              {m.text || (busy && m.role === "ai" ? "…" : "")}
+        {messages.map((m) => (
+          <div key={m.id} className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}>
+            <div className={`max-w-[92%] p-3 rounded-2xl text-xs leading-relaxed whitespace-pre-line ${m.role === "user" ? "bg-blue-600 text-white rounded-tr-none" : "bg-white/10 text-white/90 rounded-tl-none border border-white/10"}`}>
+              {m.content}
             </div>
-            {m.role === "ai" && m.label && (
-              <div className="text-[10px] text-white/35 mt-1">{m.label === "local" ? "Local AI" : "Quick Answer (No AI)"}</div>
-            )}
+            {m.role === "assistant" && m.provider && <div className={`text-[10px] mt-1 ${PROVIDER_COLOR[m.provider]}`}>via {PROVIDER_LABEL[m.provider]}</div>}
           </div>
         ))}
+        {loading && <p className="text-xs text-white/45">Menyusun jawaban...</p>}
+        {rateLimitMsg && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/25 rounded-xl p-2">{rateLimitMsg}</p>}
         <div ref={endRef} />
       </div>
 
-      <div className="p-3 border-t border-white/10 shrink-0">
+      <div className="p-3 border-t border-white/10">
         <div className="relative">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && input.trim()) {
-                void ask({
-                  questionType: "custom",
-                  customQuestion: input.trim(),
-                  itemContext: currentContext,
-                });
-                setInput("");
-              }
+              if (e.key === "Enter" && input.trim()) void send(input);
             }}
-            placeholder="Tanya AI (lokal)…"
-            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-xs text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-emerald-400/30"
-            disabled={busy}
+            placeholder="Tanya Macfyi AI..."
+            className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 pr-10 text-xs text-white placeholder:text-white/30 focus:outline-none"
+            disabled={loading}
           />
-          <button
-            type="button"
-            onClick={() => {
-              if (!input.trim()) return;
-              void ask({
-                questionType: "custom",
-                customQuestion: input.trim(),
-                itemContext: currentContext,
-              });
-              setInput("");
-            }}
-            className="absolute right-2 top-1.5 p-1 text-emerald-300 hover:text-emerald-200"
-            disabled={busy}
-            title="Kirim"
-          >
-            {busy ? <Loader2 size={16} className="animate-spin" /> : <span className="text-xs font-bold">Go</span>}
+          <button type="button" onClick={() => void send(input)} className="absolute right-2 top-1.5 p-1 text-emerald-300 hover:text-emerald-200" disabled={loading}>
+            <span className="text-xs font-bold">Go</span>
           </button>
         </div>
-
-        <button
-          type="button"
-          onClick={() => void aiCancelGeneration().catch(() => {})}
-          className="mt-2 text-[11px] text-white/45 hover:text-white/70 underline"
-        >
-          Cancel generation
-        </button>
       </div>
     </motion.div>
   );
 }
-

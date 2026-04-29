@@ -10,7 +10,6 @@ import type {
   ScanProgress,
   UninstallAppEntry,
   TrashListItem,
-  AiRequest,
 } from "../types";
 import type { DiskExplorerFileInfo, DiskExplorerVolume, DiskNode } from "./types/diskExplorer";
 
@@ -26,38 +25,6 @@ export interface TrashResult {
   succeeded: string[];
   failed: { path: string; message: string }[];
 }
-
-// --- Local AI (Tauri commands) ---
-export type AiModelId = "lite" | "better";
-
-export type AiStatus = {
-  enabled: boolean;
-  selectedModel: AiModelId;
-  liteInstalled: boolean;
-  betterInstalled: boolean;
-  downloadInProgress: boolean;
-  panelOpen: boolean;
-  memoryPressureHigh: boolean;
-};
-
-export type AiDownloadProgress = {
-  modelId: AiModelId;
-  fileName: string;
-  bytesDownloaded: number;
-  bytesTotal: number;
-  pct: number;
-};
-
-export type AiRuntimeStatus = {
-  state: "Unloaded" | "Loading" | "Loaded" | "Generating" | string;
-  modelId: string;
-  port?: number | null;
-};
-
-export type AiVerifyResult = {
-  modelId: AiModelId;
-  ok: boolean;
-};
 
 interface FileItemRaw {
   id: string;
@@ -154,72 +121,6 @@ export function onScanProgress(
 ): Promise<UnlistenFn> {
   return listen<ScanProgress>("scan_progress", (event) => {
     callback(event.payload);
-  });
-}
-
-export async function aiStatus(): Promise<AiStatus> {
-  return await invoke<AiStatus>("ai_status");
-}
-
-export async function aiEnable(enabled: boolean): Promise<void> {
-  await invoke<void>("ai_enable", { enabled });
-}
-
-export async function aiSetModel(modelId: AiModelId): Promise<void> {
-  await invoke<void>("ai_set_model", { modelId });
-}
-
-export async function aiDownloadModel(modelId: AiModelId): Promise<void> {
-  await invoke<void>("ai_download_model", { modelId });
-}
-
-export async function aiCancelDownload(): Promise<void> {
-  await invoke<void>("ai_cancel_download");
-}
-
-export async function aiDeleteModel(modelId?: AiModelId): Promise<void> {
-  await invoke<void>("ai_delete_model", { modelId });
-}
-
-export async function aiModelsDir(): Promise<string> {
-  return await invoke<string>("ai_models_dir");
-}
-
-export async function aiVerifyModel(modelId: AiModelId): Promise<AiVerifyResult> {
-  return await invoke<AiVerifyResult>("ai_verify_model", { modelId });
-}
-
-export async function aiOpenPanel(): Promise<void> {
-  await invoke<void>("ai_open_panel");
-}
-
-export async function aiClosePanel(): Promise<void> {
-  await invoke<void>("ai_close_panel");
-}
-
-export async function aiCancelGeneration(): Promise<void> {
-  await invoke<void>("ai_cancel_generation");
-}
-
-export function onAiDownloadProgress(callback: (p: AiDownloadProgress) => void): Promise<UnlistenFn> {
-  return listen<AiDownloadProgress>("ai:download_progress", (event) => callback(event.payload));
-}
-
-export function onAiToken(callback: (token: { text: string }) => void): Promise<UnlistenFn> {
-  return listen<{ text: string }>("ai:token", (event) => callback(event.payload));
-}
-
-export async function aiRuntimeStatus(): Promise<AiRuntimeStatus> {
-  return await invoke<AiRuntimeStatus>("ai_runtime_status");
-}
-
-export async function aiGenerate(request: AiRequest): Promise<void> {
-  await invoke<void>("ai_generate", {
-    request: {
-      questionType: request.questionType,
-      customQuestion: request.customQuestion,
-      itemContext: request.itemContext,
-    },
   });
 }
 

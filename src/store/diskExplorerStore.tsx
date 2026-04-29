@@ -21,7 +21,7 @@ import {
 } from "../lib/backend";
 import { getIsProEntitled } from "../lib/entitlement";
 import type { DiskExplorerFileInfo } from "../lib/types/diskExplorer";
-import { analyzeDiskExplorerFolder, calculateSavingsBytes } from "../lib/aiDiskAnalyzer";
+import { askAI } from "../lib/aiService";
 
 export type Breadcrumb = { label: string; path: string };
 
@@ -31,6 +31,8 @@ type DiskExplorerContextValue = {
   nodes: DiskNode[];
   loading: boolean;
   hasScanned: boolean;
+  lastScannedAt: Date | null;
+  movingToTrash: boolean;
   error: string | null;
   fdaOk: boolean | null;
   volume: { totalBytes: number; usedBytes: number; freeBytes: number } | null;
@@ -39,6 +41,7 @@ type DiskExplorerContextValue = {
   clearSelection: () => void;
   selectAllSafe: () => void;
   refreshAll: () => Promise<void>;
+  scan: (path: string, force?: boolean) => Promise<void>;
   startInitialScan: () => Promise<void>;
   navigateTo: (path: string, label: string) => Promise<void>;
   navigateBreadcrumb: (index: number) => Promise<void>;
@@ -52,7 +55,7 @@ type DiskExplorerContextValue = {
   openFileModal: (path: string) => Promise<void>;
   closeFileModal: () => void;
   aiText: string;
-  aiSource: "idle" | "local" | "kb";
+  aiSource: "idle" | "cloud" | "kb";
   aiLoading: boolean;
   runAiInsight: () => Promise<void>;
   savingsBytes: number;
@@ -64,22 +67,46 @@ type DiskExplorerContextValue = {
 
 const DiskExplorerContext = createContext<DiskExplorerContextValue | null>(null);
 
+type DiskExplorerSessionCache = {
+  breadcrumbs: Breadcrumb[];
+  currentPath: string;
+  nodes: DiskNode[];
+  hasScanned: boolean;
+  lastScannedAt: number | null;
+  fdaOk: boolean | null;
+  volume: { totalBytes: number; usedBytes: number; freeBytes: number } | null;
+};
+
+let sessionCache: DiskExplorerSessionCache = {
+  breadcrumbs: [{ label: "~", path: "~" }],
+  currentPath: "~",
+  nodes: [],
+  hasScanned: false,
+  lastScannedAt: null,
+  fdaOk: null,
+  volume: null,
+};
+
 export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const MAX_DEMO_DEPTH = 2;
-  const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>([{ label: "~", path: "~" }]);
-  const [currentPath, setCurrentPath] = useState("~");
-  const [nodes, setNodes] = useState<DiskNode[]>([]);
+  const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>(sessionCache.breadcrumbs);
+  const [currentPath, setCurrentPath] = useState(sessionCache.currentPath);
+  const [nodes, setNodes] = useState<DiskNode[]>(sessionCache.nodes);
   const [loading, setLoading] = useState(false);
-  const [hasScanned, setHasScanned] = useState(false);
+  const [hasScanned, setHasScanned] = useState(sessionCache.hasScanned);
+  const [lastScannedAt, setLastScannedAt] = useState<Date | null>(
+    sessionCache.lastScannedAt ? new Date(sessionCache.lastScannedAt) : null
+  );
   const [error, setError] = useState<string | null>(null);
-  const [fdaOk, setFdaOk] = useState<boolean | null>(null);
-  const [volume, setVolume] = useState<DiskExplorerContextValue["volume"]>(null);
+  const [fdaOk, setFdaOk] = useState<boolean | null>(sessionCache.fdaOk);
+  const [volume, setVolume] = useState<DiskExplorerContextValue["volume"]>(sessionCache.volume);
   const [selectedPaths, setSelectedPaths] = useState<string[]>([]);
+  const [movingToTrash, setMovingToTrash] = useState(false);
   const [fileModalPath, setFileModalPath] = useState<string | null>(null);
   const [fileModalRows, setFileModalRows] = useState<DiskExplorerFileInfo[]>([]);
   const [fileModalLoading, setFileModalLoading] = useState(false);
   const [aiText, setAiText] = useState("");
-  const [aiSource, setAiSource] = useState<"idle" | "local" | "kb">("idle");
+  const [aiSource, setAiSource] = useState<"idle" | "cloud" | "kb">("idle");
   const [aiLoading, setAiLoading] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
@@ -87,20 +114,22 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const currentDepth = Math.max(0, breadcrumbs.length - 1);
   const depthLimitReached = isDemoLimited && currentDepth >= MAX_DEMO_DEPTH;
 
-  const loadScan = useCallback(async (path: string) => {
+  const scan = useCallback(async (path: string, force = false) => {
+    if (hasScanned && !force && path === currentPath) return;
     setLoading(true);
     setError(null);
     try {
       const rows = await diskExplorerScanLevel(path);
       setNodes(rows);
       setHasScanned(true);
+      setLastScannedAt(new Date());
     } catch (e) {
       setNodes([]);
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPath, hasScanned]);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -113,8 +142,8 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     } catch {
       setVolume(null);
     }
-    await loadScan(currentPath);
-  }, [currentPath, loadScan]);
+    await scan(currentPath, true);
+  }, [currentPath, scan]);
 
   const startInitialScan = useCallback(async () => {
     await refreshAll();
@@ -132,9 +161,9 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       setSelectedPaths([]);
       setAiText("");
       setAiSource("idle");
-      await loadScan(path);
+      await scan(path, true);
     },
-    [MAX_DEMO_DEPTH, breadcrumbs.length, isDemoLimited, loadScan]
+    [MAX_DEMO_DEPTH, breadcrumbs.length, isDemoLimited, scan]
   );
 
   const navigateBreadcrumb = useCallback(
@@ -146,9 +175,9 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       setSelectedPaths([]);
       setAiText("");
       setAiSource("idle");
-      await loadScan(bc.path);
+      await scan(bc.path, true);
     },
-    [breadcrumbs, loadScan]
+    [breadcrumbs, scan]
   );
 
   const toggleSelect = useCallback((path: string) => {
@@ -186,11 +215,25 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     if (!getIsProEntitled()) {
       throw new Error("Penghapusan hanya tersedia untuk Pro.");
     }
-    const res = await movePathsToTrash(selectedPaths);
-    setSelectedPaths([]);
-    await loadScan(currentPath);
-    return res;
-  }, [currentPath, loadScan, nodes, selectedPaths]);
+    setMovingToTrash(true);
+    try {
+      // Temporary investigation logs for trash flow visibility.
+      console.log("[DiskExplorer] Selected:", selectedPaths);
+      const res = await movePathsToTrash(selectedPaths);
+      console.log("[DiskExplorer] Move result:", res);
+      setSelectedPaths([]);
+      if (res.succeeded.length > 0) {
+        setNodes((prev) => prev.filter((n) => !res.succeeded.includes(n.path)));
+      }
+      if (res.failed.length > 0) {
+        setError(res.failed.map((f) => `${f.path}: ${f.message}`).join(" | "));
+      }
+      await scan(currentPath, true);
+      return res;
+    } finally {
+      setMovingToTrash(false);
+    }
+  }, [currentPath, scan, selectedPaths]);
 
   const exportReport = useCallback(
     async (format: "json" | "txt") => {
@@ -228,15 +271,22 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     setAiLoading(true);
     setAiText("");
     try {
-      const { text, source } = await analyzeDiskExplorerFolder(nodes);
-      setAiText(text);
-      setAiSource(source);
+      const context = nodes
+        .slice(0, 12)
+        .map((n) => `${n.displayName} | ${n.nodeType} | ${n.riskLevel} | ${n.redactedPath}`)
+        .join("\n");
+      const result = await askAI("Jelaskan pola folder ini dan saran cleanup aman.", context);
+      setAiText(result.response);
+      setAiSource(result.provider === "kb" ? "kb" : "cloud");
     } finally {
       setAiLoading(false);
     }
   }, [nodes]);
 
-  const savingsBytes = useMemo(() => calculateSavingsBytes(nodes, selectedSet), [nodes, selectedSet]);
+  const savingsBytes = useMemo(
+    () => nodes.reduce((sum, n) => (selectedSet.has(n.path) ? sum + n.sizeBytes : sum), 0),
+    [nodes, selectedSet]
+  );
 
   useEffect(() => {
     void (async () => {
@@ -250,10 +300,24 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       } catch {
         setVolume(null);
       }
-      setNodes([]);
+      if (!sessionCache.hasScanned) {
+        setNodes([]);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial mount only
   }, []);
+
+  useEffect(() => {
+    sessionCache = {
+      breadcrumbs,
+      currentPath,
+      nodes,
+      hasScanned,
+      lastScannedAt: lastScannedAt ? lastScannedAt.getTime() : null,
+      fdaOk,
+      volume,
+    };
+  }, [breadcrumbs, currentPath, fdaOk, hasScanned, lastScannedAt, nodes, volume]);
 
   const value: DiskExplorerContextValue = {
     breadcrumbs,
@@ -261,6 +325,8 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     nodes,
     loading,
     hasScanned,
+    lastScannedAt,
+    movingToTrash,
     error,
     fdaOk,
     volume,
@@ -269,6 +335,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     clearSelection,
     selectAllSafe,
     refreshAll,
+    scan,
     startInitialScan,
     navigateTo,
     navigateBreadcrumb,

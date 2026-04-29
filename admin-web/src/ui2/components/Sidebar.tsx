@@ -55,6 +55,7 @@ const menuGroups = [
       { name: "Halaman Utama", icon: Globe, path: "/landing" },
       { name: "Pengaturan Aplikasi", icon: Settings, path: "/app-settings" },
       { name: "Pengaturan Platform", icon: Cpu, path: "/platform" },
+      { name: "API Keys", icon: Key, path: "/api-keys" },
       { name: "Marketing", icon: Sparkles, path: "/marketing" },
     ],
   },

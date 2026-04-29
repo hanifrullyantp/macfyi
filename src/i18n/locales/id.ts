@@ -30,6 +30,7 @@ export const id: MessageTree = {
     done: "Selesai",
     close: "Tutup",
     refresh: "Muat ulang",
+    rescan: "Scan ulang",
     reveal: "Tampilkan di Finder",
     retry: "Coba lagi",
   },
@@ -367,6 +368,22 @@ export const id: MessageTree = {
     uninstallSuccess: "“{name}” dihapus. Daftar diperbarui.",
     leftoversCleaned: "{n} file sisa dipindahkan. Daftar diperbarui.",
     oneLeftoverCleaned: "File sisa dihapus. Daftar diperbarui.",
+    confirmModalTitle: "Konfirmasi uninstall",
+    confirmModalNoSelection: "Pilih aplikasi terlebih dahulu.",
+    confirmModalBundleSection: "Bundle",
+    confirmModalTrashPolicy:
+      "File akan dipindahkan ke Tong Sampah dulu (bisa dipulihkan), bukan dihapus permanen seketika — sesuai pengaturan Anda.",
+    confirmModalPermanentPolicy:
+      "File akan dihapus permanen sesuai Pengaturan. Tidak dapat dibatalkan dari Macfyi.",
+    confirmModalResidualsTitle: "Data pendukung yang ikut",
+    confirmModalResidualsNone: "Hanya bundle aplikasi — tidak ada folder Library yang dicentang.",
+    confirmModalTotalFreed: "Perkiraan total yang dibebaskan",
+    confirmModalLargeAck:
+      "Penghapusan ini lebih dari ~1 GB. Saya mengerti ini akan mengikuti mode penghapusan (Tong Sampah vs permanen).",
+    confirmModalCancel: "Batal",
+    confirmModalConfirm: "Uninstall",
+    confirmModalRemoving: "Menghapus…",
+    uninstallPartialFailed: "Sebagian path tidak bisa dihapus:",
   },
   monitor: {
     title: "Monitor",
@@ -509,6 +526,7 @@ export const id: MessageTree = {
     actionSelectSafe: "Pilih baris AMAN",
     exportDone: "Laporan disimpan ke:",
     exportFailed: "Gagal menyimpan ekspor. Periksa Full Disk Access atau coba lagi.",
+    lastScanAt: "Scan terakhir: {time}",
     idleTitle: "Siap saat Anda siap",
     idleBody:
       "Ukuran folder dan label risiko hanya dimuat setelah Anda mulai. Menghindari kerja latar setiap kali Disk Explorer dibuka.",
@@ -517,6 +535,10 @@ export const id: MessageTree = {
     trashConfirmRisky:
       "Beberapa item terpilih berlabel Waspada atau Berisiko. Item akan dipindahkan ke Tong Sampah (bisa dipulihkan), bukan dihapus permanen. Lanjutkan?",
     proOnlyDelete: "Aksi hapus hanya tersedia untuk Pro. Membuka checkout…",
+    movingToTrash: "Memindahkan…",
+    trashSuccess: "{count} item dipindahkan ke Tong Sampah.",
+    trashFailed: "Sebagian item gagal dipindahkan.",
+    trashError: "Gagal memindahkan item:",
     demoDepthLimit: "Mode demo hanya bisa menelusuri sampai {max} level folder. Upgrade ke Pro untuk membuka level lebih dalam.",
     modalTitle: "File terbesar",
     modalLoading: "Memuat daftar file…",

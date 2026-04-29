@@ -15,8 +15,6 @@ import type {
 } from "./types";
 import {
   appAudit,
-  aiClosePanel,
-  aiOpenPanel,
   getDiskStats,
   getStorageBreakdown,
   listTrashItems,
@@ -403,14 +401,6 @@ export default function App() {
   }, []);
 
   /** No automatic page scan/prefetch; user triggers via explicit buttons. */
-
-  useEffect(() => {
-    if (isAIChatOpen) {
-      void aiOpenPanel();
-    } else {
-      void aiClosePanel();
-    }
-  }, [isAIChatOpen]);
 
   /** Cold start: disk + public-config + minimum splash time (onboarding-style). */
   useEffect(() => {

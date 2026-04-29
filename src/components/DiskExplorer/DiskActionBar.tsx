@@ -16,6 +16,8 @@ export function DiskActionBar({
   onExportTxt,
   onClear,
   onSelectSafe,
+  actionDisabled = false,
+  loadingTrash = false,
 }: {
   selectedCount: number;
   savingsBytes: number;
@@ -25,6 +27,8 @@ export function DiskActionBar({
   onExportTxt: () => void;
   onClear: () => void;
   onSelectSafe: () => void;
+  actionDisabled?: boolean;
+  loadingTrash?: boolean;
 }) {
   const { t } = useI18n();
   return (
@@ -37,13 +41,13 @@ export function DiskActionBar({
         <ShieldCheck className="w-3.5 h-3.5" />
         {t("diskExplorer.actionSelectSafe")}
       </button>
-      <button type="button" onClick={onReveal} disabled={selectedCount === 0} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 disabled:opacity-40">
+      <button type="button" onClick={onReveal} disabled={actionDisabled} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
         <ExternalLink className="w-3.5 h-3.5" />
         {t("diskExplorer.actionReveal")}
       </button>
-      <button type="button" onClick={onTrash} disabled={selectedCount === 0} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 border-amber-500/30 text-amber-100 disabled:opacity-40">
+      <button type="button" onClick={onTrash} disabled={actionDisabled} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 border-amber-500/30 text-amber-100 disabled:opacity-40 disabled:cursor-not-allowed">
         <Trash2 className="w-3.5 h-3.5" />
-        {t("diskExplorer.actionTrash")}
+        {loadingTrash ? t("diskExplorer.movingToTrash") : t("diskExplorer.actionTrash")}
       </button>
       <button type="button" onClick={onExportJson} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5">
         <FileJson className="w-3.5 h-3.5" />
@@ -53,7 +57,7 @@ export function DiskActionBar({
         <FileText className="w-3.5 h-3.5" />
         {t("diskExplorer.actionExportTxt")}
       </button>
-      <button type="button" onClick={onClear} disabled={selectedCount === 0} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 disabled:opacity-40">
+      <button type="button" onClick={onClear} disabled={actionDisabled} className="btn-secondary text-xs inline-flex items-center gap-1 px-2.5 py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
         <Eraser className="w-3.5 h-3.5" />
         {t("diskExplorer.actionClear")}
       </button>

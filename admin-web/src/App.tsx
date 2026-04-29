@@ -23,6 +23,7 @@ import LiveActivityPage from "./pages/LiveActivityPage";
 import WaTemplatesPage from "./pages/WaTemplatesPage";
 import EventsPage from "./pages/EventsPage";
 import MarketingPage from "./pages/MarketingPage";
+import ApiKeysPage from "./pages/ApiKeys";
 import { AdminSessionProvider } from "./context/AdminSessionContext";
 
 function isAdmin(session: Session | null): boolean {
@@ -137,6 +138,7 @@ export function App() {
           <Route path="/landing" element={<LandingEditorPage />} />
           <Route path="/app-settings" element={<AppSettingsPage />} />
           <Route path="/platform" element={<PlatformSettingsPage />} />
+          <Route path="/api-keys" element={<ApiKeysPage />} />
           <Route path="/edge-functions" element={<EdgeFunctionsPage />} />
           <Route path="/logs" element={<LogsPage />} />
           <Route path="/admin-users" element={<AdminUsersPage />} />

@@ -19,6 +19,7 @@ function DiskExplorerInner() {
   const { registerActivity } = useAppActivity();
   const [aiModalOpen, setAiModalOpen] = useState(false);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
+  const [trashNotice, setTrashNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const displayError = (() => {
     if (!s.error) return null;
     if (s.error.startsWith("DEMO_DEPTH_LIMIT:")) {
@@ -28,10 +29,12 @@ function DiskExplorerInner() {
   })();
 
   const exportTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const trashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
       if (exportTimerRef.current) clearTimeout(exportTimerRef.current);
+      if (trashTimerRef.current) clearTimeout(trashTimerRef.current);
     };
   }, []);
 
@@ -62,9 +65,29 @@ function DiskExplorerInner() {
     if (risky && !window.confirm(t("diskExplorer.trashConfirmRisky"))) {
       return;
     }
-    const res = await s.trashSelected();
-    if (res && res.failed.length) {
-      window.alert(res.failed.map((f) => `${f.path}: ${f.message}`).join("\n"));
+    try {
+      const res = await s.trashSelected();
+      if (!res) return;
+      if (trashTimerRef.current) clearTimeout(trashTimerRef.current);
+      if (res.failed.length > 0) {
+        setTrashNotice({
+          type: "error",
+          message: `${t("diskExplorer.trashFailed")} ${res.failed.length}/${res.failed.length + res.succeeded.length}`,
+        });
+      } else {
+        setTrashNotice({
+          type: "success",
+          message: t("diskExplorer.trashSuccess", { count: res.succeeded.length }),
+        });
+      }
+      trashTimerRef.current = setTimeout(() => setTrashNotice(null), 4500);
+    } catch (e) {
+      if (trashTimerRef.current) clearTimeout(trashTimerRef.current);
+      setTrashNotice({
+        type: "error",
+        message: `${t("diskExplorer.trashError")} ${e instanceof Error ? e.message : String(e)}`,
+      });
+      trashTimerRef.current = setTimeout(() => setTrashNotice(null), 5000);
     }
   };
 
@@ -87,6 +110,11 @@ function DiskExplorerInner() {
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">{t("diskExplorer.title")}</h1>
             <p className="text-sm text-white/55 max-w-2xl mt-1">{t("diskExplorer.subtitle")}</p>
+            {s.lastScannedAt ? (
+              <p className="text-xs text-white/45 mt-1.5">
+                {t("diskExplorer.lastScanAt", { time: s.lastScannedAt.toLocaleTimeString() })}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -97,9 +125,14 @@ function DiskExplorerInner() {
               <Bot className="w-3.5 h-3.5 text-emerald-400" />
               {t("diskExplorer.aiOpenButton")}
             </button>
-            <button type="button" onClick={() => void s.refreshAll()} className="btn-secondary text-xs inline-flex items-center gap-2 px-3 py-2">
+            <button
+              type="button"
+              onClick={() => void s.scan(s.currentPath, true)}
+              disabled={s.loading}
+              className="btn-secondary text-xs inline-flex items-center gap-2 px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <RefreshCw className="w-3.5 h-3.5" />
-              {t("diskExplorer.refresh")}
+              {t("diskExplorer.rescan")}
             </button>
           </div>
         </div>
@@ -118,6 +151,19 @@ function DiskExplorerInner() {
       {exportNotice && (
         <p className="text-sm text-emerald-200/90 rounded-lg border border-emerald-500/25 bg-emerald-950/20 px-3 py-2" role="status">
           {exportNotice}
+        </p>
+      )}
+      {trashNotice && (
+        <p
+          className={`text-sm rounded-lg border px-3 py-2 ${
+            trashNotice.type === "success"
+              ? "text-emerald-200/90 border-emerald-500/25 bg-emerald-950/20"
+              : "text-rose-200/90 border-rose-500/25 bg-rose-950/20"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {trashNotice.message}
         </p>
       )}
 
@@ -168,6 +214,8 @@ function DiskExplorerInner() {
               onExportTxt={() => void handleExport("txt")}
               onClear={s.clearSelection}
               onSelectSafe={s.selectAllSafe}
+              actionDisabled={s.selectedPaths.length === 0 || s.movingToTrash}
+              loadingTrash={s.movingToTrash}
             />
           </div>
         )}

@@ -17,7 +17,7 @@ export function DiskAiModal({
   onClose: () => void;
   aiText: string;
   aiLoading: boolean;
-  aiSource: "idle" | "local" | "kb";
+  aiSource: "idle" | "cloud" | "kb";
   onRunAi: () => void;
 }) {
   const { t } = useI18n();

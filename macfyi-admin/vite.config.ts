@@ -3,7 +3,6 @@ import { fileURLToPath } from "url";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
-import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,7 +16,7 @@ const outDir = useSubpath
 
 export default defineConfig({
   base,
-  plugins: [react(), tailwindcss(), viteSingleFile()],
+  plugins: [react(), tailwindcss()],
   resolve: {
     dedupe: ["react", "react-dom", "@supabase/supabase-js"],
     alias: {
@@ -28,8 +27,14 @@ export default defineConfig({
     fs: {
       allow: [path.resolve(__dirname, "."), path.resolve(__dirname, "..")],
     },
+    watch: {
+      ignored: ["**/dist/**"],
+    },
     /** Avoid clashing with landing `vite dev` (5173) when developing under `/admin` via proxy. */
     ...(useSubpath ? { port: 5174, strictPort: true } : {}),
+  },
+  optimizeDeps: {
+    entries: ["index.html"],
   },
   build: {
     outDir,

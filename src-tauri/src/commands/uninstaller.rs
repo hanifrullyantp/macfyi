@@ -209,6 +209,11 @@ pub fn uninstall_app_bundle(
     related_paths: Vec<String>,
     use_trash: bool,
 ) -> Result<TrashResultDto, String> {
+    log::info!(
+        "uninstall_app_bundle: bundle_id={} paths_including_app={}",
+        bundle_id,
+        1 + related_paths.len()
+    );
     let home = home_dir()?;
     let app = PathBuf::from(&app_path);
     if !is_allowed_app_bundle(&app) {

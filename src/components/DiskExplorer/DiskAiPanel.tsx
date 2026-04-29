@@ -9,7 +9,7 @@ export function DiskAiPanel({
 }: {
   text: string;
   loading: boolean;
-  source: "idle" | "local" | "kb";
+  source: "idle" | "cloud" | "kb";
   onRun: () => void;
 }) {
   const { t } = useI18n();
@@ -41,7 +41,7 @@ export function DiskAiPanel({
       </div>
       {source !== "idle" ? (
         <p className="text-[10px] uppercase tracking-wide text-white/35">
-          {source === "local" ? "Local model" : "Offline template"}
+          {source === "cloud" ? "Cloud AI" : "Offline template"}
         </p>
       ) : null}
       <div className="flex-1 min-h-[72px] max-h-48 overflow-auto rounded-lg bg-black/20 border border-white/5 px-3 py-2 text-xs text-white/75 whitespace-pre-wrap">

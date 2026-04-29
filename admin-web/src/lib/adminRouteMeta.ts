@@ -12,6 +12,7 @@ export const ADMIN_PAGE_TITLE: Record<string, string> = {
   "/landing": "Halaman utama",
   "/app-settings": "Pengaturan aplikasi",
   "/platform": "Pengaturan platform",
+  "/api-keys": "API Keys",
   "/marketing": "Marketing",
   "/events": "Promo events",
   "/wa-templates": "Template WhatsApp",

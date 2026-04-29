@@ -28,6 +28,7 @@ export const en = {
     done: "Done",
     close: "Close",
     refresh: "Refresh",
+    rescan: "Rescan",
     reveal: "Reveal in Finder",
     retry: "Retry",
   },
@@ -363,6 +364,21 @@ export const en = {
     uninstallSuccess: "“{name}” was removed. Lists refreshed.",
     leftoversCleaned: "Moved {n} leftover item(s). Lists refreshed.",
     oneLeftoverCleaned: "Leftover item removed. Lists refreshed.",
+    confirmModalTitle: "Confirm uninstall",
+    confirmModalNoSelection: "Select an app first.",
+    confirmModalBundleSection: "Bundle",
+    confirmModalTrashPolicy:
+      "Files will be moved to Trash first (recoverable), not erased immediately — matching your Trash setting.",
+    confirmModalPermanentPolicy:
+      "Files will be deleted permanently according to Settings. This cannot be undone from Macfyi.",
+    confirmModalResidualsTitle: "Support data included",
+    confirmModalResidualsNone: "Only the app bundle — no Library folders checked.",
+    confirmModalTotalFreed: "Total to reclaim (approx.)",
+    confirmModalLargeAck: "This removal is larger than ~1 GB. I understand it will follow my deletion mode (Trash vs permanent).",
+    confirmModalCancel: "Cancel",
+    confirmModalConfirm: "Uninstall",
+    confirmModalRemoving: "Removing…",
+    uninstallPartialFailed: "Some paths could not be removed:",
   },
   monitor: {
     title: "Monitor",
@@ -504,6 +520,7 @@ export const en = {
     actionSelectSafe: "Select SAFE rows",
     exportDone: "Report saved to:",
     exportFailed: "Could not save export. Check Full Disk Access or try again.",
+    lastScanAt: "Last scan: {time}",
     idleTitle: "Ready when you are",
     idleBody:
       "Folder sizes and risk labels load only after you start. This avoids background work every time you open Disk Explorer.",
@@ -512,6 +529,10 @@ export const en = {
     trashConfirmRisky:
       "Some selected items are marked Caution or Risky. They will be moved to Trash (recoverable), not permanently deleted. Continue?",
     proOnlyDelete: "Delete actions are available for Pro only. Opening checkout…",
+    movingToTrash: "Moving…",
+    trashSuccess: "{count} item(s) moved to Trash.",
+    trashFailed: "Some items failed to move.",
+    trashError: "Could not move items:",
     demoDepthLimit: "Demo mode can browse up to {max} folder levels. Upgrade to Pro for deeper navigation.",
     modalTitle: "Largest files",
     modalLoading: "Loading file list…",

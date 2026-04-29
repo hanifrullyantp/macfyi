@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ExternalLink, Loader2, PackageOpen, RefreshCw, Trash2 } from "lucide-react";
 import { LoadingButton } from "./common/LoadingButton";
+import { UninstallConfirmModal } from "./common/UninstallConfirmModal";
 import type { FileItem, UninstallAppEntry } from "../types";
 import { removeOrphanPaths, revealInFinder, uninstallAppBundle } from "../lib/backend";
 import { recordDemoUninstallUsage, validateDemoUninstall } from "../lib/demoLimits";
@@ -37,6 +38,7 @@ export function AppUninstallerView({
   const [actionError, setActionError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [relatedPick, setRelatedPick] = useState<Record<string, boolean>>({});
+  const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
   const topBanner = successMessage;
 
   useEffect(() => {
@@ -61,6 +63,10 @@ export function AppUninstallerView({
   }, [apps, selectedId]);
 
   const totalRelated = selected?.related.reduce((s, r) => s + r.sizeBytes, 0) ?? 0;
+
+  useEffect(() => {
+    setShowUninstallConfirm(false);
+  }, [selectedId]);
 
   useEffect(() => {
     if (!selected) {
@@ -118,37 +124,41 @@ export function AppUninstallerView({
     void removeOrphans([path], "one");
   };
 
-  const handleUninstall = async () => {
+  const performUninstall = async () => {
     if (!selected) return;
     const extra = selected.related.filter((r) => relatedPick[r.path]).map((r) => r.path);
-    const extraLabel = extra.length > 0 ? t("uninstallerPanel.uninstallExtraRelated") : "";
-    if (
-      !window.confirm(
-        t("uninstallerPanel.uninstallConfirm", {
-          name: selected.name,
-          extra: extraLabel,
-        })
-      )
-    ) {
-      return;
-    }
     const gate = validateDemoUninstall(1);
     if (!gate.ok) {
       setActionError(gate.message);
+      setShowUninstallConfirm(false);
       return;
     }
     setBusy("uninstall");
     setActionError(null);
     setSuccessMessage(null);
     try {
-      await uninstallAppBundle(selected.appPath, selected.bundleId, extra, useTrash);
-      setRelatedPick({});
-      recordDemoUninstallUsage(1);
-      setSuccessMessage(t("uninstallerPanel.uninstallSuccess", { name: selected.name }));
-      window.setTimeout(() => setSuccessMessage(null), 6000);
+      const res = await uninstallAppBundle(selected.appPath, selected.bundleId, extra, useTrash);
+      if (res.succeeded.length === 0 && res.failed.length > 0) {
+        setActionError(res.failed.map((f) => `${f.path}: ${f.message}`).join("\n"));
+        return;
+      }
+      if (res.failed.length > 0) {
+        setActionError(
+          `${t("uninstallerPanel.uninstallPartialFailed")}\n${res.failed.map((f) => `${f.path}: ${f.message}`).join("\n")}`
+        );
+      }
+      if (res.succeeded.length > 0) {
+        setRelatedPick({});
+        recordDemoUninstallUsage(1);
+        setSuccessMessage(t("uninstallerPanel.uninstallSuccess", { name: selected.name }));
+        window.setTimeout(() => setSuccessMessage(null), 6000);
+      }
       await onRefresh();
+      setShowUninstallConfirm(false);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[AppUninstaller] uninstallAppBundle:", e);
+      setActionError(msg);
     } finally {
       setBusy(null);
     }
@@ -298,8 +308,10 @@ export function AppUninstallerView({
                         key={key}
                         type="button"
                         onClick={() => setSelectedId(key)}
-                        className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors ${
-                          active ? "bg-white/[0.08]" : "hover:bg-white/[0.04]"
+                        className={`w-full text-left px-4 py-3 border-b border-white/5 transition-colors cursor-pointer ${
+                          active
+                            ? "bg-white/[0.09] ring-1 ring-inset ring-[var(--color-brand)]/35"
+                            : "hover:bg-white/[0.04]"
                         }`}
                       >
                         <p className="text-sm font-medium text-white truncate">{a.name}</p>
@@ -331,10 +343,14 @@ export function AppUninstallerView({
                 </div>
                 <LoadingButton
                   loading={busy === "uninstall"}
-                  loadingLabel="…"
-                  onClick={handleUninstall}
+                  loadingLabel={t("uninstallerPanel.confirmModalRemoving")}
+                  onClick={() => {
+                    if (!selected) return;
+                    setActionError(null);
+                    setShowUninstallConfirm(true);
+                  }}
                   disabled={!!busy && busy !== "uninstall"}
-                  className="btn-primary px-4 py-2 text-sm shrink-0"
+                  className="btn-danger px-4 py-2 text-sm shrink-0"
                 >
                   <Trash2 size={14} /> {t("uninstallerPanel.uninstall")}
                 </LoadingButton>
@@ -406,6 +422,20 @@ export function AppUninstallerView({
           )}
         </div>
       </div>
+
+      <UninstallConfirmModal
+        open={showUninstallConfirm && !!selected}
+        app={selected}
+        residualPathsSelected={residualSelectedPaths}
+        useTrashMode={useTrash}
+        isRemoving={busy === "uninstall"}
+        onClose={() => {
+          if (busy === "uninstall") return;
+          setShowUninstallConfirm(false);
+        }}
+        onConfirm={performUninstall}
+        t={t}
+      />
     </div>
   );
 }

@@ -2,6 +2,16 @@
 
 SPA React + Vite; halaman sumber sebagian besar dari [`../admin-web`](../admin-web).
 
+## Env: Vercel vs mesin lokal
+
+Variabel `VITE_SUPABASE_*` yang Anda set **hanya di Vercel** dipakai saat **build/deploy di Vercel**. Untuk **`npm run dev`** di repo ini, Vite membaca **`macfyi-admin/.env.local`** (atau `.env`), **bukan** dashboard Vercel.
+
+1. Salin [`.env.example`](./.env.example) → `.env.local` di folder **`macfyi-admin`**.
+2. Isi `VITE_SUPABASE_URL` dan `VITE_SUPABASE_ANON_KEY` (nilai bisa sama seperti di Vercel).
+3. Restart `npm run dev`.
+
+Di Vercel, jangan lupa scope **Production + Preview**; untuk **Development** hanya berguna kalau Anda memakai alur tertentu (mis. CLI `vercel dev`) — tidak otomatis ke `vite` biasa di laptop.
+
 ## Deploy subdomain (opsional): `adm.macfyi.com`
 
 1. **Build lokal / CI:** `npm ci && npm run build` — output `dist/` dengan `base: /` (bukan di bawah `/admin`). Jangan set `VITE_USE_ADMIN_SUBPATH` di deploy ini.

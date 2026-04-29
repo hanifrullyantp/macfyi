@@ -52,14 +52,22 @@ const PageSkeleton = () => (
   </div>
 );
 
-class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; message: string | null }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, message: null };
   }
 
-  static getDerivedStateFromError() {
-    return { hasError: true };
+  static getDerivedStateFromError(error: unknown) {
+    return {
+      hasError: true,
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
+
+  componentDidCatch(error: unknown) {
+    // Keep a concrete runtime trace in console for production debugging.
+    console.error("[macfyi-admin] route render error", error);
   }
 
   render() {
@@ -68,6 +76,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
         <div className="min-h-[60vh] flex flex-col items-center justify-center text-center p-6">
           <AlertCircle className="w-10 h-10 text-red-500 mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Terjadi kesalahan</h2>
+          {this.state.message ? <p className="text-sm text-white/60 mb-4 max-w-xl">{this.state.message}</p> : null}
           <button type="button" onClick={() => window.location.reload()} className="px-6 py-2 bg-red-600 text-white rounded-lg">
             Muat ulang
           </button>
@@ -169,9 +178,13 @@ function AppShell() {
 
   if (!supabaseConfigured) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-8 text-red-300">
-        <p className="max-w-md text-center">
-          Set <code className="text-zinc-300">VITE_SUPABASE_URL</code> dan <code className="text-zinc-300">VITE_SUPABASE_ANON_KEY</code> untuk build admin.
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 p-8 text-red-300">
+        <p className="max-w-lg text-center">
+          Set <code className="text-zinc-300">VITE_SUPABASE_URL</code> dan <code className="text-zinc-300">VITE_SUPABASE_ANON_KEY</code>.
+        </p>
+        <p className="max-w-lg text-center text-sm text-white/50">
+          Untuk <strong className="text-white/70">npm run dev</strong> di laptop, salin <code className="text-zinc-400">.env.example</code> ke{" "}
+          <code className="text-zinc-400">.env.local</code> di folder ini — env yang hanya ada di Vercel tidak dipakai otomatis secara lokal.
         </p>
       </div>
     );

@@ -241,3 +241,33 @@ pub fn open_user_trash() -> Result<(), String> {
     }
     Ok(())
 }
+
+/// QA: same code path as the `move_paths_to_trash` Tauri IPC handler — validates `trash` crate + macOS
+/// permissions on a user-writable temp file (desktop smoke; does not simulate Full Disk Access).
+#[cfg(all(test, target_os = "macos"))]
+mod smoke_tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn smoke_move_paths_to_trash_moves_temp_file() {
+        let base = std::env::temp_dir().join(format!("macfyi-trash-smoke-{}", std::process::id()));
+        fs::create_dir_all(&base).expect("tmpdir");
+        let file = base.join("macfyi_smoke_move_to_trash.txt");
+        let mut f = fs::File::create(&file).expect("create");
+        f.write_all(b"macfyi trash smoke-test").expect("write");
+        drop(f);
+
+        let path_str = file.to_string_lossy().to_string();
+        let res = move_paths_to_trash(vec![path_str]).expect("command returns Ok");
+
+        assert!(
+            res.failed.is_empty(),
+            "expected no failures, got {:?}",
+            res.failed
+        );
+        assert_eq!(res.succeeded.len(), 1);
+        assert!(!file.exists(), "file should no longer exist at original path");
+        fs::remove_dir_all(&base).ok();
+    }
+}
