@@ -50,8 +50,27 @@ import { useAppActivity } from "./context/AppActivityContext";
 import { useScanStore } from "./store/scanStore";
 
 const Scanner = lazy(async () => {
-  const m = await import("./components/Scanner");
-  return { default: m.Scanner };
+  try {
+    const m = await import("./components/Scanner");
+    return { default: m.Scanner };
+  } catch (e) {
+    // #region agent log
+    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
+      body: JSON.stringify({
+        sessionId: "c1c2e1",
+        location: "App.tsx:Scanner-lazy",
+        message: "Scanner chunk import failed",
+        data: { err: e instanceof Error ? e.message : String(e) },
+        timestamp: Date.now(),
+        hypothesisId: "H3",
+        runId: "pre-fix",
+      }),
+    }).catch(() => {});
+    // #endregion
+    throw e;
+  }
 });
 const ResultsView = lazy(async () => {
   const m = await import("./components/ResultsView");
@@ -614,6 +633,21 @@ export default function App() {
   }, []);
 
   const handleStartScan = useCallback(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
+      body: JSON.stringify({
+        sessionId: "c1c2e1",
+        location: "App.tsx:handleStartScan",
+        message: "start scan invoked",
+        data: { storageEntriesLen: storageEntries.length },
+        timestamp: Date.now(),
+        hypothesisId: "H5",
+        runId: "pre-fix",
+      }),
+    }).catch(() => {});
+    // #endregion
     if (storageEntries.length === 0) {
       getStorageBreakdown().then(setStorageEntries).catch(() => {});
     }
@@ -910,6 +944,39 @@ export default function App() {
     }
     handleStartScan();
   }, [activeFeature, appState, reviewOrbIntent, handleStartScan, refreshTrash, refreshUninstaller]);
+
+  const scanRenderBranch = useMemo(() => {
+    if (activeFeature === "smart-care") {
+      if (appState === "idle") return "smart-care:idle";
+      if (appState === "scanning") return "smart-care:scanning";
+      return "smart-care:results";
+    }
+    if (activeFeature === "cleanup") {
+      return filterByFeature(scanResults, "cleanup").length > 0 ? "cleanup:results" : "cleanup:hero";
+    }
+    if (activeFeature === "my-clutter") {
+      return filterByFeature(scanResults, "my-clutter").length > 0 ? "my-clutter:results" : "my-clutter:hero";
+    }
+    return `${activeFeature}:${appState}`;
+  }, [activeFeature, appState, scanResults]);
+
+  useEffect(() => {
+    // #region agent log
+    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
+      body: JSON.stringify({
+        sessionId: "c1c2e1",
+        location: "App.tsx:scanRenderBranch",
+        message: "render branch snapshot",
+        data: { scanRenderBranch, appBootReady, appState, activeFeature },
+        timestamp: Date.now(),
+        hypothesisId: "H5",
+        runId: "pre-fix",
+      }),
+    }).catch(() => {});
+    // #endregion
+  }, [scanRenderBranch, appBootReady, appState, activeFeature]);
 
   if (!appBootReady) {
     return <AppBootSplash progress={bootProgress} message={bootMessage || t("boot.phaseDisk")} />;

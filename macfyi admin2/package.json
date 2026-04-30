@@ -1,0 +1,9 @@
+{
+  "name": "macfyi-admin2-dev",
+  "private": true,
+  "description": "Wrapper: same app as macfyi-admin, served at macfyi.com/admin3 (folder name uses a space on purpose).",
+  "scripts": {
+    "dev": "VITE_USE_ADMIN_SUBPATH=1 VITE_ADMIN_PATH_SEGMENT=admin3 VITE_ADMIN_DEV_PORT=5175 npm --prefix ../macfyi-admin run dev",
+    "build": "VITE_USE_ADMIN_SUBPATH=1 VITE_ADMIN_PATH_SEGMENT=admin3 npm --prefix ../macfyi-admin run build"
+  }
+}

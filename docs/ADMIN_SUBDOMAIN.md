@@ -2,8 +2,8 @@
 
 ## 1) Path `https://macfyi.com/admin` (default yang sama dengan marketing)
 
-- Build landing (`macfyi-landing-page`) menjalankan **`npm run build`** = `vite build` lalu **`build:admin`**, sehingga artefak admin (`VITE_USE_ADMIN_SUBPATH=1`) tersalin ke **`dist/admin/`**.
-- Vercel [`macfyi-landing-page/vercel.json`](../macfyi-landing-page/vercel.json) mem-**rewrite** `/admin`, `/admin/`, `/admin/*` ke **`/admin/index.html`** (SPA). Tanpa redirect keluar ke subdomain — Anda bisa **membuka dan melihat** `/admin` di domain marketing.
+- Build landing (`macfyi-landing-page`) menjalankan **`npm run build`** = `vite build` lalu **`build:admin`** dan **`build:admin3`**, sehingga artefak admin (`VITE_USE_ADMIN_SUBPATH=1`) tersalin ke **`dist/admin/`** dan **`dist/admin3/`** (segment `admin3` lewat [`macfyi-admin2`](../macfyi-admin2)).
+- Vercel [`macfyi-landing-page/vercel.json`](../macfyi-landing-page/vercel.json) mem-**rewrite** `/admin` dan `/admin3` (masing-masing SPA) ke **`/admin/index.html`** dan **`/admin3/index.html`**.
 - Di UI landing, **Konsol admin** (tanpa `VITE_ADMIN_CONSOLE_EXTERNAL_URL`) membuka tab ke **`{origin}/admin/`** (situs yang sama).
 
 Jika hanya butuh perubahan landing tanpa build admin: `npm run build:landing-only`.
@@ -22,6 +22,7 @@ Deploy proyek terpisah dengan **Root Directory** = [`macfyi-admin`](../macfyi-ad
 
 1. **Supabase Auth** — pastikan *Redirect URLs* memuat:
    - `https://macfyi.com/admin` dan `https://macfyi.com/admin/**` (path terpasang);
+   - `https://macfyi.com/admin3` dan `https://macfyi.com/admin3/**` jika Anda memakai konsol kedua ([`macfyi-admin2`](../macfyi-admin2));
    - jika memakai subdomain: `https://adm.macfyi.com` dan `https://adm.macfyi.com/**`  
    (lihat [`supabase/config.toml`](../supabase/config.toml) dan `scripts/patch-supabase-auth-urls.sh`.)
 2. **DNS** — rekam CNAME `adm` → Vercel hanya jika memakai host terpisah.

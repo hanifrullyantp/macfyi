@@ -26,9 +26,14 @@ Lihat juga [`../docs/ADMIN_SUBDOMAIN.md`](../docs/ADMIN_SUBDOMAIN.md).
 
 Dari `macfyi-landing-page`, **`npm run build`** (default) sudah memanggil `build:admin` → output ke `macfyi-landing-page/dist/admin` dengan `VITE_USE_ADMIN_SUBPATH=1` (`base: /admin/`). Tanpa proyek subdomain, konsol tampil di path itu.
 
+### Path kedua: `macfyi.com/admin3` ([`macfyi-admin2`](../macfyi-admin2))
+
+Build kedua memakai **`VITE_ADMIN_PATH_SEGMENT=admin3`** → `dist/admin3/`, base **`/admin3/`**. Lihat [`../macfyi-admin2/README.md`](../macfyi-admin2/README.md).
+
 ### Dev: landing + admin di `/admin`
 
 1. Terminal A — `cd macfyi-landing-page && npm run dev` (biasanya `http://localhost:5173`).
 2. **Pilih salah satu:**
    - **Live HMR:** Terminal B — `cd macfyi-admin && VITE_USE_ADMIN_SUBPATH=1 npm run dev` (port **5174**); landing mem-**proxy** `/admin` ke sini.
+   - **Live HMR `/admin3`:** Terminal C — `cd macfyi-admin2 && npm run dev` (port **5175**); landing mem-**proxy** `/admin3` ke sini.
    - **Satu terminal:** dari `macfyi-landing-page` jalankan `npm run build:admin` sekali, lalu `npm run dev` — `/admin` dilayani dari `dist/admin` jika port 5174 tidak aktif.

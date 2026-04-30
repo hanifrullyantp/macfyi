@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:admin",
+    "build": "vite build && npm run build:admin && npm run build:admin3",
     "build:admin": "npm --prefix ../macfyi-admin ci && VITE_USE_ADMIN_SUBPATH=1 npm --prefix ../macfyi-admin run build",
+    "build:admin3": "VITE_USE_ADMIN_SUBPATH=1 VITE_ADMIN_PATH_SEGMENT=admin3 npm --prefix ../macfyi-admin run build",
     "build:landing-only": "vite build",
     "preview": "vite preview"
   },
