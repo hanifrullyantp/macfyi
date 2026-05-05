@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { DiskExplorerProvider, useDiskExplorerStore } from "@/store/diskExplorerStore";
+import {
+  DiskExplorerProvider,
+  resetDiskExplorerSessionCache,
+  useDiskExplorerStore,
+} from "@/store/diskExplorerStore";
 import type { DiskNode } from "@/lib/types/diskExplorer";
 import type { ReactNode } from "react";
 import { I18nProvider } from "@/i18n/context";
@@ -20,6 +24,7 @@ vi.mock("@/lib/backend", () => ({
     Promise.resolve({ freed_label: "0 B", freed_bytes: 0, succeeded: [], failed: [] })
   ),
   revealInFinder: vi.fn(() => Promise.resolve()),
+  onDiskScanProgress: vi.fn(() => Promise.resolve(() => {})),
 }));
 
 function wrapper({ children }: { children: ReactNode }) {
@@ -45,15 +50,18 @@ const sampleRow: DiskNode = {
 
 describe("diskExplorerStore", () => {
   beforeEach(() => {
+    resetDiskExplorerSessionCache();
     vi.clearAllMocks();
     fdaMock.mockResolvedValue(true);
     volMock.mockResolvedValue({ totalBytes: 1, usedBytes: 1, freeBytes: 1 });
     scanMock.mockImplementation(async () => []);
   });
 
-  it("mounts and loads home scan", async () => {
+  it("mounts and loads FDA + volume (idle until user scans)", async () => {
     renderHook(() => useDiskExplorerStore(), { wrapper });
-    await waitFor(() => expect(scanMock).toHaveBeenCalledWith("~"));
+    await waitFor(() => expect(fdaMock).toHaveBeenCalled());
+    await waitFor(() => expect(volMock).toHaveBeenCalled());
+    expect(scanMock).not.toHaveBeenCalled();
   });
 
   it("navigateTo updates currentPath and nodes", async () => {
@@ -79,7 +87,11 @@ describe("diskExplorerStore", () => {
       return [];
     });
     const { result } = renderHook(() => useDiskExplorerStore(), { wrapper });
-    await waitFor(() => result.current.nodes.length === 1);
+    await waitFor(() => expect(result.current.fdaOk).not.toBeNull());
+    await act(async () => {
+      await result.current.scan("~", true);
+    });
+    await waitFor(() => expect(result.current.nodes).toHaveLength(1));
 
     act(() => {
       result.current.toggleSelect(sampleRow.path);
@@ -106,6 +118,10 @@ describe("diskExplorerStore", () => {
       return [];
     });
     const { result } = renderHook(() => useDiskExplorerStore(), { wrapper });
+    await waitFor(() => expect(result.current.fdaOk).not.toBeNull());
+    await act(async () => {
+      await result.current.scan("~", true);
+    });
     await waitFor(() => expect(result.current.nodes).toHaveLength(1));
 
     act(() => {

@@ -42,7 +42,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["app"],
+    "targets": ["app", "dmg"],
     "category": "Productivity",
     "shortDescription": "AI-assisted Mac storage cleaner",
     "longDescription": "Macfyi scans safe user folders, categorizes clutter, and moves selected items to Trash.",

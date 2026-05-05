@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   Megaphone,
   MessageSquare,
+  Rocket,
   Settings,
   ShieldAlert,
   Sparkles,
@@ -57,6 +58,7 @@ const menuGroups = [
       { name: "Pengaturan Platform", icon: Cpu, path: "/platform" },
       { name: "API Keys", icon: Key, path: "/api-keys" },
       { name: "Marketing", icon: Sparkles, path: "/marketing" },
+      { name: "Releases", icon: Rocket, path: "/releases" },
     ],
   },
   {

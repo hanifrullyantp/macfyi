@@ -1,5 +1,6 @@
+import { FunctionsHttpError } from "@supabase/supabase-js";
 import { invoke } from "@tauri-apps/api/core";
-import { supabase, supabaseConfigured } from "./supabase";
+import { getSupabase, supabaseConfigured } from "./supabase";
 
 export type AIProvider = "gemini" | "groq" | "kb";
 
@@ -9,7 +10,7 @@ export interface AIResult {
   isDemo: boolean;
   remainingToday: number;
   dailyLimit: number;
-  error?: "RATE_LIMIT" | "OFFLINE" | "NO_KEY" | "SERVER_ERROR";
+  error?: "RATE_LIMIT" | "OFFLINE" | "NO_KEY" | "SERVER_ERROR" | "FUNCTION_ERROR";
 }
 
 export interface ChatMessage {
@@ -18,6 +19,22 @@ export interface ChatMessage {
   content: string;
   provider?: AIProvider;
   timestamp: Date;
+}
+
+export type AIProviderHealthStatus = "ok" | "error" | "not_configured" | "inactive";
+
+export interface AIProviderHealthEntry {
+  status: AIProviderHealthStatus;
+  httpStatus?: number;
+  code?: "TIMEOUT" | "NETWORK" | "HTTP_ERROR" | "EMPTY_RESPONSE";
+}
+
+/** Result of `fetchAIProviderHealth`: success has non-null providers + checkedAt; failures set `error`. */
+export interface AIProviderHealthResult {
+  providers: { gemini: AIProviderHealthEntry; groq: AIProviderHealthEntry } | null;
+  checkedAt: string | null;
+  error?: "RATE_LIMIT" | "FUNCTION_ERROR" | "OFFLINE" | "SERVER_ERROR";
+  message?: string;
 }
 
 const KB: Array<{ keys: string[]; answer: string }> = [
@@ -47,6 +64,8 @@ export async function askAI(message: string, context?: string): Promise<AIResult
   };
 
   if (!supabaseConfigured) return offlineResult;
+  const supabase = getSupabase();
+  if (!supabase) return offlineResult;
 
   try {
     const { data: { session } } = await supabase.auth.getSession();
@@ -65,7 +84,15 @@ export async function askAI(message: string, context?: string): Promise<AIResult
       headers,
     });
 
-    if (error) return offlineResult;
+    if (error) {
+      return {
+        ...offlineResult,
+        error: "FUNCTION_ERROR",
+        response:
+          kbAnswer(message) +
+          "\n\nTidak terhubung ke layanan AI (cek internet, variabel VITE_SUPABASE_* pada build desktop, atau deploy ulang Edge Function `ai-chat`).",
+      };
+    }
     if (data?.error === "RATE_LIMIT") {
       return {
         response: data.message ?? "Batas harian tercapai.",
@@ -86,5 +113,76 @@ export async function askAI(message: string, context?: string): Promise<AIResult
     };
   } catch {
     return offlineResult;
+  }
+}
+
+export async function fetchAIProviderHealth(): Promise<AIProviderHealthResult> {
+  const offline: AIProviderHealthResult = {
+    providers: null,
+    checkedAt: null,
+    error: "OFFLINE",
+  };
+
+  if (!supabaseConfigured) return offline;
+  const supabase = getSupabase();
+  if (!supabase) return offline;
+
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    let deviceFingerprint = "unknown";
+    try {
+      deviceFingerprint = await invoke<string>("get_device_fingerprint");
+    } catch {
+      /* noop */
+    }
+
+    const headers: Record<string, string> = {};
+    if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+    const { data, error } = await supabase.functions.invoke("ai-provider-health", {
+      body: { deviceFingerprint },
+      headers,
+    });
+
+    if (error) {
+      if (error instanceof FunctionsHttpError) {
+        try {
+          const body = (await error.context.json()) as {
+            error?: string;
+            message?: string;
+            providers?: AIProviderHealthResult["providers"];
+            checkedAt?: string;
+          };
+          if (body?.error === "RATE_LIMIT") {
+            return {
+              providers: body.providers ?? null,
+              checkedAt: body.checkedAt ?? null,
+              error: "RATE_LIMIT",
+              message: typeof body.message === "string" ? body.message : undefined,
+            };
+          }
+        } catch {
+          /* ignore JSON parse */
+        }
+      }
+      return { providers: null, checkedAt: null, error: "FUNCTION_ERROR" };
+    }
+
+    const providers = data?.providers as AIProviderHealthResult["providers"] | undefined;
+    const checkedAt = typeof data?.checkedAt === "string" ? data.checkedAt : null;
+    if (
+      providers &&
+      providers.gemini &&
+      providers.groq &&
+      checkedAt
+    ) {
+      return { providers, checkedAt };
+    }
+
+    return { providers: null, checkedAt: null, error: "SERVER_ERROR" };
+  } catch {
+    return offline;
   }
 }

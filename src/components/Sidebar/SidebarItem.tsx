@@ -38,6 +38,7 @@ export function SidebarItem({
   const reduceMotion = useReducedMotion();
   const Icon = entry.icon;
   const accent = entry.accent;
+  const nestedChild = isFeatureEntry(entry) && Boolean(entry.nestedUnderDeepScan);
   const activeAccent = ACCENT_ACTIVE[accent] ?? ACCENT_ACTIVE.slate;
   const useCount = isFeatureEntry(entry) && entry.useCountFallback;
   const showBadge =
@@ -58,24 +59,40 @@ export function SidebarItem({
       transition={{ type: "spring", stiffness: 400, damping: 28 }}
       title={collapsed ? `${entry.label} — ${entry.sublabel}` : undefined}
       className={cn(
-        "group relative w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-colors duration-200",
-        collapsed ? "justify-center" : "",
+        "group relative w-full flex items-center gap-2 transition-colors duration-200",
+        !collapsed ? "gap-2.5 px-2.5 py-2 rounded-xl text-left" : "px-2 py-1.5 rounded-xl text-left",
+        collapsed ? "justify-center" : nestedChild ? "pl-1" : "",
+        nestedChild &&
+          collapsed &&
+          "before:pointer-events-none before:absolute before:left-px before:top-1/2 before:-translate-y-1/2 before:h-[62%] before:w-0.5 before:rounded-full before:bg-purple-500/50",
         isActive
           ? cn("bg-[var(--color-sidebar-active-bg)] text-white", activeAccent)
-          : "text-white/50 hover:bg-white/[0.06] hover:text-white/88 border border-transparent"
+          : cn(
+              "border border-transparent text-white/50",
+              nestedChild && !collapsed
+                ? "hover:bg-purple-500/[0.07] hover:text-white/[0.92]"
+                : "hover:bg-white/[0.06] hover:text-white/88",
+            ),
       )}
     >
       <span
         className={cn(
-          "w-7 h-7 rounded-lg border flex items-center justify-center flex-shrink-0",
+          "rounded-lg border flex items-center justify-center flex-shrink-0",
+          !collapsed && !nestedChild && "w-7 h-7",
+          !collapsed && nestedChild && "w-6 h-6",
+          collapsed && !nestedChild && "w-8 h-8",
+          collapsed && nestedChild && "w-[30px] h-[30px]",
           isActive
             ? "bg-white/12 border-white/20 text-white"
-            : "bg-white/[0.04] border-white/10 text-white/70",
-          collapsed && "w-8 h-8"
+            : nestedChild && !collapsed
+              ? "bg-purple-500/[0.06] border-purple-400/25 text-white/75"
+              : "bg-white/[0.04] border-white/10 text-white/70",
         )}
         aria-hidden
       >
-        <Icon size={collapsed ? 16 : 15} />
+        <Icon
+          size={collapsed ? (nestedChild ? 14 : 16) : nestedChild ? 12 : 15}
+        />
       </span>
       {!collapsed && (
         <div className="flex-1 min-w-0 text-left">

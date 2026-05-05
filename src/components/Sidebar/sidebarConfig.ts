@@ -29,14 +29,55 @@ export interface SidebarMenuEntry {
   icon: ComponentType<{ size?: number; className?: string }>;
   /** If true, show count badge (from App `badges` prop) when no byte badge. */
   useCountFallback?: boolean;
+  /**
+   * Tampilan inden + rail (hasil irisan Deep Scanning). Dipasangkan berturutan dengan satu entry `cleanup` + `my-clutter`.
+   */
+  nestedUnderDeepScan?: boolean;
+}
+
+export type SidebarNavSegment =
+  | { kind: "item"; entry: SidebarNavEntry }
+  | { kind: "deepScanSlices"; entries: readonly [SidebarMenuEntry, SidebarMenuEntry] };
+
+function isSidebarMenuRow(e: SidebarNavEntry | undefined | null): e is SidebarMenuEntry {
+  return e != null && e.id !== AI_SIDEBAR_ID;
+}
+
+/** Mengelompokkan Cleanup + My Files berturutan agar bisa dibungkus rail hierarki. */
+export function segmentSidebarNav(entries: SidebarNavEntry[]): SidebarNavSegment[] {
+  const out: SidebarNavSegment[] = [];
+  let i = 0;
+  while (i < entries.length) {
+    const a = entries[i];
+    if (a == null) {
+      i += 1;
+      continue;
+    }
+    const b = entries[i + 1];
+    const canPair =
+      isSidebarMenuRow(a) &&
+      isSidebarMenuRow(b) &&
+      a.id === "cleanup" &&
+      b.id === "my-clutter" &&
+      Boolean(a.nestedUnderDeepScan) &&
+      Boolean(b.nestedUnderDeepScan);
+    if (canPair) {
+      out.push({ kind: "deepScanSlices", entries: [a, b] });
+      i += 2;
+    } else {
+      out.push({ kind: "item", entry: a });
+      i += 1;
+    }
+  }
+  return out;
 }
 
 /** English primary label + Indonesian helper line; order matches product flow. */
 export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
   {
     id: "smart-care",
-    label: "Dashboard",
-    sublabel: "Hasil ringkas & scan",
+    label: "Deep Scanning",
+    sublabel: "Pemindaian mendalam & ringkasan",
     accent: "purple",
     group: "maintenance",
     icon: Sparkles,
@@ -44,20 +85,22 @@ export const SIDEBAR_MENUS: SidebarMenuEntry[] = [
   {
     id: "cleanup",
     label: "Junk Cleanup",
-    sublabel: "Cache & file sampah",
+    sublabel: "Deep Scan · cache & sampah aman",
     accent: "green",
     group: "maintenance",
     icon: Trash,
     useCountFallback: true,
+    nestedUnderDeepScan: true,
   },
   {
     id: "my-clutter",
     label: "My Files",
-    sublabel: "Download, duplikat, file besar",
+    sublabel: "Deep Scan · berkas besar & duplikat",
     accent: "blue",
     group: "maintenance",
     icon: CircleDashed,
     useCountFallback: true,
+    nestedUnderDeepScan: true,
   },
   {
     id: "disk-explorer",

@@ -2,39 +2,13 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant, UNIX_EPOCH};
+use tauri::{AppHandle, Emitter};
 use walkdir::WalkDir;
 
+use crate::path_taxonomy::{assess_risk, calculate_dir_size, classify_node, iso_time, NodeType, RiskLevel};
+
 use super::common::home_dir;
-
-const SIZE_WALK_TIMEOUT: Duration = Duration::from_secs(30);
-const SIZE_MAX_ENTRIES: u64 = 500_000;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "PascalCase")]
-pub enum NodeType {
-    Cache,
-    Developer,
-    AppSupport,
-    Media,
-    UserData,
-    System,
-    Trash,
-    Downloads,
-    Application,
-    Log,
-    Backup,
-    Other,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "PascalCase")]
-pub enum RiskLevel {
-    Safe,
-    Caution,
-    Risky,
-    Locked,
-}
+use super::trash::delete_to_trash;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,92 +65,6 @@ fn redact_path_str(full: &str) -> String {
         }
     }
     full.to_string()
-}
-
-fn classify_node(path: &Path) -> NodeType {
-    let s = path.to_string_lossy().to_lowercase();
-    if s.contains("/caches") || s.ends_with("/caches") {
-        return NodeType::Cache;
-    }
-    if s.contains("/developer") || s.contains("/xcode") {
-        return NodeType::Developer;
-    }
-    if s.contains("/application support") {
-        return NodeType::AppSupport;
-    }
-    if s.contains("/logs") || s.ends_with("/logs") {
-        return NodeType::Log;
-    }
-    if s.contains("/.trash") || s.ends_with(".trash") {
-        return NodeType::Trash;
-    }
-    if s.contains("/movies")
-        || s.contains("/music")
-        || s.contains("photos library.photoslibrary")
-    {
-        return NodeType::Media;
-    }
-    if s.contains("/downloads") {
-        return NodeType::Downloads;
-    }
-    if s.contains("/applications") || s.ends_with(".app") {
-        return NodeType::Application;
-    }
-    if s.contains("mobilesync") || s.contains("/backups") {
-        return NodeType::Backup;
-    }
-    if s.starts_with("/system")
-        || s.starts_with("/usr")
-        || s.starts_with("/sbin")
-        || s.starts_with("/bin")
-        || s.starts_with("/private/var")
-    {
-        return NodeType::System;
-    }
-    if s.contains("/documents") || s.contains("/desktop") || s.contains("/pictures") {
-        return NodeType::UserData;
-    }
-    NodeType::Other
-}
-
-fn assess_risk(node_type: &NodeType) -> RiskLevel {
-    match node_type {
-        NodeType::System => RiskLevel::Locked,
-        NodeType::Cache | NodeType::Trash | NodeType::Log | NodeType::Downloads => RiskLevel::Safe,
-        NodeType::Developer => RiskLevel::Caution,
-        NodeType::Backup | NodeType::Media | NodeType::UserData => RiskLevel::Caution,
-        NodeType::AppSupport | NodeType::Application | NodeType::Other => RiskLevel::Risky,
-    }
-}
-
-fn iso_time(meta: &std::fs::Metadata) -> Option<String> {
-    let secs = meta.modified().ok()?.duration_since(UNIX_EPOCH).ok()?.as_secs() as i64;
-    chrono::DateTime::from_timestamp(secs, 0).map(|dt| dt.to_rfc3339())
-}
-
-/// Recursive size without following symlinks; bounded by time and entry count.
-fn calculate_dir_size(path: &Path) -> (u64, bool) {
-    if path.is_file() {
-        return (fs::metadata(path).map(|m| m.len()).unwrap_or(0), true);
-    }
-    let start = Instant::now();
-    let mut total: u64 = 0;
-    let mut entries: u64 = 0;
-    let mut complete = true;
-
-    for e in WalkDir::new(path).follow_links(false).into_iter().filter_map(|x| x.ok()) {
-        entries += 1;
-        if entries > SIZE_MAX_ENTRIES || start.elapsed() > SIZE_WALK_TIMEOUT {
-            complete = false;
-            break;
-        }
-        if e.file_type().is_file() {
-            if let Ok(m) = e.metadata() {
-                total = total.saturating_add(m.len());
-            }
-        }
-    }
-    (total, complete)
 }
 
 fn count_direct_children(path: &Path) -> u64 {
@@ -239,7 +127,7 @@ pub fn disk_explorer_volume_stats() -> Result<DiskExplorerVolumeDto, String> {
 }
 
 #[tauri::command]
-pub fn scan_disk_level(path: String) -> Result<Vec<DiskNodeDto>, String> {
+pub fn scan_disk_level(app: AppHandle, path: String) -> Result<Vec<DiskNodeDto>, String> {
     let root = expand_scan_path(&path)?;
     if !root.exists() {
         return Err(format!(
@@ -248,10 +136,23 @@ pub fn scan_disk_level(path: String) -> Result<Vec<DiskNodeDto>, String> {
         ));
     }
 
-    let mut nodes: Vec<DiskNodeDto> = Vec::new();
-    let read_it = fs::read_dir(&root).map_err(|e| format!("Cannot read directory: {e}"))?;
+    let entries: Vec<_> = fs::read_dir(&root)
+        .map_err(|e| format!("Cannot read directory: {e}"))?
+        .flatten()
+        .collect();
 
-    for entry in read_it.flatten() {
+    let total = entries.len().max(1);
+    let mut nodes: Vec<DiskNodeDto> = Vec::new();
+
+    if entries.is_empty() {
+        let _ = app.emit("disk-scan-progress", 100_u8);
+        return Ok(nodes);
+    }
+
+    for (idx, entry) in entries.into_iter().enumerate() {
+        let pct = ((idx as u64 * 100) / total as u64).min(99) as u8;
+        let _ = app.emit("disk-scan-progress", pct);
+
         let p = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
 
@@ -333,6 +234,7 @@ pub fn scan_disk_level(path: String) -> Result<Vec<DiskNodeDto>, String> {
         });
     }
 
+    let _ = app.emit("disk-scan-progress", 100_u8);
     nodes.sort_by(|a, b| b.size_bytes.cmp(&a.size_bytes));
     Ok(nodes)
 }
@@ -340,7 +242,7 @@ pub fn scan_disk_level(path: String) -> Result<Vec<DiskNodeDto>, String> {
 #[tauri::command]
 pub fn move_node_to_trash(path: String) -> Result<(), String> {
     let p = PathBuf::from(&path);
-    trash::delete(&p).map_err(|e| e.to_string())
+    delete_to_trash(&p)
 }
 
 #[tauri::command]
@@ -430,64 +332,6 @@ pub fn export_scan_report(nodes: Vec<DiskNodeDto>, format: String) -> Result<Str
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
-    use std::path::PathBuf;
-
-    #[test]
-    fn test_classify_caches() {
-        let p = PathBuf::from("/Users/test/Library/Caches");
-        assert!(matches!(classify_node(&p), NodeType::Cache));
-    }
-
-    #[test]
-    fn test_classify_developer() {
-        let p = PathBuf::from("/Users/test/Library/Developer");
-        assert!(matches!(classify_node(&p), NodeType::Developer));
-    }
-
-    #[test]
-    fn test_classify_system() {
-        let p = PathBuf::from("/System/Library");
-        assert!(matches!(classify_node(&p), NodeType::System));
-    }
-
-    #[test]
-    fn test_classify_trash() {
-        let p = PathBuf::from("/Users/test/.Trash");
-        assert!(matches!(classify_node(&p), NodeType::Trash));
-    }
-
-    #[test]
-    fn test_classify_downloads() {
-        let p = PathBuf::from("/Users/test/Downloads");
-        assert!(matches!(classify_node(&p), NodeType::Downloads));
-    }
-
-    #[test]
-    fn test_classify_media() {
-        let p = PathBuf::from("/Users/test/Movies");
-        assert!(matches!(classify_node(&p), NodeType::Media));
-    }
-
-    #[test]
-    fn test_risk_system_is_locked() {
-        assert!(matches!(assess_risk(&NodeType::System), RiskLevel::Locked));
-    }
-
-    #[test]
-    fn test_risk_cache_is_safe() {
-        assert!(matches!(assess_risk(&NodeType::Cache), RiskLevel::Safe));
-    }
-
-    #[test]
-    fn test_risk_developer_is_caution() {
-        assert!(matches!(assess_risk(&NodeType::Developer), RiskLevel::Caution));
-    }
-
-    #[test]
-    fn test_risk_app_support_is_risky() {
-        assert!(matches!(assess_risk(&NodeType::AppSupport), RiskLevel::Risky));
-    }
 
     #[test]
     fn test_redact_replaces_home() {
@@ -500,27 +344,5 @@ mod tests {
     #[test]
     fn test_redact_non_home_unchanged() {
         assert_eq!(redact_path_str("/System/Library"), "/System/Library");
-    }
-
-    #[test]
-    fn test_dir_size_nonexistent_returns_zero() {
-        let p = PathBuf::from("/this/path/does/not/exist/12345");
-        let (size, _complete) = calculate_dir_size(&p);
-        assert_eq!(size, 0);
-    }
-
-    #[test]
-    fn test_dir_size_tmp_dir() {
-        let tmp = std::env::temp_dir().join("macfyi_test_dir_size");
-        let _ = std::fs::remove_dir_all(&tmp);
-        std::fs::create_dir_all(&tmp).unwrap();
-        let file = tmp.join("test.txt");
-        let mut f = std::fs::File::create(&file).unwrap();
-        f.write_all(b"hello world").unwrap();
-
-        let (size, _complete) = calculate_dir_size(&tmp);
-        assert!(size >= 11, "Expected >= 11 bytes, got {size}");
-
-        let _ = std::fs::remove_dir_all(&tmp);
     }
 }

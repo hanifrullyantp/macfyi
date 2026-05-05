@@ -1,4 +1,4 @@
-# Build macOS DMG (Tauri) and upload to Supabase Storage bucket `releases` as macfyi-latest.dmg.
+# Build macOS DMG and upload to staging object only.
 # Set GitHub secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
 # Optional: set UPDATE_APP_SETTINGS secret to "true" to PATCH download_base_url after upload (or edit workflow env below).
 
@@ -37,12 +37,24 @@ jobs:
       - name: Build DMG (Tauri)
         run: npm run tauri:build:dmg
 
+      - name: Resolve release version
+        id: release_version
+        run: |
+          RAW="${GITHUB_REF_NAME}"
+          if [[ "$RAW" == v* ]]; then
+            RAW="${RAW#v}"
+          fi
+          if [[ -z "$RAW" || "$RAW" == "main" || "$RAW" == "master" ]]; then
+            RAW="$(node -e 'const fs=require("fs");const cfg=JSON.parse(fs.readFileSync("src-tauri/tauri.conf.json","utf8"));process.stdout.write(String(cfg.version||"0.0.0"))')"
+          fi
+          echo "value=$RAW" >> "$GITHUB_OUTPUT"
+
       - name: Upload DMG to Supabase Storage
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-          # Set to "false" if you manage download_base_url only in admin/SQL.
-          UPDATE_APP_SETTINGS: "true"
+          RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
+          RELEASE_PLATFORM: macos-arm64
         run: bash scripts/upload-latest-dmg-to-supabase.sh
 
       - name: Upload bundle artifact (debug)

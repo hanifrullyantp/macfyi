@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Bot, RefreshCw } from "lucide-react";
+import { Bot, ScanSearch } from "lucide-react";
 import { DiskExplorerProvider, useDiskExplorerStore } from "../../store/diskExplorerStore";
 import { useI18n } from "../../i18n/context";
 import { useAppActivity } from "../../context/AppActivityContext";
 import { marketingCheckoutUrl } from "../../lib/marketingUrl";
+import { revealInFinder } from "../../lib/backend";
 import { DiskExplorerBanner } from "./DiskExplorerBanner";
-import { DiskUsageBar } from "./DiskUsageBar";
 import { DiskExplorerBreadcrumbs } from "./Breadcrumbs";
 import { DiskNodeTable } from "./DiskNodeTable";
 import { DiskAiModal } from "./DiskAiModal";
@@ -104,19 +104,18 @@ function DiskExplorerInner() {
   };
 
   return (
-    <div className="h-full min-h-0 flex flex-col gap-4 p-4 sm:p-6 overflow-hidden">
-      <header className="shrink-0 space-y-1">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white tracking-tight">{t("diskExplorer.title")}</h1>
-            <p className="text-sm text-white/55 max-w-2xl mt-1">{t("diskExplorer.subtitle")}</p>
+    <div className="h-full min-h-0 flex flex-col gap-3 p-4 sm:p-5 overflow-hidden">
+      <header className="shrink-0 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold text-white tracking-tight">{t("diskExplorer.title")}</h1>
             {s.lastScannedAt ? (
-              <p className="text-xs text-white/45 mt-1.5">
+              <p className="text-[11px] text-white/45 mt-0.5">
                 {t("diskExplorer.lastScanAt", { time: s.lastScannedAt.toLocaleTimeString() })}
               </p>
             ) : null}
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setAiModalOpen(true)}
@@ -129,22 +128,24 @@ function DiskExplorerInner() {
               type="button"
               onClick={() => void s.scan(s.currentPath, true)}
               disabled={s.loading}
-              className="btn-secondary text-xs inline-flex items-center gap-2 px-3 py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-secondary text-xs inline-flex items-center gap-2 px-3 py-2 border-[var(--color-brand)]/35 bg-[var(--color-brand)]/10 hover:bg-[var(--color-brand)]/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              {t("diskExplorer.rescan")}
+              <ScanSearch className="w-3.5 h-3.5 text-[var(--color-brand-glow)]" />
+              {t("diskExplorer.fullScan")}
             </button>
           </div>
         </div>
+        {s.isScanning ? (
+          <div className="h-1 w-full rounded-full bg-white/10 overflow-hidden" aria-hidden={false} role="progressbar" aria-valuenow={s.scanProgress} aria-valuemin={0} aria-valuemax={100}>
+            <div
+              className="h-full bg-gradient-to-r from-red-600 to-red-500 transition-[width] duration-150 ease-out"
+              style={{ width: `${s.scanProgress}%` }}
+            />
+          </div>
+        ) : null}
       </header>
 
       <DiskExplorerBanner fdaOk={s.fdaOk} onOpenFda={() => void s.openFda()} />
-
-      {s.volume ? (
-        <div className="shrink-0 max-w-xl">
-          <DiskUsageBar totalBytes={s.volume.totalBytes} usedBytes={s.volume.usedBytes} freeBytes={s.volume.freeBytes} />
-        </div>
-      ) : null}
 
       <DiskExplorerBreadcrumbs items={s.breadcrumbs} onNavigate={(i) => void s.navigateBreadcrumb(i)} />
 
@@ -178,7 +179,7 @@ function DiskExplorerInner() {
         </p>
       ) : null}
 
-      <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
         {!s.hasScanned ? (
           <div className="surface-card p-6 md:p-8 max-w-3xl">
             <h2 className="text-xl font-semibold text-white">{t("diskExplorer.idleTitle")}</h2>
@@ -195,16 +196,6 @@ function DiskExplorerInner() {
         ) : (
           <div className="relative min-h-0 flex flex-col gap-3 overflow-hidden flex-1">
             <ScanningOverlay show={s.loading} />
-            <div className="flex-1 min-h-0 overflow-auto pr-1">
-              <DiskNodeTable
-                nodes={s.nodes}
-                selectedPaths={s.selectedPaths}
-                onToggle={s.toggleSelect}
-                onOpenDir={(n) => void s.navigateTo(n.path, n.displayName)}
-                onTopFiles={(p) => void s.openFileModal(p)}
-                blockDeepNavigation={s.depthLimitReached}
-              />
-            </div>
             <DiskActionBar
               selectedCount={s.selectedPaths.length}
               savingsBytes={s.savingsBytes}
@@ -217,6 +208,17 @@ function DiskExplorerInner() {
               actionDisabled={s.selectedPaths.length === 0 || s.movingToTrash}
               loadingTrash={s.movingToTrash}
             />
+            <div className="flex-1 min-h-0 overflow-auto pr-1">
+              <DiskNodeTable
+                nodes={s.nodes}
+                selectedPaths={s.selectedPaths}
+                onToggle={s.toggleSelect}
+                onOpenDir={(n) => void s.navigateTo(n.path, n.displayName)}
+                onTopFiles={(p) => void s.openFileModal(p)}
+                onRevealPath={(p) => void revealInFinder(p)}
+                blockDeepNavigation={s.depthLimitReached}
+              />
+            </div>
           </div>
         )}
       </div>

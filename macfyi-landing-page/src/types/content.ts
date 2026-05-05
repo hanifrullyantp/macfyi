@@ -1,3 +1,5 @@
+import { DEFAULT_PRIVACY_HTML, DEFAULT_TERMS_HTML } from "../content/legalDefaults";
+
 export interface SiteSettings {
   primaryColor: string;
   secondaryColor: string;
@@ -308,9 +310,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
 
 export const DEFAULT_LEGAL: ContentData["legal"] = {
   termsTitle: "Syarat & Ketentuan",
-  termsHtml:
-    "<p>Berikut syarat penggunaan layanan dan lisensi Macfyi. Sesuaikan teks ini di pengaturan admin.</p><ul><li>Penggunaan sesuai hukum yang berlaku.</li><li>Lisensi per perangkat sesuai pembelian.</li></ul>",
+  termsHtml: DEFAULT_TERMS_HTML,
   privacyTitle: "Kebijakan Privasi",
-  privacyHtml:
-    "<p>Macfyi menghormati privasi Anda. Sesuaikan kebijakan ini di admin.</p><ul><li>Data diproses untuk aktivasi dan dukungan.</li><li>AI lokal tidak mengirim path file ke server kami.</li></ul>",
+  privacyHtml: DEFAULT_PRIVACY_HTML,
 };

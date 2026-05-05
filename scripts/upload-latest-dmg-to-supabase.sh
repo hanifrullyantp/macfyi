@@ -1,26 +1,23 @@
 #!/usr/bin/env bash
-# Upload the newest .dmg from a local Tauri build to Supabase Storage (bucket: releases).
-# Does not commit binaries to git. Requires env:
-#   SUPABASE_URL                 e.g. https://xxxx.supabase.co
-#   SUPABASE_SERVICE_ROLE_KEY    service_role JWT
+# Upload newest DMG to staging object only (2-bucket model).
+# Required env:
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+#   RELEASE_VERSION        e.g. 1.4.2
 # Optional:
-#   UPDATE_APP_SETTINGS=true     PATCH app_settings.download_base_url + bump config_version
-#
-# Usage (from repo root, after npm run tauri:build:dmg):
-#   export SUPABASE_URL=...
-#   export SUPABASE_SERVICE_ROLE_KEY=...
-#   UPDATE_APP_SETTINGS=true ./scripts/upload-latest-dmg-to-supabase.sh
+#   RELEASE_PLATFORM       default: macos-arm64
 
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]]; then
-  echo "Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (Dashboard → Settings → API)." >&2
+if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" || -z "${RELEASE_VERSION:-}" ]]; then
+  echo "Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and RELEASE_VERSION." >&2
   exit 1
 fi
 
 SUPABASE_URL="${SUPABASE_URL%/}"
+RELEASE_PLATFORM="${RELEASE_PLATFORM:-macos-arm64}"
 
 shopt -s nullglob
 DMGS=(src-tauri/target/release/bundle/dmg/*.dmg)
@@ -37,8 +34,10 @@ DMG="$(ls -t "${DMGS[@]}" | head -1)"
 echo "Uploading: $DMG"
 
 BUCKET="releases"
-OBJECT_PATH="macfyi-latest.dmg"
+OBJECT_PATH="staging/macfyi-latest.dmg"
 PUBLIC_URL="${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${OBJECT_PATH}"
+FILE_SIZE="$(wc -c < "$DMG" | tr -d '[:space:]')"
+CHECKSUM="$(shasum -a 256 "$DMG" | awk '{print $1}')"
 
 TMP_OUT="$(mktemp)"
 HTTP_CODE="$(curl -sS -o "$TMP_OUT" -w "%{http_code}" -X POST \
@@ -56,23 +55,47 @@ fi
 rm -f "$TMP_OUT"
 
 echo "OK — public URL: $PUBLIC_URL"
+echo "Checksum: $CHECKSUM"
+echo "Size bytes: $FILE_SIZE"
 
-if [[ "${UPDATE_APP_SETTINGS:-}" == "true" || "${UPDATE_APP_SETTINGS:-}" == "1" ]]; then
-  VER="$(date +%s)"
-  PATCH_OUT="$(mktemp)"
-  HTTP_PATCH="$(curl -sS -o "$PATCH_OUT" -w "%{http_code}" -X PATCH \
-    "${SUPABASE_URL}/rest/v1/app_settings?id=eq.default" \
-    -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-    -H "Content-Type: application/json" \
-    -H "Prefer: return=minimal" \
-    -d "{\"download_base_url\": \"${PUBLIC_URL}\", \"config_version\": ${VER}}")"
-  if [[ "$HTTP_PATCH" != "204" && "$HTTP_PATCH" != "200" ]]; then
-    echo "PATCH app_settings failed HTTP $HTTP_PATCH" >&2
-    cat "$PATCH_OUT" >&2
-    rm -f "$PATCH_OUT"
-    exit 1
-  fi
-  rm -f "$PATCH_OUT"
-  echo "Updated app_settings.download_base_url and config_version=${VER}"
+DEL_OUT="$(mktemp)"
+DEL_HTTP="$(curl -sS -o "$DEL_OUT" -w "%{http_code}" -X DELETE \
+  "${SUPABASE_URL}/rest/v1/release_state?environment=eq.staging&platform=eq.${RELEASE_PLATFORM}" \
+  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Prefer: return=minimal")"
+if [[ "$DEL_HTTP" != "204" && "$DEL_HTTP" != "200" ]]; then
+  echo "Failed deleting prior staging row HTTP $DEL_HTTP" >&2
+  cat "$DEL_OUT" >&2
+  rm -f "$DEL_OUT"
+  exit 1
 fi
+rm -f "$DEL_OUT"
+
+INS_OUT="$(mktemp)"
+INS_PAYLOAD="$(mktemp)"
+cat > "$INS_PAYLOAD" <<EOF
+{
+  "environment": "staging",
+  "version": "${RELEASE_VERSION}",
+  "platform": "${RELEASE_PLATFORM}",
+  "storage_path": "releases/${OBJECT_PATH}",
+  "file_size": ${FILE_SIZE},
+  "checksum": "${CHECKSUM}"
+}
+EOF
+INS_HTTP="$(curl -sS -o "$INS_OUT" -w "%{http_code}" -X POST \
+  "${SUPABASE_URL}/rest/v1/release_state" \
+  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Content-Type: application/json" \
+  -H "Prefer: return=minimal" \
+  --data-binary "@${INS_PAYLOAD}")"
+if [[ "$INS_HTTP" != "201" && "$INS_HTTP" != "200" && "$INS_HTTP" != "204" ]]; then
+  echo "Failed inserting staging row HTTP $INS_HTTP" >&2
+  cat "$INS_OUT" >&2
+  rm -f "$INS_OUT" "$INS_PAYLOAD"
+  exit 1
+fi
+rm -f "$INS_OUT" "$INS_PAYLOAD"
+echo "Staging row upserted in release_state."

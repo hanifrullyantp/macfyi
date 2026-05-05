@@ -39,6 +39,6 @@ export function getDashboardScanPhase(pct: number): { label: string; detail: str
   }
   return {
     label: "Menyiapkan laporan…",
-    detail: "Menghitung total dan mengkategorikan",
+    detail: "Menghitung total, modul Trash/Uninstaller & ringkasan penyimpanan",
   };
 }

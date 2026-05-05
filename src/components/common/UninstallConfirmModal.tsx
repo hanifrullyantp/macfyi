@@ -34,6 +34,8 @@ export function UninstallConfirmModal({
   t,
 }: UninstallConfirmModalProps) {
   const [largeAck, setLargeAck] = useState(false);
+  const [permanentAck, setPermanentAck] = useState(false);
+  const requiresPermanentAcknowledge = !useTrashMode;
 
   const residualRows = useMemo(() => {
     if (!app) return [];
@@ -49,7 +51,10 @@ export function UninstallConfirmModal({
   const isLargeRemoval = totalBytes >= ONE_GIB;
 
   useEffect(() => {
-    if (open) setLargeAck(false);
+    if (open) {
+      setLargeAck(false);
+      setPermanentAck(false);
+    }
   }, [open, app]);
 
   useEffect(() => {
@@ -62,7 +67,10 @@ export function UninstallConfirmModal({
   }, [open, isRemoving, onClose]);
 
   const canConfirm =
-    !!app && (!isLargeRemoval || largeAck) && !isRemoving;
+    !!app &&
+    (!isLargeRemoval || largeAck) &&
+    (!requiresPermanentAcknowledge || permanentAck) &&
+    !isRemoving;
 
   return (
     <AnimatePresence>
@@ -126,6 +134,19 @@ export function UninstallConfirmModal({
                   <div className="rounded-xl border border-amber-500/25 bg-amber-950/30 px-3 py-2.5">
                     <p className="text-[11px] text-amber-100/95 leading-snug">{t(useTrashMode ? "uninstallerPanel.confirmModalTrashPolicy" : "uninstallerPanel.confirmModalPermanentPolicy")}</p>
                   </div>
+
+                  {requiresPermanentAcknowledge ? (
+                    <label className="flex gap-3 items-start rounded-xl border border-rose-500/30 bg-rose-950/30 px-3 py-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={permanentAck}
+                        disabled={isRemoving}
+                        onChange={() => setPermanentAck((v) => !v)}
+                        className="mt-1 rounded border-white/30"
+                      />
+                      <span className="text-[12px] text-rose-100/95 leading-snug">{t("uninstallerPanel.confirmModalPermanentAck")}</span>
+                    </label>
+                  ) : null}
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-baseline gap-2">

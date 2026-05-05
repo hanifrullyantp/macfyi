@@ -1,4 +1,5 @@
 use super::common::*;
+use super::trash::delete_to_trash;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
@@ -127,6 +128,86 @@ fn is_allowed_app_bundle(path: &Path) -> bool {
     false
 }
 
+fn plain_remove_persistent(path: &Path) -> std::io::Result<()> {
+    if path.is_dir() {
+        std::fs::remove_dir_all(path)
+    } else {
+        std::fs::remove_file(path)
+    }
+}
+
+/// Last resort for `/Applications`/`~/Applications/*.app`: `rm -rf` with password prompt — root-owned bundles.
+#[cfg(target_os = "macos")]
+fn macos_privileged_rm_rf_allowed_app_bundle(path: &Path) -> Result<(), String> {
+    if path.extension().and_then(|e| e.to_str()) != Some("app") || !is_allowed_app_bundle(path) {
+        return Err("Refusing privileged removal: path is not an allowed .app bundle.".into());
+    }
+    let canon = std::fs::canonicalize(path).map_err(|e| explain_io_delete_error(path, &e))?;
+    if canon.extension().and_then(|e| e.to_str()) != Some("app") || !is_allowed_app_bundle(&canon) {
+        return Err("Refusing privileged removal: resolved path is not allowed.".into());
+    }
+    let ps = canon.to_string_lossy().to_string();
+    if ps.contains('\0') {
+        return Err("Invalid path for privileged removal.".into());
+    }
+    let inner = ps.replace('\\', "\\\\").replace('"', "\\\"");
+    let script = format!(
+        r#"do shell script "/bin/rm -rf " & quoted form of "{inner}" with administrator privileges"#
+    );
+    let out = std::process::Command::new("/usr/bin/osascript")
+        .args(["-e", &script])
+        .output()
+        .map_err(|e| format!("Could not request privileged removal: {e}"))?;
+    if out.status.success() {
+        return Ok(());
+    }
+    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let comb_lc = stderr.to_lowercase();
+    if comb_lc.contains("user canceled")
+        || stderr.contains("-128")
+        || comb_lc.contains("-128:")
+    {
+        return Err(
+            "Privileged removal was cancelled — you can remove the app via Finder → Move to Trash instead."
+                .into(),
+        );
+    }
+    let detail = if !stderr.is_empty() {
+        stderr
+    } else if !stdout.is_empty() {
+        stdout
+    } else {
+        format!("exit status {:?}", out.status)
+    };
+    Err(format!("Privileged removal failed: {}", detail.trim()))
+}
+
+#[cfg(target_os = "macos")]
+fn macos_bundle_remove_plain_then_elevation(path: &Path) -> Result<(), String> {
+    match plain_remove_persistent(path) {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let perm = e.kind() == std::io::ErrorKind::PermissionDenied
+                || e.raw_os_error() == Some(libc::EACCES);
+            if perm {
+                macos_privileged_rm_rf_allowed_app_bundle(path)
+            } else {
+                Err(explain_io_delete_error(path, &e))
+            }
+        }
+    }
+}
+
+fn uninstall_permanent_for_path(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    if path.extension().and_then(|e| e.to_str()) == Some("app") && is_allowed_app_bundle(path) {
+        return macos_bundle_remove_plain_then_elevation(path);
+    }
+
+    plain_remove_persistent(path).map_err(|e| explain_io_delete_error(path, &e))
+}
+
 fn related_paths_allowed(home: &Path, bundle_id: &str, app_path: &str) -> HashSet<PathBuf> {
     let mut set: HashSet<PathBuf> = HashSet::new();
     for r in collect_related(home, bundle_id, app_path) {
@@ -176,13 +257,9 @@ pub fn remove_orphan_paths(paths: Vec<String>, use_trash: bool) -> Result<TrashR
         let pstr = path.to_string_lossy().to_string();
         let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
         let res = if use_trash {
-            trash::delete(&path).map_err(|e| e.to_string())
+            delete_to_trash(&path)
         } else {
-            if path.is_dir() {
-                std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
-            } else {
-                std::fs::remove_file(&path).map_err(|e| e.to_string())
-            }
+            uninstall_permanent_for_path(&path)
         };
         match res {
             Ok(()) => {
@@ -242,13 +319,9 @@ pub fn uninstall_app_bundle(
         let pstr = path.to_string_lossy().to_string();
         let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
         let res = if use_trash {
-            trash::delete(&path).map_err(|e| e.to_string())
+            delete_to_trash(&path)
         } else {
-            if path.is_dir() {
-                std::fs::remove_dir_all(&path).map_err(|e| e.to_string())
-            } else {
-                std::fs::remove_file(&path).map_err(|e| e.to_string())
-            }
+            uninstall_permanent_for_path(&path)
         };
         match res {
             Ok(()) => {

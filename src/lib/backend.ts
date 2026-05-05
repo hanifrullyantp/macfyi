@@ -10,6 +10,8 @@ import type {
   ScanProgress,
   UninstallAppEntry,
   TrashListItem,
+  SurgeReport,
+  DiskSurgeDetectedPayload,
 } from "../types";
 import type { DiskExplorerFileInfo, DiskExplorerVolume, DiskNode } from "./types/diskExplorer";
 
@@ -124,6 +126,14 @@ export function onScanProgress(
   });
 }
 
+/** Disk Explorer folder scan progress (0–100). */
+export function onDiskScanProgress(callback: (pct: number) => void): Promise<UnlistenFn> {
+  return listen<number>("disk-scan-progress", (event) => {
+    const p = event.payload;
+    callback(typeof p === "number" && !Number.isNaN(p) ? p : 0);
+  });
+}
+
 // --- App Audit ---
 export async function appAudit(): Promise<AppInfo[]> {
   try {
@@ -165,10 +175,10 @@ export async function uninstallAppBundle(
   useTrash: boolean
 ): Promise<TrashResult> {
   return await invoke<TrashResult>("uninstall_app_bundle", {
-    app_path: appPath,
-    bundle_id: bundleId,
-    related_paths: relatedPaths,
-    use_trash: useTrash,
+    appPath,
+    bundleId,
+    relatedPaths,
+    useTrash,
   });
 }
 
@@ -466,4 +476,28 @@ export async function diskExplorerFileList(path: string, limit: number): Promise
 
 export async function diskExplorerExportReport(nodes: DiskNode[], format: "json" | "txt"): Promise<string> {
   return await invoke<string>("export_scan_report", { nodes, format });
+}
+
+// --- System Storage Analyzer (disk surge monitor + Library differential scan) ---
+export async function analyzeDiskSurge(): Promise<SurgeReport> {
+  try {
+    return await invoke<SurgeReport>("analyze_disk_surge");
+  } catch (e) {
+    console.error("[analyzeDiskSurge]", e);
+    throw e instanceof Error ? e : new Error(String(e));
+  }
+}
+
+export function onDiskSurgeDetected(
+  callback: (payload: DiskSurgeDetectedPayload) => void
+): Promise<UnlistenFn> {
+  return import("@tauri-apps/api/webview").then(({ getCurrentWebview }) =>
+    getCurrentWebview().listen<DiskSurgeDetectedPayload>("disk_surge_detected", (event) => {
+      callback(event.payload);
+    })
+  );
+}
+
+export async function surgeTrashSafeCachePaths(paths: string[]): Promise<TrashResult> {
+  return await invoke<TrashResult>("surge_trash_safe_cache_paths", { paths });
 }

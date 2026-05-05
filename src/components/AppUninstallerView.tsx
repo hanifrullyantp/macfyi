@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, Loader2, PackageOpen, RefreshCw, Trash2 } from "lucide-react";
+import { ExternalLink, HardDrive, Loader2, PackageOpen, RefreshCw, Trash2 } from "lucide-react";
 import { LoadingButton } from "./common/LoadingButton";
 import { UninstallConfirmModal } from "./common/UninstallConfirmModal";
+import { SystemStorageAnalyzerPanel } from "./SystemStorageAnalyzerPanel";
 import type { FileItem, UninstallAppEntry } from "../types";
 import { removeOrphanPaths, revealInFinder, uninstallAppBundle } from "../lib/backend";
 import { recordDemoUninstallUsage, validateDemoUninstall } from "../lib/demoLimits";
@@ -39,6 +40,7 @@ export function AppUninstallerView({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [relatedPick, setRelatedPick] = useState<Record<string, boolean>>({});
   const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
+  const [mainTab, setMainTab] = useState<"apps" | "storage">("apps");
   const topBanner = successMessage;
 
   useEffect(() => {
@@ -137,7 +139,8 @@ export function AppUninstallerView({
     setActionError(null);
     setSuccessMessage(null);
     try {
-      const res = await uninstallAppBundle(selected.appPath, selected.bundleId, extra, useTrash);
+      // App uninstall always uses permanent delete (not Trash), independent of Settings.
+      const res = await uninstallAppBundle(selected.appPath, selected.bundleId, extra, false);
       if (res.succeeded.length === 0 && res.failed.length > 0) {
         setActionError(res.failed.map((f) => `${f.path}: ${f.message}`).join("\n"));
         return;
@@ -167,6 +170,15 @@ export function AppUninstallerView({
   const toggleRelated = (path: string) => {
     setRelatedPick((prev) => ({ ...prev, [path]: !prev[path] }));
   };
+
+  const residualSelectedPaths = useMemo(() => {
+    const set = new Set<string>();
+    if (!selected) return set;
+    for (const r of selected.related) {
+      if (relatedPick[r.path]) set.add(r.path);
+    }
+    return set;
+  }, [selected, relatedPick]);
 
   return (
     <div className="h-full flex flex-col min-h-0">
@@ -250,6 +262,38 @@ export function AppUninstallerView({
         </div>
       </div>
 
+      <div className="shrink-0 flex border-b border-white/10 bg-black/25 px-2">
+        <button
+          type="button"
+          onClick={() => setMainTab("apps")}
+          className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-colors ${
+            mainTab === "apps"
+              ? "text-white border-[var(--color-brand)] bg-white/[0.06]"
+              : "text-white/45 border-transparent hover:text-white/70"
+          }`}
+        >
+          <PackageOpen size={14} className="shrink-0 opacity-80" />
+          {t("uninstallerPanel.tabApps")}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMainTab("storage")}
+          className={`flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-t-lg border-b-2 transition-colors ${
+            mainTab === "storage"
+              ? "text-white border-[var(--color-brand)] bg-white/[0.06]"
+              : "text-white/45 border-transparent hover:text-white/70"
+          }`}
+        >
+          <HardDrive size={14} className="shrink-0 opacity-80" />
+          {t("uninstallerPanel.tabStorage")}
+        </button>
+      </div>
+
+      {mainTab === "storage" ? (
+        <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+          <SystemStorageAnalyzerPanel />
+        </div>
+      ) : (
       <div className="flex flex-1 min-h-0">
         <div className="w-[min(100%,380px)] border-r border-white/10 flex flex-col min-h-0 bg-black/20">
           <div className="p-4 border-b border-white/10 shrink-0 flex items-start justify-between gap-2">
@@ -414,20 +458,18 @@ export function AppUninstallerView({
                 )}
               </div>
 
-              <p className="text-[11px] text-white/35 leading-relaxed">
-                Uninstall moves the app bundle to Trash (or deletes permanently) based on Settings. Selected related folders are removed
-                using the same mode.
-              </p>
+              <p className="text-[11px] text-white/35 leading-relaxed">{t("uninstallerPanel.uninstallFootnotePermanent")}</p>
             </div>
           )}
         </div>
       </div>
+      )}
 
       <UninstallConfirmModal
         open={showUninstallConfirm && !!selected}
         app={selected}
         residualPathsSelected={residualSelectedPaths}
-        useTrashMode={useTrash}
+        useTrashMode={false}
         isRemoving={busy === "uninstall"}
         onClose={() => {
           if (busy === "uninstall") return;

@@ -20,6 +20,18 @@ export function marketingCheckoutUrl(): string {
   return `${marketingSiteBase()}/checkout`;
 }
 
+export function marketingTermsUrl(): string {
+  const explicit = import.meta.env.VITE_MARKETING_TERMS_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  return `${marketingSiteBase()}/terms`;
+}
+
+export function marketingPrivacyUrl(): string {
+  const explicit = import.meta.env.VITE_MARKETING_PRIVACY_URL?.trim();
+  if (explicit) return explicit.replace(/\/$/, "");
+  return `${marketingSiteBase()}/privacy`;
+}
+
 const memberBase = (): string =>
   import.meta.env.VITE_MEMBER_BASE_URL?.trim().replace(/\/$/, "") || marketingSiteBase();
 

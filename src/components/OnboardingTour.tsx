@@ -11,44 +11,17 @@ import {
   FolderOpen,
 } from "lucide-react";
 import { useI18n } from "../i18n/context";
+import {
+  ONBOARDING_CONTENT_VERSION,
+  STORAGE_FOLDER,
+  getOnboardingDoneKey,
+  getOnboardingVersionKey,
+  persistOnboardingCompletedNative,
+  type OnboardingCompleteDetail,
+} from "../lib/onboardingStorage";
 
-const STORAGE_DONE = "macfyi.onboarding.completed";
-const STORAGE_VERSION_KEY = "macfyi.onboarding.contentVersion";
-
-/** Bump when tour content/layout changes so existing users see the new tour. */
-export const ONBOARDING_CONTENT_VERSION = 2;
-export const STORAGE_FOLDER = "macfyi.scan.customFolder";
-
-export type OnboardingCompleteDetail = {
-  source: "last_step" | "skipped";
-};
-
-function readVersion(): number {
-  try {
-    const v = localStorage.getItem(STORAGE_VERSION_KEY);
-    return v ? parseInt(v, 10) || 0 : 0;
-  } catch {
-    return 0;
-  }
-}
-
-export function hasCompletedOnboarding(): boolean {
-  try {
-    if (localStorage.getItem(STORAGE_DONE) !== "1") return false;
-    return readVersion() === ONBOARDING_CONTENT_VERSION;
-  } catch {
-    return false;
-  }
-}
-
-export function resetOnboardingCompletion(): void {
-  try {
-    localStorage.removeItem(STORAGE_DONE);
-    localStorage.removeItem(STORAGE_VERSION_KEY);
-  } catch {
-    /* */
-  }
-}
+export type { OnboardingCompleteDetail };
+export { ONBOARDING_CONTENT_VERSION, STORAGE_FOLDER };
 
 const SLIDE_ICONS: ComponentType<{ className?: string; strokeWidth?: number }>[] = [
   Sparkles,
@@ -106,11 +79,12 @@ export function OnboardingTour({
 
   const markDoneAndComplete = (source: OnboardingCompleteDetail["source"]) => {
     try {
-      localStorage.setItem(STORAGE_DONE, "1");
-      localStorage.setItem(STORAGE_VERSION_KEY, String(ONBOARDING_CONTENT_VERSION));
+      localStorage.setItem(getOnboardingDoneKey(), "1");
+      localStorage.setItem(getOnboardingVersionKey(), String(ONBOARDING_CONTENT_VERSION));
     } catch {
       /* */
     }
+    void persistOnboardingCompletedNative(ONBOARDING_CONTENT_VERSION);
     onComplete({ source });
   };
 

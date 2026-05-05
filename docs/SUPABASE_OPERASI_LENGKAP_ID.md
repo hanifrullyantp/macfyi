@@ -41,6 +41,13 @@ Setelah mengedit `config.toml`, terapkan ke proyek terhubung sesuai alur tim And
 - Deploy: `supabase functions deploy <nama-function>` (tambahkan `--no-verify-jwt` hanya jika function memang publik dan sudah disetujui secara keamanan).
 - Log runtime: **Supabase Dashboard → Edge Functions → Logs**.
 
+### AI: `ai-chat` dan `ai-provider-health`
+
+- **`ai-chat`**: chat assistant desktop; membaca kunci dari tabel `platform_api_keys` (service role), mencoba penyedia **Groq** lalu **Gemini**. Deploy: `supabase functions deploy ai-chat`. Kebijakan JWT (verify / no-verify) diselaraskan dengan cara app memanggil function (anon + session opsional, sama seperti function desktop lain).
+- **`ai-provider-health`**: **probe** singkat per penyedia (request minimal ke API Gemini dan Groq) agar app desktop dapat menampilkan status koneksi per penyedia. Membaca kunci yang sama dari `platform_api_keys` (aktif + nilai valid), **bukan** mengirim kunci ke klien. Rate limit ringan: 24 panggilan per jam per kombinasi `deviceFingerprint` (body) + IP (`x-forwarded-for`). Respons JSON memuat `providers.gemini` / `providers.groq` (status `ok` | `error` | `not_configured` | `inactive`, plus `httpStatus` / `code` bila relevan) dan `checkedAt`. Jika limit terlampaui: HTTP **429**, body berisi `error: "RATE_LIMIT"`.
+- **Deploy**: `supabase functions deploy ai-provider-health` — gunakan **`--no-verify-jwt`** hanya jika function dipanggil seperti function publik lain (anon key dari app) dan tim keamanan menyetujui; jika verify JWT aktif, pastikan header Authorization cocok dengan kebijakan gateway Supabase.
+- **Admin** tetap sumber kebenaran untuk mengatur dan menguji kunci (halaman API Keys); aplikasi desktop hanya menampilkan hasil probe dari Edge ini.
+
 ### Desktop: login kode (pairing)
 
 - **Migrasi**: `supabase/migrations/20260426120000_desktop_pairing_codes.sql` — tabel `desktop_pairing_codes` (akses langsung diblok untuk klien; Edge memakai service role), plus policy **`admin_delete_activations`** agar admin bisa menghapus baris `activations` (reset ganti Mac).

@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { ShieldCheck, HardDrive, XCircle } from "lucide-react";
-import { useState, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ScanResult, ScanProgress } from "../types";
 import { deepScan, cancelScan, onScanProgress } from "../lib/backend";
 import { useI18n } from "../i18n/context";
@@ -28,27 +28,6 @@ export const Scanner = ({
   const [itemsFlagged, setItemsFlagged] = useState(0);
   const doneRef = useRef(false);
   const mountedRef = useRef(true);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const el = rootRef.current;
-    const r = el?.getBoundingClientRect();
-    // #region agent log
-    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
-      body: JSON.stringify({
-        sessionId: "c1c2e1",
-        location: "Scanner.tsx:mount-layout",
-        message: "scanner root layout",
-        data: { h: r?.height ?? null, w: r?.width ?? null, progress },
-        timestamp: Date.now(),
-        hypothesisId: "H1",
-        runId: "pre-fix",
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [progress]);
 
   useEffect(() => {
     doneRef.current = false;
@@ -56,16 +35,20 @@ export const Scanner = ({
     let unlisten: (() => void) | null = null;
 
     const setup = async () => {
-      unlisten = await onScanProgress((p: ScanProgress) => {
-        if (doneRef.current) return;
-        setProgress(p.pct);
-        onProgress?.(p.pct);
-        setStage(p.stage);
-        setPhase(p.phase);
-        setCurrentPath(p.currentPath ?? null);
-        setFilesFound(p.filesFound);
-        setItemsFlagged(p.itemsFlagged);
-      });
+      try {
+        unlisten = await onScanProgress((p: ScanProgress) => {
+          if (doneRef.current) return;
+          setProgress(p.pct);
+          onProgress?.(p.pct);
+          setStage(p.stage);
+          setPhase(p.phase);
+          setCurrentPath(p.currentPath ?? null);
+          setFilesFound(p.filesFound);
+          setItemsFlagged(p.itemsFlagged);
+        });
+      } catch {
+        /* progress listener optional */
+      }
 
       try {
         const results = await deepScan();
@@ -81,33 +64,16 @@ export const Scanner = ({
         if (doneRef.current) return;
         doneRef.current = true;
         const msg = e instanceof Error ? e.message : String(e);
-        // #region agent log
-        fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
-          body: JSON.stringify({
-            sessionId: "c1c2e1",
-            location: "Scanner.tsx:deepScan-catch",
-            message: "deepScan error",
-            data: { msg: msg.slice(0, 200) },
-            timestamp: Date.now(),
-            hypothesisId: "H4",
-            runId: "pre-fix",
-          }),
-        }).catch(() => {});
-        // #endregion
         if (msg.includes("cancelled")) {
           onCancel();
-        } else {
-          if (mountedRef.current) {
-            setStage(`Scan failed: ${msg}`);
-            setProgress(0);
-          }
+        } else if (mountedRef.current) {
+          setStage(`Scan failed: ${msg}`);
+          setProgress(0);
         }
       }
     };
 
-    setup();
+    void setup();
 
     return () => {
       mountedRef.current = false;
@@ -134,7 +100,7 @@ export const Scanner = ({
   const friendly = dashboardPhaseCopy ? getDashboardScanPhase(progress) : null;
 
   return (
-    <div ref={rootRef} className="flex flex-col items-center justify-center h-full min-h-0 text-center bg-[#0a0b0f]">
+    <div className="flex flex-col items-center justify-center h-full min-h-0 text-center bg-[#0a0b0f]">
       <motion.div
         className="relative w-72 h-72 flex items-center justify-center"
         initial={reduceMotion ? false : { scale: 0.9, opacity: 0 }}
@@ -143,7 +109,9 @@ export const Scanner = ({
         <svg className="w-full h-full transform -rotate-90">
           <circle cx="144" cy="144" r="120" stroke="rgba(255,255,255,0.05)" strokeWidth="20" fill="transparent" />
           <motion.circle
-            cx="144" cy="144" r="120"
+            cx="144"
+            cy="144"
+            r="120"
             stroke="url(#scanGradient)"
             strokeWidth="20"
             strokeDasharray={754}

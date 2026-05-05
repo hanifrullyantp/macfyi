@@ -1,5 +1,7 @@
 pub mod common;
+pub mod update;
 pub mod disk_explorer;
+pub mod disk_surge;
 pub mod scan;
 pub mod storage;
 pub mod apps;
@@ -9,3 +11,4 @@ pub mod trash;
 pub mod uninstaller;
 pub mod performance;
 pub mod license;
+pub mod onboarding;

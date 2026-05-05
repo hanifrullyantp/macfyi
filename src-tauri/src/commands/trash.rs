@@ -60,14 +60,92 @@ fn path_size_bytes(path: &Path) -> u64 {
 }
 
 fn remove_path_permanent(path: &Path) -> Result<u64, String> {
-    let meta = fs::metadata(path).map_err(|e| e.to_string())?;
+    let meta = fs::metadata(path).map_err(|e| explain_io_delete_error(path, &e))?;
     let size = meta.len();
     if meta.is_dir() {
-        fs::remove_dir_all(path).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(path).map_err(|e| explain_io_delete_error(path, &e))?;
     } else {
-        fs::remove_file(path).map_err(|e| e.to_string())?;
+        fs::remove_file(path).map_err(|e| explain_io_delete_error(path, &e))?;
     }
     Ok(size)
+}
+
+/// Move `path` to Trash. On macOS the `trash` crate may use Finder AppleScript; if Automation is denied
+/// (-1743), fall back to renaming into `~/.Trash` (Finder "Put Back" metadata is not created).
+pub fn delete_to_trash(path: &Path) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        match trash::delete(path) {
+            Ok(()) => Ok(()),
+            Err(e) => {
+                let msg = e.to_string();
+                if macos_finder_trash_permission_denied(&msg) {
+                    log::warn!(
+                        "trash::delete failed (Finder); using ~/.Trash rename fallback: {}",
+                        msg
+                    );
+                    macos_rename_into_home_trash(path)
+                } else {
+                    Err(explain_delete_failure_for_path(Some(path), msg))
+                }
+            }
+        }
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        trash::delete(path).map_err(|e| explain_delete_failure_for_path(Some(path), e))
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn macos_finder_trash_permission_denied(msg: &str) -> bool {
+    msg.contains("-1743")
+        || msg.contains("Not authorized to send Apple events to Finder")
+        || msg.contains("not authorized to send Apple events to Finder")
+        || (msg.contains("AppleScript") && msg.contains("Finder"))
+}
+
+#[cfg(target_os = "macos")]
+fn macos_rename_into_home_trash(src: &Path) -> Result<(), String> {
+    let home = resolved_home_dir()?;
+    let trash_dir = home.join(".Trash");
+    fs::create_dir_all(&trash_dir).map_err(|e| e.to_string())?;
+    let dest = unique_trash_destination_under(&trash_dir, src)?;
+    fs::rename(src, &dest).map_err(|e| {
+        explain_delete_failure_for_path(
+            Some(src),
+            format!(
+                "Move to Trash failed: {e}. If the item is on another volume, use permanent delete or allow Macfyi to control Finder in System Settings → Privacy & Security → Automation."
+            ),
+        )
+    })
+}
+
+#[cfg(target_os = "macos")]
+fn unique_trash_destination_under(trash_dir: &Path, src: &Path) -> Result<PathBuf, String> {
+    let name = src
+        .file_name()
+        .ok_or_else(|| "source has no file name".to_string())?;
+    let initial = trash_dir.join(name);
+    if !initial.exists() {
+        return Ok(initial);
+    }
+    let name_str = name.to_string_lossy();
+    let (stem, ext) = match name_str.rfind('.') {
+        Some(i) if i > 0 => (name_str[..i].to_string(), name_str[i..].to_string()),
+        _ => (name_str.to_string(), String::new()),
+    };
+    for n in 2u32..10_000u32 {
+        let candidate = if ext.is_empty() {
+            trash_dir.join(format!("{stem} {n}"))
+        } else {
+            trash_dir.join(format!("{stem} {n}{ext}"))
+        };
+        if !candidate.exists() {
+            return Ok(candidate);
+        }
+    }
+    Err("No free filename in ~/.Trash".into())
 }
 
 #[tauri::command]
@@ -107,14 +185,14 @@ pub fn move_paths_to_trash(paths: Vec<String>) -> Result<TrashResultDto, String>
     for p in paths {
         let path = PathBuf::from(&p);
         let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
-        match trash::delete(&path) {
+        match delete_to_trash(&path) {
             Ok(()) => {
                 freed += size;
                 succeeded.push(p);
             }
             Err(e) => failed.push(TrashErrorDto {
                 path: p,
-                message: e.to_string(),
+                message: e,
             }),
         }
     }

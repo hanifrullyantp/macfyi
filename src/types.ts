@@ -155,3 +155,46 @@ export interface ScanProgress {
   /** Truncated path of last inspected file during walk */
   currentPath?: string | null;
 }
+
+/** System Storage Analyzer (disk surge + Library deltas) */
+export interface DiskSurgeDetectedPayload {
+  deltaBytes: number;
+  windowSec: number;
+  freeBytesNow: number;
+}
+
+export interface SurgeFileItem {
+  appName: string;
+  bundleId?: string | null;
+  path: string;
+  displayName: string;
+  sizeBytes: number;
+  deltaBytes: number;
+  nodeType: string;
+  riskLevel: string;
+  categoryKey: string;
+}
+
+export interface StorageCategoryGroup {
+  categoryKey: string;
+  riskLevel: string;
+  sizeBytes: number;
+  items: SurgeFileItem[];
+}
+
+export interface AppStorageImpact {
+  appName: string;
+  bundleId?: string | null;
+  totalBytes: number;
+  categories: StorageCategoryGroup[];
+}
+
+export interface SurgeReport {
+  totalDeltaBytes: number;
+  fdaLimited: boolean;
+  /** Current largest Library child folders (Caches / Containers / Application Support) — always populated. */
+  snapshotTop: SurgeFileItem[];
+  detectedApps: AppStorageImpact[];
+  largeRecentFiles: SurgeFileItem[];
+  baselineEstablished: boolean;
+}

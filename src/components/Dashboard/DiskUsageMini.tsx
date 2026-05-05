@@ -22,7 +22,7 @@ export function DiskUsageMini({
       </div>
       <div className="h-2 bg-white/10 rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full bg-gradient-to-r from-purple-600/90 to-indigo-500/90 transition-all duration-300"
+          className="h-full rounded-full bg-gradient-to-r from-red-600/90 to-red-500/90 transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>

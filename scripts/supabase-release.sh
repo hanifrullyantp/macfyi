@@ -50,6 +50,12 @@ FUNCS_NO_JWT=(
   submit-withdrawal
   admin-withdrawal
   scheduled-ops
+  check-update
+  release-state
+  release-publish
+  release-rollback
+  release-track-download
+  release-train
 )
 
 for fn in "${FUNCS_NO_JWT[@]}"; do

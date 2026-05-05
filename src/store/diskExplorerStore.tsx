@@ -16,6 +16,7 @@ import {
   diskExplorerScanLevel,
   diskExplorerVolumeStats,
   movePathsToTrash,
+  onDiskScanProgress,
   revealInFinder,
   type TrashResult,
 } from "../lib/backend";
@@ -63,6 +64,8 @@ type DiskExplorerContextValue = {
   maxDemoDepth: number;
   currentDepth: number;
   depthLimitReached: boolean;
+  scanProgress: number;
+  isScanning: boolean;
 };
 
 const DiskExplorerContext = createContext<DiskExplorerContextValue | null>(null);
@@ -87,6 +90,57 @@ let sessionCache: DiskExplorerSessionCache = {
   volume: null,
 };
 
+/** In-memory list of directory listing by path string (same key as `scan_disk_level` IPC). */
+const diskExplorerPathScanCache = new Map<string, DiskNode[]>();
+
+/** Clears persisted Disk Explorer cache (Vitest isolation). Safe to export; unused at runtime unless called. */
+export function resetDiskExplorerSessionCache(): void {
+  diskExplorerPathScanCache.clear();
+  sessionCache = {
+    breadcrumbs: [{ label: "~", path: "~" }],
+    currentPath: "~",
+    nodes: [],
+    hasScanned: false,
+    lastScannedAt: null,
+    fdaOk: null,
+    volume: null,
+  };
+}
+
+/** Warm `~` level data for Disk Explorer before the panel mounts (Deep Scan orchestration). */
+export async function primeDiskExplorerFromDeepScan(): Promise<void> {
+  const homePath = "~";
+  let fdaOk: boolean | null = null;
+  try {
+    fdaOk = await diskExplorerCheckFullDiskAccess();
+  } catch {
+    fdaOk = null;
+  }
+  let volume: DiskExplorerSessionCache["volume"] = null;
+  try {
+    volume = await diskExplorerVolumeStats();
+  } catch {
+    volume = null;
+  }
+  let nodes: DiskNode[] = [];
+  try {
+    nodes = await diskExplorerScanLevel(homePath);
+  } catch {
+    nodes = [];
+  }
+  diskExplorerPathScanCache.set(homePath, nodes);
+  sessionCache = {
+    ...sessionCache,
+    breadcrumbs: [{ label: "~", path: homePath }],
+    currentPath: homePath,
+    nodes,
+    hasScanned: true,
+    lastScannedAt: Date.now(),
+    fdaOk,
+    volume,
+  };
+}
+
 export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const MAX_DEMO_DEPTH = 2;
   const [breadcrumbs, setBreadcrumbs] = useState<Breadcrumb[]>(sessionCache.breadcrumbs);
@@ -108,6 +162,8 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const [aiText, setAiText] = useState("");
   const [aiSource, setAiSource] = useState<"idle" | "cloud" | "kb">("idle");
   const [aiLoading, setAiLoading] = useState(false);
+  const [scanProgress, setScanProgress] = useState(0);
+  const [isScanning, setIsScanning] = useState(false);
 
   const selectedSet = useMemo(() => new Set(selectedPaths), [selectedPaths]);
   const isDemoLimited = !getIsProEntitled();
@@ -115,21 +171,40 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   const depthLimitReached = isDemoLimited && currentDepth >= MAX_DEMO_DEPTH;
 
   const scan = useCallback(async (path: string, force = false) => {
-    if (hasScanned && !force && path === currentPath) return;
+    if (!force && diskExplorerPathScanCache.has(path)) {
+      const cached = diskExplorerPathScanCache.get(path)!;
+      setNodes(cached);
+      setHasScanned(true);
+      setLastScannedAt(new Date());
+      setScanProgress(100);
+      setIsScanning(false);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+    if (force) {
+      diskExplorerPathScanCache.delete(path);
+    }
     setLoading(true);
+    setIsScanning(true);
+    setScanProgress(0);
     setError(null);
     try {
       const rows = await diskExplorerScanLevel(path);
+      diskExplorerPathScanCache.set(path, rows);
       setNodes(rows);
       setHasScanned(true);
       setLastScannedAt(new Date());
+      setScanProgress(100);
     } catch (e) {
       setNodes([]);
       setError(e instanceof Error ? e.message : String(e));
+      setScanProgress(0);
     } finally {
       setLoading(false);
+      setIsScanning(false);
     }
-  }, [currentPath, hasScanned]);
+  }, []);
 
   const refreshAll = useCallback(async () => {
     try {
@@ -161,7 +236,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       setSelectedPaths([]);
       setAiText("");
       setAiSource("idle");
-      await scan(path, true);
+      await scan(path, false);
     },
     [MAX_DEMO_DEPTH, breadcrumbs.length, isDemoLimited, scan]
   );
@@ -175,7 +250,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       setSelectedPaths([]);
       setAiText("");
       setAiSource("idle");
-      await scan(bc.path, true);
+      await scan(bc.path, false);
     },
     [breadcrumbs, scan]
   );
@@ -217,10 +292,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     }
     setMovingToTrash(true);
     try {
-      // Temporary investigation logs for trash flow visibility.
-      console.log("[DiskExplorer] Selected:", selectedPaths);
       const res = await movePathsToTrash(selectedPaths);
-      console.log("[DiskExplorer] Move result:", res);
       setSelectedPaths([]);
       if (res.succeeded.length > 0) {
         setNodes((prev) => prev.filter((n) => !res.succeeded.includes(n.path)));
@@ -228,6 +300,7 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       if (res.failed.length > 0) {
         setError(res.failed.map((f) => `${f.path}: ${f.message}`).join(" | "));
       }
+      diskExplorerPathScanCache.clear();
       await scan(currentPath, true);
       return res;
     } finally {
@@ -289,6 +362,9 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
+    if (sessionCache.hasScanned && sessionCache.currentPath) {
+      diskExplorerPathScanCache.set(sessionCache.currentPath, sessionCache.nodes);
+    }
     void (async () => {
       try {
         setFdaOk(await diskExplorerCheckFullDiskAccess());
@@ -305,6 +381,18 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial mount only
+  }, []);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    void onDiskScanProgress((pct) => {
+      setScanProgress(Math.min(100, Math.max(0, pct)));
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
 
   useEffect(() => {
@@ -357,6 +445,8 @@ export function DiskExplorerProvider({ children }: { children: ReactNode }) {
     maxDemoDepth: MAX_DEMO_DEPTH,
     currentDepth,
     depthLimitReached,
+    scanProgress,
+    isScanning,
   };
 
   return <DiskExplorerContext.Provider value={value}>{children}</DiskExplorerContext.Provider>;

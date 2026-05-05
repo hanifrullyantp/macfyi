@@ -1,4 +1,4 @@
-import { Folder, FileText } from "lucide-react";
+import { Folder, FileText, FolderOpen } from "lucide-react";
 import type { DiskExplorerRiskLevel, DiskNode } from "../../lib/types/diskExplorer";
 import { useI18n } from "../../i18n/context";
 
@@ -21,6 +21,7 @@ export function DiskNodeTable({
   onToggle,
   onOpenDir,
   onTopFiles,
+  onRevealPath,
   blockDeepNavigation,
 }: {
   nodes: DiskNode[];
@@ -28,6 +29,7 @@ export function DiskNodeTable({
   onToggle: (path: string) => void;
   onOpenDir: (node: DiskNode) => void;
   onTopFiles: (path: string) => void;
+  onRevealPath: (path: string) => void;
   blockDeepNavigation?: boolean;
 }) {
   const { t } = useI18n();
@@ -105,20 +107,38 @@ export function DiskNodeTable({
                   </span>
                 </td>
                 <td className="px-3 py-2 align-middle text-right whitespace-nowrap">
-                  {n.isExpandable ? (
+                  <div className="inline-flex items-center justify-end gap-1">
                     <button
                       type="button"
-                      disabled={depthBlocked}
-                      onClick={() => onTopFiles(n.path)}
-                      className={`text-[10px] sm:text-xs ${
-                        depthBlocked ? "text-white/25 cursor-not-allowed" : "text-emerald-300/90 hover:text-emerald-200"
+                      title={t("diskExplorer.openInFinder")}
+                      aria-label={t("diskExplorer.openInFinder")}
+                      onClick={() => onRevealPath(n.path)}
+                      disabled={locked}
+                      className={`rounded-md p-1.5 transition-colors ${
+                        locked
+                          ? "text-white/25 cursor-not-allowed"
+                          : "text-white/55 hover:text-white hover:bg-white/[0.1] cursor-pointer"
                       }`}
                     >
-                      {t("diskExplorer.topFiles")}
+                      <FolderOpen className="w-4 h-4" />
                     </button>
-                  ) : (
-                    <span className="text-white/25">—</span>
-                  )}
+                    {n.isExpandable ? (
+                      <button
+                        type="button"
+                        disabled={depthBlocked}
+                        onClick={() => onTopFiles(n.path)}
+                        className={`text-[10px] sm:text-xs px-1.5 py-1 rounded-md transition-colors ${
+                          depthBlocked
+                            ? "text-white/25 cursor-not-allowed"
+                            : "text-emerald-300/90 hover:text-emerald-200 hover:bg-white/[0.06]"
+                        }`}
+                      >
+                        {t("diskExplorer.topFiles")}
+                      </button>
+                    ) : (
+                      <span className="text-white/25 text-[10px] px-1">—</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );

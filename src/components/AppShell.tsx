@@ -13,9 +13,15 @@ import { useI18n } from "../i18n/context";
 import { DEFAULT_BRAND_LOGO_URL } from "../lib/defaultBrandLogo";
 import type { FeatureId } from "../lib/featureId";
 import { AI_SIDEBAR_ID } from "../lib/featureId";
-import { appendAIRow, getGroupedSidebarMenu, GROUP_LABEL_KEY } from "./Sidebar/sidebarConfig";
+import {
+  appendAIRow,
+  getGroupedSidebarMenu,
+  GROUP_LABEL_KEY,
+  segmentSidebarNav,
+} from "./Sidebar/sidebarConfig";
 import { SidebarItem } from "./Sidebar/SidebarItem";
 import type { SidebarMenuEntry, SidebarNavEntry } from "./Sidebar/sidebarConfig";
+import { cn } from "../utils/cn";
 
 export type { FeatureId };
 
@@ -39,6 +45,8 @@ interface AppShellProps {
   onSettingsClick?: () => void;
   diskUsedPercent?: number;
   freeSpaceGb?: string;
+  /** Short free/total line near header controls (e.g. main volume summary). */
+  diskInlineSummary?: string | null;
   badges?: Record<string, number>;
   /** Short byte labels for sidebar after scan, e.g. { "smart-care": "2.1 GB" } */
   sidebarByteBadges?: Partial<Record<FeatureId, string>>;
@@ -79,6 +87,7 @@ export const AppShell = ({
   onSettingsClick,
   diskUsedPercent = 45,
   freeSpaceGb,
+  diskInlineSummary = null,
   badges = {},
   sidebarByteBadges = {},
   isAIPanelOpen = false,
@@ -178,7 +187,44 @@ export const AppShell = ({
                 {t(GROUP_LABEL_KEY[group])}
               </span>
             )}
-            {items.map((item) => {
+            {segmentSidebarNav(items).map((seg) => {
+              if (seg.kind === "deepScanSlices") {
+                return (
+                  <div
+                    key="deep-scan-branches"
+                    role="group"
+                    aria-label={t("shell.sidebarDeepScanBranchesAria")}
+                    className={cn(
+                      collapsed ? "space-y-0.5" : "mt-0.5 mb-1 space-y-0.5 rounded-r-xl border-l-2 border-purple-500/40 bg-gradient-to-r from-purple-500/[0.06] to-transparent py-1 pl-2 ml-2"
+                    )}
+                  >
+                    {!collapsed ? (
+                      <p className="text-[9px] font-bold text-purple-400/70 uppercase tracking-widest pl-1.5 pt-0.5 pb-0.5">
+                        {t("shell.sidebarDeepScanBranchCaption")}
+                      </p>
+                    ) : null}
+                    {seg.entries.map((item) => {
+                      const isActive =
+                        activeFeature === item.id;
+                      const byteLabel = sidebarByteBadges[item.id];
+                      const count = badges[item.id];
+                      return (
+                        <SidebarItem
+                          key={item.id}
+                          entry={item}
+                          isActive={isActive}
+                          collapsed={collapsed}
+                          badgeText={byteLabel}
+                          countFallback={count}
+                          onSelect={() => onFeatureChange(item.id)}
+                        />
+                      );
+                    })}
+                  </div>
+                );
+              }
+
+              const item = seg.entry;
               const key = item.id;
               const isActive = isNavFeature(item)
                 ? activeFeature === item.id
@@ -208,9 +254,18 @@ export const AppShell = ({
       {/* Main split view */}
       <div className="flex-1 flex min-w-0 min-h-0">
         <div className="flex-1 flex flex-col min-w-0 min-h-0 relative">
-          <header className="h-11 flex items-center justify-between px-4 border-b border-white/10 bg-[#15161a]/92 backdrop-blur-sm shrink-0 relative z-50">
-            <span className="text-sm font-semibold text-white/80 truncate">{headerTitle}</span>
-            <div className="flex items-center gap-0.5 shrink-0">
+          <header className="h-11 flex items-center justify-between px-4 border-b border-white/10 bg-[#15161a]/92 backdrop-blur-sm shrink-0 relative z-50 gap-3">
+            <span className="text-sm font-semibold text-white/80 truncate min-w-0">{headerTitle}</span>
+            <div className="flex items-center gap-2 shrink-0 min-w-0">
+              {diskInlineSummary ? (
+                <span
+                  className="hidden md:inline text-[11px] text-white/45 tabular-nums truncate max-w-[min(220px,28vw)]"
+                  title={diskInlineSummary}
+                >
+                  {diskInlineSummary}
+                </span>
+              ) : null}
+              <div className="flex items-center gap-0.5 shrink-0">
               <button
                 type="button"
                 onClick={onSearchClick}
@@ -280,6 +335,7 @@ export const AppShell = ({
                 <div className="w-2 h-2 rounded-full bg-[var(--color-brand-glow)]/70" />
                 <span className="text-[10px] font-bold text-white/80">{t("shell.ai")}</span>
               </button>
+              </div>
             </div>
           </header>
 

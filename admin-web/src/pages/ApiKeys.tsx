@@ -15,9 +15,14 @@ type ApiKeyRecord = {
   last_test_ok: boolean | null;
 };
 
-const INFO: Record<Provider, { label: string; prefix: string; url: string }> = {
+const INFO: Record<Provider, { label: string; prefix: string; url: string; hint?: string }> = {
   gemini: { label: "Google Gemini 2.0 Flash", prefix: "AIzaSy", url: "https://aistudio.google.com/apikey" },
-  groq: { label: "Groq Llama 3.1 8B", prefix: "gsk_", url: "https://console.groq.com" },
+  groq: {
+    label: "Groq (Llama) — bukan xAI Grok",
+    prefix: "gsk_",
+    url: "https://console.groq.com",
+    hint: "Key harus dari console.groq.com (awalan gsk_). Key xAI / Grok tidak dipakai di sini.",
+  },
 };
 
 export default function ApiKeysPage() {
@@ -139,6 +144,9 @@ export default function ApiKeysPage() {
                 Ambil API key
               </a>
             </div>
+            {provider === "groq" && INFO.groq.hint ? (
+              <p className="text-xs text-amber-200/70">{INFO.groq.hint}</p>
+            ) : null}
             <p className="text-xs text-white/40">Status: {row?.last_test_ok == null ? "Belum ditest" : row.last_test_ok ? "OK" : "Error"}</p>
           </div>
         );

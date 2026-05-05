@@ -24,6 +24,7 @@ import WaTemplatesPage from "./pages/WaTemplatesPage";
 import EventsPage from "./pages/EventsPage";
 import MarketingPage from "./pages/MarketingPage";
 import ApiKeysPage from "./pages/ApiKeys";
+import ReleasesPage from "./pages/ReleasesPage";
 import { AdminSessionProvider } from "./context/AdminSessionContext";
 
 function isAdmin(session: Session | null): boolean {
@@ -146,6 +147,7 @@ export function App() {
           <Route path="/wa-templates" element={<WaTemplatesPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/marketing" element={<MarketingPage />} />
+          <Route path="/releases" element={<ReleasesPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         </Layout>

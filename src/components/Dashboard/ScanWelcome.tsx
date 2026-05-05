@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { HardDrive } from "lucide-react";
+import { useI18n } from "../../i18n/context";
 import { DiskUsageMini } from "./DiskUsageMini";
 
 export function ScanWelcome({
@@ -15,6 +16,7 @@ export function ScanWelcome({
   freeGb: number;
   totalGb: number;
 }) {
+  const { t } = useI18n();
   const reduceMotion = useReducedMotion();
 
   return (
@@ -22,7 +24,7 @@ export function ScanWelcome({
       <div className="flex justify-center">
         <div className="relative w-36 h-36 md:w-44 md:h-44 rounded-3xl bg-white/[0.04] border border-white/10 flex items-center justify-center">
           <HardDrive className="w-20 h-20 md:w-24 md:h-24 text-white/20" strokeWidth={1} />
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-purple-500/10 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 rounded-3xl bg-gradient-to-t from-red-500/12 to-transparent pointer-events-none" />
         </div>
       </div>
 
@@ -42,9 +44,9 @@ export function ScanWelcome({
           onClick={onStartScan}
           whileHover={reduceMotion ? undefined : { scale: 1.03 }}
           whileTap={reduceMotion ? undefined : { scale: 0.97 }}
-          className="px-10 py-3.5 rounded-2xl text-base font-bold bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-shadow"
+          className="px-10 py-3.5 rounded-2xl text-base font-bold bg-gradient-to-r from-red-600 to-red-500 text-white shadow-lg shadow-red-500/25 hover:from-red-500 hover:to-red-400 hover:shadow-red-500/35 transition-shadow"
         >
-          Scan My Mac
+          {t("dashboard.runSmartScan")}
         </motion.button>
         {hasResults && onReview ? (
           <button

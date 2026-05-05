@@ -14,6 +14,7 @@ export const ADMIN_PAGE_TITLE: Record<string, string> = {
   "/platform": "Pengaturan platform",
   "/api-keys": "API Keys",
   "/marketing": "Marketing",
+  "/releases": "Releases",
   "/events": "Promo events",
   "/wa-templates": "Template WhatsApp",
   "/announcements": "Pengumuman",

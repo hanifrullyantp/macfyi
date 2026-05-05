@@ -169,6 +169,81 @@ pub fn format_space(bytes: u64) -> String {
     }
 }
 
+#[cfg(unix)]
+fn delete_error_looks_permission_denied(s: &str) -> bool {
+    s.contains("Permission denied")
+        || s.contains("permission denied")
+        || s.contains("(os error 13)")
+        || s.contains("os error 13")
+}
+
+#[cfg(not(unix))]
+fn delete_error_looks_permission_denied(s: &str) -> bool {
+    s.contains("Permission denied") || s.contains("permission denied")
+}
+
+fn delete_hint_already_covers_apps_root(s: &str) -> bool {
+    s.contains("Full Disk Access")
+        || s.contains("administrator password")
+        || s.contains("Privileged removal")
+        || s.contains("owned by root")
+}
+
+#[cfg(target_os = "macos")]
+fn hints_fda_folder_territory(path_lossy: &str) -> bool {
+    path_lossy.contains("/Library/")
+}
+
+/// Guidance for Trash / delete failures — distinguishes `/Applications` root-owned bundles vs FDA.
+pub fn explain_delete_failure_for_path(path_for_hint: Option<&Path>, base_err: impl std::fmt::Display) -> String {
+    let s = base_err.to_string();
+    if !delete_error_looks_permission_denied(&s) {
+        return s;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(p) = path_for_hint {
+            let pl = p.to_string_lossy().to_string();
+            let is_app = p.extension().and_then(|e| e.to_str()) == Some("app");
+            let under_sys_apps =
+                is_app && (pl.starts_with("/Applications/") || pl.starts_with("/Applications"));
+            let under_home_apps = is_app
+                && dirs::home_dir()
+                    .map(|h| {
+                        let pr = format!("{}", h.join("Applications").display());
+                        pl.starts_with(&pr)
+                    })
+                    .unwrap_or(false);
+            if under_sys_apps && !delete_hint_already_covers_apps_root(&s) {
+                return format!(
+                    "{s} — Full Disk Access does not bypass file ownership; many /Applications apps are owned by root. Macfyi can show a password prompt for removal, or use Finder → Move to Trash."
+                );
+            }
+            if under_home_apps && !delete_hint_already_covers_apps_root(&s) {
+                return format!(
+                    "{s} — Folder may be owned by another user or root. Approve the administrator prompt if offered, or remove via Finder."
+                );
+            }
+            if hints_fda_folder_territory(&pl) && !delete_hint_already_covers_apps_root(&s) {
+                return format!(
+                    "{s} — Grant Macfyi Full Disk Access: System Settings → Privacy & Security → Full Disk Access → enable Macfyi, then quit and reopen the app."
+                );
+            }
+        }
+        if !delete_hint_already_covers_apps_root(&s) {
+            return format!(
+                "{s} — Grant Macfyi Full Disk Access: System Settings → Privacy & Security → Full Disk Access → enable Macfyi, then quit and reopen the app."
+            );
+        }
+    }
+    s
+}
+
+#[inline]
+pub fn explain_io_delete_error(path: &Path, err: &std::io::Error) -> String {
+    explain_delete_failure_for_path(Some(path), err)
+}
+
 pub fn partial_file_hash(path: &Path) -> std::io::Result<Vec<u8>> {
     use std::io::Read;
     let mut f = std::fs::File::open(path)?;

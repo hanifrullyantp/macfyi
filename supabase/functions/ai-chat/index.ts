@@ -90,19 +90,28 @@ serve(async (req) => {
     if (!geminiKey && !groqKey) {
       response = "[Admin] API key belum dikonfigurasi. Isi key di adm.macfyi.com -> API Keys.";
     } else {
-      try {
-        if (!geminiKey) throw new Error("no gemini key");
-        response = await callGemini(geminiKey, systemPrompt, safeMessage);
-        provider = "gemini";
-      } catch {
+      // Try Groq first when configured — avoids waiting on a broken Gemini key; then Gemini as fallback.
+      type Step = { id: "groq" | "gemini"; key: string };
+      const chain: Step[] = [];
+      if (groqKey) chain.push({ id: "groq", key: groqKey });
+      if (geminiKey) chain.push({ id: "gemini", key: geminiKey });
+      let got = false;
+      for (const step of chain) {
         try {
-          if (!groqKey) throw new Error("no groq key");
-          response = await callGroq(groqKey, systemPrompt, safeMessage);
-          provider = "groq";
+          response =
+            step.id === "groq"
+              ? await callGroq(step.key, systemPrompt, safeMessage)
+              : await callGemini(step.key, systemPrompt, safeMessage);
+          provider = step.id;
+          got = true;
+          break;
         } catch {
-          response = getKBAnswer(safeMessage);
-          provider = "kb";
+          /* try next provider */
         }
+      }
+      if (!got) {
+        response = getKBAnswer(safeMessage);
+        provider = "kb";
       }
     }
 
@@ -127,7 +136,7 @@ async function callGemini(apiKey: string, system: string, message: string): Prom
       headers: { "Content-Type": "application/json" },
       signal: AbortSignal.timeout(10_000),
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: system }] },
+        systemInstruction: { parts: [{ text: system }] },
         contents: [{ role: "user", parts: [{ text: message }] }],
       }),
     },

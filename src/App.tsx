@@ -31,11 +31,12 @@ import { useI18n } from "./i18n/context";
 import { loadSettings } from "./components/SettingsPanel";
 import { playCleanDone, playScanComplete } from "./lib/sound";
 import { notifyCleanComplete, notifyScanComplete } from "./lib/notifications";
+import { OnboardingTour } from "./components/OnboardingTour";
 import {
-  OnboardingTour,
   hasCompletedOnboarding,
+  resolveShowOnboardingForBoot,
   resetOnboardingCompletion,
-} from "./components/OnboardingTour";
+} from "./lib/onboardingStorage";
 import { clearLicenseSession } from "./lib/activation";
 import { getIsProEntitled } from "./lib/entitlement";
 import { fetchPublicConfigWithResult, type PublicConfig } from "./lib/publicConfig";
@@ -48,29 +49,24 @@ import { AIAssistantPromptBanner } from "./components/AIAssistantPromptBanner";
 import { AppBootSplash } from "./components/AppBootSplash";
 import { useAppActivity } from "./context/AppActivityContext";
 import { useScanStore } from "./store/scanStore";
+import { primeDiskExplorerFromDeepScan } from "./store/diskExplorerStore";
+import { UpdateFloatingNotice } from "./components/UpdateFloatingNotice";
+import {
+  checkForUpdate,
+  clearFailedVersion,
+  installCustomUpdate,
+  loadDismissedVersion,
+  loadFailedVersion,
+  markDismissedVersion,
+  markFailedVersion,
+  onUpdateProgress,
+  trackReleaseDownload,
+  type UpdateCheckResult,
+} from "./lib/updateService";
 
 const Scanner = lazy(async () => {
-  try {
-    const m = await import("./components/Scanner");
-    return { default: m.Scanner };
-  } catch (e) {
-    // #region agent log
-    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
-      body: JSON.stringify({
-        sessionId: "c1c2e1",
-        location: "App.tsx:Scanner-lazy",
-        message: "Scanner chunk import failed",
-        data: { err: e instanceof Error ? e.message : String(e) },
-        timestamp: Date.now(),
-        hypothesisId: "H3",
-        runId: "pre-fix",
-      }),
-    }).catch(() => {});
-    // #endregion
-    throw e;
-  }
+  const m = await import("./components/Scanner");
+  return { default: m.Scanner };
 });
 const ResultsView = lazy(async () => {
   const m = await import("./components/ResultsView");
@@ -307,6 +303,7 @@ export default function App() {
   const [isDeletionModePanelOpen, setIsDeletionModePanelOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [settingsRevision, setSettingsRevision] = useState(0);
   const [deletionMode, setDeletionMode] = useState<"trash" | "permanent">(() => getDeletionMode());
   const [shellCleaning, setShellCleaning] = useState(false);
   const [scanProgressPct, setScanProgressPct] = useState(0);
@@ -320,7 +317,7 @@ export default function App() {
   const [perfRefreshTick, setPerfRefreshTick] = useState(0);
   const [monitorRefreshNonce, setMonitorRefreshNonce] = useState(0);
   const [perfLoading, setPerfLoading] = useState(false);
-  const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding());
+  const [showOnboarding, setShowOnboarding] = useState(false);
   // Product decision: app remains usable in demo mode without mandatory login.
   const [licenseGatePassed, setLicenseGatePassed] = useState(true);
   const [upgradePriceShort, setUpgradePriceShort] = useState<string | null>(null);
@@ -334,8 +331,10 @@ export default function App() {
   const [appBootReady, setAppBootReady] = useState(false);
   const [bootProgress, setBootProgress] = useState(0);
   const [bootMessage, setBootMessage] = useState("");
-  const [pendingUpdate, setPendingUpdate] = useState<{ version: string } | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<UpdateCheckResult | null>(null);
   const [updateInstalling, setUpdateInstalling] = useState(false);
+  const [updateProgressPct, setUpdateProgressPct] = useState(0);
+  const [updateProgressLabel, setUpdateProgressLabel] = useState<string | null>(null);
   const updateDismissedRef = useRef(false);
   const [trashItems, setTrashItems] = useState<TrashListItem[] | null>(null);
   const [trashLoading, setTrashLoading] = useState(false);
@@ -356,12 +355,13 @@ export default function App() {
   const OVERVIEW_TTL_MS = 5 * 60 * 1000;
 
   const prefetchSmartCareOverview = useCallback(
-    async (force: boolean) => {
+    async (force: boolean, options?: { silent?: boolean }) => {
       if (overviewPrefetchInFlightRef.current) return;
       const now = Date.now();
       if (!force && now - lastOverviewPrefetchRef.current < OVERVIEW_TTL_MS) return;
+      const silent = options?.silent === true;
       overviewPrefetchInFlightRef.current = true;
-      setSmartCareOverviewLoading(true);
+      if (!silent) setSmartCareOverviewLoading(true);
       setUninstallerLoadError(null);
       setTrashLoadError(null);
       try {
@@ -395,11 +395,25 @@ export default function App() {
         lastOverviewPrefetchRef.current = Date.now();
       } finally {
         overviewPrefetchInFlightRef.current = false;
-        setSmartCareOverviewLoading(false);
+        if (!silent) setSmartCareOverviewLoading(false);
       }
     },
     []
   );
+
+  const kickOffDeepScanSideEffects = useCallback(() => {
+    void primeDiskExplorerFromDeepScan().catch(() => {});
+    void getStorageBreakdown().then(setStorageEntries).catch(() => {});
+    void getDiskStats()
+      .then((s) => {
+        setFreeSpace(s.free_gb);
+        setDiskTotalGb(s.total_gb);
+      })
+      .catch(() => {});
+    void prefetchSmartCareOverview(true, { silent: true });
+    setPerfRefreshTick((n) => n + 1);
+    setMonitorRefreshNonce((n) => n + 1);
+  }, [prefetchSmartCareOverview]);
 
   const retryPublicConfigFetch = useCallback(async () => {
     try {
@@ -418,8 +432,6 @@ export default function App() {
       /* keep banner */
     }
   }, []);
-
-  /** No automatic page scan/prefetch; user triggers via explicit buttons. */
 
   /** Cold start: disk + public-config + minimum splash time (onboarding-style). */
   useEffect(() => {
@@ -464,6 +476,12 @@ export default function App() {
       tickProgress(72);
       if (!alive) return;
       setBootMessage(t("boot.phaseUi"));
+      try {
+        const showTour = await resolveShowOnboardingForBoot();
+        if (alive) setShowOnboarding(showTour);
+      } catch {
+        if (alive) setShowOnboarding(!hasCompletedOnboarding());
+      }
       await new Promise((r) => setTimeout(r, 180));
       const wait = Math.max(0, minDoneAt - Date.now());
       if (wait > 0) await new Promise((r) => setTimeout(r, wait));
@@ -519,16 +537,21 @@ export default function App() {
     syncAppWebBrandingIcons(brandLogoUrl);
   }, [brandLogoUrl]);
 
-  /** Cek update Tauri (interval panjang; abaikan jika pengguna menutup banner). */
+  /** Custom update check (startup + interval), with semver major policy. */
   useEffect(() => {
     if (!licenseGatePassed) return;
     let cancelled = false;
     const tick = async () => {
       if (updateDismissedRef.current) return;
       try {
-        const { checkForAppUpdate } = await import("./lib/appUpdater");
-        const info = await checkForAppUpdate();
-        if (!cancelled && info && !updateDismissedRef.current) setPendingUpdate(info);
+        const info = await checkForUpdate();
+        if (cancelled || !info || !info.updateAvailable || !info.latestVersion || updateDismissedRef.current) return;
+        if (loadDismissedVersion() === info.latestVersion) return;
+        if (loadFailedVersion() === info.latestVersion) {
+          setPendingUpdate({ ...info, manualOnly: true });
+          return;
+        }
+        setPendingUpdate(info);
       } catch {
         /* */
       }
@@ -538,6 +561,20 @@ export default function App() {
     return () => {
       cancelled = true;
       window.clearInterval(id);
+    };
+  }, [licenseGatePassed]);
+
+  useEffect(() => {
+    if (!licenseGatePassed) return;
+    let unlisten: (() => void) | null = null;
+    void onUpdateProgress((payload) => {
+      setUpdateProgressPct(typeof payload.pct === "number" ? payload.pct : 0);
+      setUpdateProgressLabel(payload.message || null);
+    }).then((fn) => {
+      unlisten = fn;
+    });
+    return () => {
+      if (unlisten) unlisten();
     };
   }, [licenseGatePassed]);
 
@@ -633,28 +670,11 @@ export default function App() {
   }, []);
 
   const handleStartScan = useCallback(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
-      body: JSON.stringify({
-        sessionId: "c1c2e1",
-        location: "App.tsx:handleStartScan",
-        message: "start scan invoked",
-        data: { storageEntriesLen: storageEntries.length },
-        timestamp: Date.now(),
-        hypothesisId: "H5",
-        runId: "pre-fix",
-      }),
-    }).catch(() => {});
-    // #endregion
-    if (storageEntries.length === 0) {
-      getStorageBreakdown().then(setStorageEntries).catch(() => {});
-    }
+    kickOffDeepScanSideEffects();
     setScanProgressPct(0);
     setActiveFeature("smart-care");
     setAppState("scanning");
-  }, [storageEntries.length]);
+  }, [kickOffDeepScanSideEffects]);
 
   const refreshTrash = useCallback(async () => {
     setTrashLoading(true);
@@ -760,7 +780,8 @@ export default function App() {
     const totalBytes = results.reduce((a, r) => a + r.items.reduce((b, i) => b + i.size, 0), 0);
     const totalGb = Math.round((totalBytes / (1024 * 1024 * 1024)) * 100) / 100;
     void sendClientTelemetry("ScanCompleted", { total_gb: totalGb, items: itemsAnalyzed });
-  }, [freeSpace, t]);
+    kickOffDeepScanSideEffects();
+  }, [freeSpace, t, kickOffDeepScanSideEffects]);
 
   const aiBannerQuestions = useMemo(
     () => [t("assistant.bannerQ1"), t("assistant.bannerQ2"), t("assistant.bannerQ3")],
@@ -818,6 +839,16 @@ export default function App() {
 
   const safePotentialLabel = estimateSafePotential(scanResults);
   const freeGbLabel = freeSpace > 0 ? freeSpace.toFixed(1) : undefined;
+
+  const diskInlineSummary = useMemo(() => {
+    if (diskTotalGb <= 0) return null;
+    return t("shell.diskInline", { free: freeSpace.toFixed(1), total: diskTotalGb.toFixed(1) });
+  }, [diskTotalGb, freeSpace, t]);
+
+  const showFloatingQuickScan = useMemo(
+    () => loadSettings().showFloatingQuickScan === true,
+    [settingsRevision]
+  );
 
   const upgradePaywallSubtitle = useMemo(
     () =>
@@ -945,39 +976,6 @@ export default function App() {
     handleStartScan();
   }, [activeFeature, appState, reviewOrbIntent, handleStartScan, refreshTrash, refreshUninstaller]);
 
-  const scanRenderBranch = useMemo(() => {
-    if (activeFeature === "smart-care") {
-      if (appState === "idle") return "smart-care:idle";
-      if (appState === "scanning") return "smart-care:scanning";
-      return "smart-care:results";
-    }
-    if (activeFeature === "cleanup") {
-      return filterByFeature(scanResults, "cleanup").length > 0 ? "cleanup:results" : "cleanup:hero";
-    }
-    if (activeFeature === "my-clutter") {
-      return filterByFeature(scanResults, "my-clutter").length > 0 ? "my-clutter:results" : "my-clutter:hero";
-    }
-    return `${activeFeature}:${appState}`;
-  }, [activeFeature, appState, scanResults]);
-
-  useEffect(() => {
-    // #region agent log
-    fetch("http://127.0.0.1:7914/ingest/3758a62d-bec1-4ca1-a390-3f881eec0785", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "c1c2e1" },
-      body: JSON.stringify({
-        sessionId: "c1c2e1",
-        location: "App.tsx:scanRenderBranch",
-        message: "render branch snapshot",
-        data: { scanRenderBranch, appBootReady, appState, activeFeature },
-        timestamp: Date.now(),
-        hypothesisId: "H5",
-        runId: "pre-fix",
-      }),
-    }).catch(() => {});
-    // #endregion
-  }, [scanRenderBranch, appBootReady, appState, activeFeature]);
-
   if (!appBootReady) {
     return <AppBootSplash progress={bootProgress} message={bootMessage || t("boot.phaseDisk")} />;
   }
@@ -1016,6 +1014,7 @@ export default function App() {
             onFinish={handleFinishScan}
             onCancel={handleCancelScan}
             onProgress={setScanProgressPct}
+            dashboardPhaseCopy={locale === "id"}
           />
         </Suspense>
       );
@@ -1069,7 +1068,7 @@ export default function App() {
         title="Junk Cleanup"
         subtitle="Clean your Mac safely and reclaim free space."
         bullets={["System Junk", "Mail Attachments", "Trash Bins"]}
-        actionLabel="Run Smart Scan"
+        actionLabel={t("dashboard.runSmartScan")}
         onAction={handleStartScan}
         icon={<Trash2 className="text-white/90" />}
       />
@@ -1100,7 +1099,7 @@ export default function App() {
         title="My Clutter"
         subtitle="Sort through files and reduce the mess in minutes."
         bullets={["Large Files", "Duplicates", "Old Downloads"]}
-        actionLabel="Run Smart Scan"
+        actionLabel={t("dashboard.runSmartScan")}
         onAction={handleStartScan}
         icon={<FolderSearch className="text-white/90" />}
       />
@@ -1167,51 +1166,50 @@ export default function App() {
   return (
     <div className="h-screen w-screen overflow-hidden bg-[var(--color-bg)] flex flex-col">
       {licenseGatePassed && pendingUpdate ? (
-        <div
-          role="status"
-          className="shrink-0 z-[200] flex flex-wrap items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-950/50 px-4 py-2.5 text-sm text-amber-50"
-        >
-          <span>
-            Pembaruan tersedia: <strong className="font-semibold">{pendingUpdate.version}</strong>
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              disabled={updateInstalling}
-              onClick={() => {
-                void (async () => {
-                  setUpdateInstalling(true);
-                  try {
-                    const { downloadAndRelaunchUpdate } = await import("./lib/appUpdater");
-                    await downloadAndRelaunchUpdate();
-                  } catch (e) {
-                    window.alert(
-                      e instanceof Error
-                        ? e.message
-                        : "Gagal memasang pembaruan. Pastikan updater dikonfigurasi (pubkey + endpoints) di tauri.conf.json."
-                    );
-                  } finally {
-                    setUpdateInstalling(false);
-                  }
-                })();
-              }}
-              className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
-            >
-              {updateInstalling ? "Mengunduh…" : "Pasang & mulai ulang"}
-            </button>
-            <button
-              type="button"
-              disabled={updateInstalling}
-              onClick={() => {
-                updateDismissedRef.current = true;
-                setPendingUpdate(null);
-              }}
-              className="rounded-lg border border-white/20 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10"
-            >
-              Nanti
-            </button>
-          </div>
-        </div>
+        <UpdateFloatingNotice
+          open={true}
+          latestVersion={pendingUpdate.latestVersion ?? ""}
+          manualOnly={pendingUpdate.manualOnly}
+          installing={updateInstalling}
+          progressPct={updateProgressPct}
+          progressLabel={updateProgressLabel}
+          onInstall={() => {
+            if (!pendingUpdate.downloadUrl) return;
+            void (async () => {
+              setUpdateInstalling(true);
+              setUpdateProgressPct(0);
+              setUpdateProgressLabel(t("update.downloading"));
+              try {
+                if (pendingUpdate.latestVersion) {
+                  await trackReleaseDownload(pendingUpdate.latestVersion, pendingUpdate.platform);
+                }
+                await installCustomUpdate(pendingUpdate.downloadUrl as string);
+                if (pendingUpdate.latestVersion) {
+                  clearFailedVersion(pendingUpdate.latestVersion);
+                }
+              } catch (e) {
+                const message = e instanceof Error ? e.message : String(e);
+                const autoReplaceFailed = message.startsWith("AUTO_REPLACE_FAILED:");
+                if (pendingUpdate.latestVersion) markFailedVersion(pendingUpdate.latestVersion);
+                setPendingUpdate((prev) => (prev ? { ...prev, manualOnly: true } : prev));
+                setUpdateProgressLabel(
+                  autoReplaceFailed ? t("update.autoReplaceFailed") : t("update.installFailed")
+                );
+              } finally {
+                setUpdateInstalling(false);
+              }
+            })();
+          }}
+          onManual={() => {
+            if (!pendingUpdate.downloadUrl) return;
+            window.open(pendingUpdate.downloadUrl, "_blank", "noopener,noreferrer");
+          }}
+          onDismiss={() => {
+            updateDismissedRef.current = true;
+            if (pendingUpdate.latestVersion) markDismissedVersion(pendingUpdate.latestVersion);
+            setPendingUpdate(null);
+          }}
+        />
       ) : null}
       {licenseGatePassed && appBootReady && publicConfigOfflineOpen ? (
         <div
@@ -1271,6 +1269,7 @@ export default function App() {
               : scanProgressPct
         }
         showScanOrb={
+          showFloatingQuickScan &&
           !(smartCareFamily && appState === "scanning") &&
           !(activeFeature === "smart-care" && appState === "idle") &&
           activeFeature !== "history" &&
@@ -1288,6 +1287,7 @@ export default function App() {
         onSettingsClick={() => setIsSettingsOpen(true)}
         diskUsedPercent={diskUsedPercent}
         freeSpaceGb={freeGbLabel}
+        diskInlineSummary={diskInlineSummary}
         badges={featureBadges}
         sidebarByteBadges={sidebarByteBadges}
         isAIPanelOpen={isAIChatOpen}
@@ -1351,11 +1351,13 @@ export default function App() {
               onClose={() => {
                 setIsSettingsOpen(false);
                 setDeletionMode(getDeletionMode());
+                setSettingsRevision((n) => n + 1);
               }}
               onReplayTour={() => {
-                resetOnboardingCompletion();
-                setIsSettingsOpen(false);
-                setShowOnboarding(true);
+                void resetOnboardingCompletion().then(() => {
+                  setIsSettingsOpen(false);
+                  setShowOnboarding(true);
+                });
               }}
             />
           )}

@@ -5,6 +5,7 @@ import { X, Settings } from "lucide-react";
 import type { DeletionModeSetting } from "../lib/deletion-settings";
 export type { DeletionModeSetting } from "../lib/deletion-settings";
 import { useI18n } from "../i18n/context";
+import { marketingPrivacyUrl, marketingTermsUrl } from "../lib/marketingUrl";
 
 export interface ScanSettings {
   scanDownloads: boolean;
@@ -19,6 +20,8 @@ export interface ScanSettings {
   deletionMode: DeletionModeSetting;
   /** Completion chimes (Web Audio) */
   soundEnabled: boolean;
+  /** Bottom floating quick-scan orb (off by default) */
+  showFloatingQuickScan: boolean;
 }
 
 const DEFAULT_SETTINGS: ScanSettings = {
@@ -32,6 +35,7 @@ const DEFAULT_SETTINGS: ScanSettings = {
   oldDaysThreshold: 30,
   deletionMode: "trash",
   soundEnabled: true,
+  showFloatingQuickScan: false,
 };
 
 const STORAGE_KEY = "macfyi_settings";
@@ -129,6 +133,20 @@ export function SettingsPanel({ onClose, onReplayTour }: SettingsPanelProps) {
           )}
 
           <div>
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">{t("settings.appearance")}</h3>
+            <p className="text-[11px] text-white/45 mb-2">{t("settings.showFloatingQuickScanHint")}</p>
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={settings.showFloatingQuickScan}
+                onChange={() => toggle("showFloatingQuickScan")}
+                className="w-4 h-4 rounded border-white/20 bg-white/5 accent-[var(--color-brand)] focus:ring-[var(--color-accent-soft)]/40"
+              />
+              <span className="text-sm text-white/70 group-hover:text-white">{t("settings.showFloatingQuickScanLabel")}</span>
+            </label>
+          </div>
+
+          <div>
             <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">{t("settings.scanScope")}</h3>
             <div className="space-y-2">
               {([
@@ -218,6 +236,29 @@ export function SettingsPanel({ onClose, onReplayTour }: SettingsPanelProps) {
                   className="w-full accent-[var(--color-brand)]"
                 />
               </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Legal</h3>
+            <p className="text-[11px] text-white/45 mb-2">
+              Syarat & Ketentuan / Terms and Conditions, serta Kebijakan Privasi / Privacy Policy.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => window.open(marketingTermsUrl(), "_blank", "noopener,noreferrer")}
+                className="py-2.5 rounded-xl text-xs font-medium border border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/10"
+              >
+                Terms
+              </button>
+              <button
+                type="button"
+                onClick={() => window.open(marketingPrivacyUrl(), "_blank", "noopener,noreferrer")}
+                className="py-2.5 rounded-xl text-xs font-medium border border-white/15 bg-white/[0.06] text-white/90 hover:bg-white/10"
+              >
+                Privacy
+              </button>
             </div>
           </div>
         </div>
