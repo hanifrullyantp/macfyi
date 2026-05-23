@@ -3,6 +3,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { asBool, asNumber, getPlatformSetting } from "../_shared/platformSettings.ts";
+import { CRM_STAGE_TRIALS_AUTH_DEMO, isCheckConstraintViolation } from "../_shared/crmContactStages.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -179,30 +180,56 @@ Deno.serve(async (req) => {
   let contactId: string;
 
   if (userId) {
-    const row = {
+    const { error: profileEnsureErr } = await supabase.from("profiles").upsert(
+      {
+        id: userId,
+        display_name: name.slice(0, 200),
+        updated_at: now,
+      },
+      { onConflict: "id" }
+    );
+    if (profileEnsureErr) {
+      console.error("profiles_ensure_auth", profileEnsureErr);
+      return new Response(JSON.stringify({ error: "db_error" }), {
+        status: 500,
+        headers: { ...cors, "Content-Type": "application/json" },
+      });
+    }
+
+    const rowBase = {
       user_id: userId,
       visitor_id: visitorId,
       email,
       display_name: name,
       phone: phone || null,
-      stage: "demo",
       source: "demo_landing_auth",
       last_activity_at: now,
       updated_at: now,
       metadata: { message: message || null, ip },
     };
 
-    // Prefer upsert on user_id (requires unique index). If project missed the migration, fallback to select+update/insert.
-    const { data: up, error: upErr } = await supabase
-      .from("crm_contacts")
-      .upsert(row, { onConflict: "user_id" })
-      .select("id")
-      .single();
+    let chosenId: string | null = null;
+    let lastUpErr: unknown = null;
+    for (const stage of CRM_STAGE_TRIALS_AUTH_DEMO) {
+      const row = { ...rowBase, stage };
+      const { data: up, error: upErr } = await supabase
+        .from("crm_contacts")
+        .upsert(row, { onConflict: "user_id" })
+        .select("id")
+        .single();
+      if (!upErr && up?.id) {
+        chosenId = up.id as string;
+        break;
+      }
+      lastUpErr = upErr;
+      if (upErr && isCheckConstraintViolation(upErr as { code?: string; message?: string })) continue;
+      break;
+    }
 
-    if (!upErr && up?.id) {
-      contactId = up.id as string;
+    if (chosenId) {
+      contactId = chosenId;
     } else {
-      const msg = String((upErr as { message?: string } | null)?.message ?? "");
+      const msg = String((lastUpErr as { message?: string } | null)?.message ?? "");
       const looksLikeNoUnique =
         msg.includes("no unique") ||
         msg.includes("no unique constraint") ||
@@ -210,7 +237,7 @@ Deno.serve(async (req) => {
         msg.includes("42P10");
 
       if (!looksLikeNoUnique) {
-        console.error("crm_upsert_auth", upErr);
+        console.error("crm_upsert_auth", lastUpErr);
         return new Response(JSON.stringify({ error: "db_error" }), {
           status: 500,
           headers: { ...cors, "Content-Type": "application/json" },
@@ -232,60 +259,91 @@ Deno.serve(async (req) => {
       }
 
       if (existing?.id) {
-        const { data: upd, error: updErr } = await supabase
-          .from("crm_contacts")
-          .update(row)
-          .eq("id", existing.id as string)
-          .select("id")
-          .single();
-        if (updErr || !upd?.id) {
-          console.error("crm_update_auth", updErr);
+        let updId: string | null = null;
+        let lastUpdErr: unknown = null;
+        for (const stage of CRM_STAGE_TRIALS_AUTH_DEMO) {
+          const row = { ...rowBase, stage };
+          const { data: upd, error: updErr } = await supabase
+            .from("crm_contacts")
+            .update(row)
+            .eq("id", existing.id as string)
+            .select("id")
+            .single();
+          if (!updErr && upd?.id) {
+            updId = upd.id as string;
+            break;
+          }
+          lastUpdErr = updErr;
+          if (updErr && isCheckConstraintViolation(updErr as { code?: string; message?: string })) continue;
+          break;
+        }
+        if (!updId) {
+          console.error("crm_update_auth", lastUpdErr);
           return new Response(JSON.stringify({ error: "db_error" }), {
             status: 500,
             headers: { ...cors, "Content-Type": "application/json" },
           });
         }
-        contactId = upd.id as string;
+        contactId = updId;
       } else {
-        const { data: ins, error: insErr } = await supabase
-          .from("crm_contacts")
-          .insert(row)
-          .select("id")
-          .single();
-        if (insErr || !ins?.id) {
-          console.error("crm_insert_auth", insErr);
+        let insId: string | null = null;
+        let lastInsErr: unknown = null;
+        for (const stage of CRM_STAGE_TRIALS_AUTH_DEMO) {
+          const row = { ...rowBase, stage };
+          const { data: ins, error: insErr } = await supabase.from("crm_contacts").insert(row).select("id").single();
+          if (!insErr && ins?.id) {
+            insId = ins.id as string;
+            break;
+          }
+          lastInsErr = insErr;
+          if (insErr && isCheckConstraintViolation(insErr as { code?: string; message?: string })) continue;
+          break;
+        }
+        if (!insId) {
+          console.error("crm_insert_auth", lastInsErr);
           return new Response(JSON.stringify({ error: "db_error" }), {
             status: 500,
             headers: { ...cors, "Content-Type": "application/json" },
           });
         }
-        contactId = ins.id as string;
+        contactId = insId;
       }
     }
   } else {
-    const { data: contact, error: cErr } = await supabase
-      .from("crm_contacts")
-      .insert({
-        visitor_id: visitorId,
-        email,
-        display_name: name,
-        phone: phone || null,
-        stage: "demo",
-        source: "demo_landing",
-        last_activity_at: now,
-        metadata: { message: message || null, ip },
-      })
-      .select("id")
-      .single();
+    let contact: { id: string } | null = null;
+    let lastAnonErr: unknown = null;
+    for (const stage of CRM_STAGE_TRIALS_AUTH_DEMO) {
+      const { data: c, error: cErr } = await supabase
+        .from("crm_contacts")
+        .insert({
+          visitor_id: visitorId,
+          email,
+          display_name: name,
+          phone: phone || null,
+          stage,
+          source: "demo_landing",
+          last_activity_at: now,
+          metadata: { message: message || null, ip },
+        })
+        .select("id")
+        .single();
+      if (!cErr && c?.id) {
+        contact = { id: c.id as string };
+        break;
+      }
+      lastAnonErr = cErr;
+      if (cErr && isCheckConstraintViolation(cErr as { code?: string; message?: string })) continue;
+      break;
+    }
 
-    if (cErr || !contact) {
-      console.error("crm_insert", cErr);
+    if (!contact?.id) {
+      console.error("crm_insert", lastAnonErr);
       return new Response(JSON.stringify({ error: "db_error" }), {
         status: 500,
         headers: { ...cors, "Content-Type": "application/json" },
       });
     }
-    contactId = contact.id as string;
+    contactId = contact.id;
   }
 
   await supabase.from("crm_events").insert({

@@ -7,6 +7,8 @@
 3. Link: `supabase link --project-ref <ref>`
 4. Apply migrations: `supabase db push` (or run SQL from `migrations/` in SQL Editor).
 
+**Landing demo / login mengembalikan `db_error` (500 pada `demo-request` atau `track-event`):** pastikan migrasi CRM terbaru sudah di-push (termasuk `20260422190000_crm_pipeline_stages.sql`). Edge `demo-request` meng-upsert `profiles` sebelum `crm_contacts` dan mencoba beberapa nilai `stage` jika constraint DB masih versi lama. Setelah `git pull`, deploy: `supabase functions deploy demo-request --no-verify-jwt` dan `supabase functions deploy track-event --no-verify-jwt`.
+
 **Satu skrip (push DB + secret dari file + deploy functions):** dari root repo jalankan `./scripts/supabase-bootstrap.sh`  
 (setelah menyalin `scripts/env.supabase.secrets.example` → `scripts/env.supabase.secrets` dan mengisi nilai).  
 Panduan bahasa Indonesia yang lebih lengkap: [`../docs/SUPABASE_OPERASI_LENGKAP_ID.md`](../docs/SUPABASE_OPERASI_LENGKAP_ID.md).

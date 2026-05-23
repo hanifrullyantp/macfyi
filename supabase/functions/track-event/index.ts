@@ -2,6 +2,7 @@
 // Service role; validasi ringan (whitelist tipe, ukuran body).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { CRM_STAGE_TRIALS_TRACK_LEAD, isCheckConstraintViolation } from "../_shared/crmContactStages.ts";
 
 const cors: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -154,19 +155,30 @@ Deno.serve(async (req) => {
 
   let contactId = existing?.id as string | undefined;
   if (!contactId) {
-    const { data: ins, error: insErr } = await supabase
-      .from("crm_contacts")
-      .insert({
-        visitor_id: visitorId,
-        stage: "lead",
-        source: "direct",
-        last_activity_at: now,
-        metadata: { page_url: body.page_url ?? null, referrer: body.referrer ?? null },
-      })
-      .select("id")
-      .single();
-    if (insErr) {
-      console.error("crm_contact_insert", insErr);
+    let ins: { id: string } | null = null;
+    let lastInsErr: unknown = null;
+    for (const stage of CRM_STAGE_TRIALS_TRACK_LEAD) {
+      const res = await supabase
+        .from("crm_contacts")
+        .insert({
+          visitor_id: visitorId,
+          stage,
+          source: "direct",
+          last_activity_at: now,
+          metadata: { page_url: body.page_url ?? null, referrer: body.referrer ?? null },
+        })
+        .select("id")
+        .single();
+      if (!res.error && res.data?.id) {
+        ins = { id: res.data.id as string };
+        break;
+      }
+      lastInsErr = res.error;
+      if (res.error && isCheckConstraintViolation(res.error as { code?: string; message?: string })) continue;
+      break;
+    }
+    if (!ins?.id) {
+      console.error("crm_contact_insert", lastInsErr);
       return new Response(JSON.stringify({ error: "db_error" }), {
         status: 500,
         headers: { ...cors, "Content-Type": "application/json" },
