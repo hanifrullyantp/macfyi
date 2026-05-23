@@ -1,6 +1,6 @@
-# Build macOS DMG and upload to staging object only.
+# Build macOS DMG and upload to Supabase (stable object macfyi-latest.dmg).
 # Set GitHub secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
-# Optional: set UPDATE_APP_SETTINGS secret to "true" to PATCH download_base_url after upload (or edit workflow env below).
+# Optional: set secret UPDATE_APP_SETTINGS to the literal string "true" to PATCH download_base_url after upload.
 
 name: Upload DMG to Supabase
 
