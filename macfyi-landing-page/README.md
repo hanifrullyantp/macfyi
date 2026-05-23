@@ -5,7 +5,7 @@ Static Vite + React single-page funnel with inline admin (gear), CRM in `localSt
 **Flow:** Tombol beli/checkout membuka **modal checkout** di halaman (bukan tab kosong). Isi nama/email, setujui syarat, lalu lanjut ke URL gateway jika `checkoutUrl` diatur di pengaturan. **Login** di header membuka **popup** — kredensial admin (`hanif.rullyant@gmail.com` / `123` secara default) masuk **mode admin** untuk sunting inline.
 
 - **Develop:** `npm install` then `npm run dev`. Untuk **konsol admin** di path `/admin` secara lokal, jalankan juga `macfyi-admin` dengan `VITE_USE_ADMIN_SUBPATH=1 npm run dev` (port **5174**); lihat [`../macfyi-admin/README.md`](../macfyi-admin/README.md).
-- **Build:** `npm run build` (single-file output via `vite-plugin-singlefile`)
+- **Build:** `npm run build` (landing single-file + `dist/admin` + `dist/admin3` from `macfyi-admin`, which **imports `admin-web` sources** — the script runs `npm ci` in `../macfyi-admin` and `../admin-web` so Vercel/monorepo builds resolve `@tanstack/react-query` and peers).
 
 Environment variables are documented in [`.env.example`](.env.example).
 
