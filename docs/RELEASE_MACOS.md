@@ -60,7 +60,7 @@ Binary DMG **tidak** disimpan di repo. Alur yang disarankan:
 3. **GitHub Actions** — workflow `Upload DMG to Supabase` (`.github/workflows/supabase-dmg-upload.yml`):
    - Jalankan manual (**Actions → Upload DMG to Supabase → Run workflow**), atau
    - Push **tag** `v*` (mis. `v0.2.1`) untuk rilis.
-4. **Secrets** di repo GitHub: `SUPABASE_URL` (mis. `https://xxxx.supabase.co`), `SUPABASE_SERVICE_ROLE_KEY` (Dashboard → Settings → API — **rahasia**, jangan ke frontend).
+4. **Secrets** di repo GitHub: `SUPABASE_URL` (mis. `https://xxxx.supabase.co`), `SUPABASE_SERVICE_ROLE_KEY` (Dashboard → Settings → API — **rahasia**, jangan ke frontend). Opsional: `UPDATE_APP_SETTINGS` = `true` agar URL unduhan di `app_settings` mengikuti DMG dari workflow ini.
 
 Workflow menjalankan `npm run tauri:build:dmg`, lalu `scripts/upload-latest-dmg-to-supabase.sh` yang:
 
