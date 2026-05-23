@@ -19,13 +19,29 @@ const outDir = useSubpath
   : path.resolve(__dirname, "dist");
 const adminDevPort = Number(process.env.VITE_ADMIN_DEV_PORT ?? "5174") || 5174;
 
+/** Bundling `../admin-web` sources: resolve from macfyi-admin/node_modules when admin-web has no install. */
+const BRIDGE_PKG_ALIASES = [
+  "@tanstack/react-query",
+  "@tanstack/react-table",
+  "@tanstack/react-virtual",
+  "@dnd-kit/core",
+  "@dnd-kit/sortable",
+  "@dnd-kit/utilities",
+  "@radix-ui/react-dialog",
+  "@radix-ui/react-dropdown-menu",
+  "@radix-ui/react-slot",
+  "@radix-ui/react-tooltip",
+  "@supabase/supabase-js",
+] as const;
+
 export default defineConfig({
   base,
   plugins: [react(), tailwindcss()],
   resolve: {
-    dedupe: ["react", "react-dom", "@supabase/supabase-js"],
+    dedupe: ["react", "react-dom", "@supabase/supabase-js", "@tanstack/react-query", "@tanstack/react-table"],
     alias: {
       "@": path.resolve(__dirname, "src"),
+      ...Object.fromEntries(BRIDGE_PKG_ALIASES.map((pkg) => [pkg, path.resolve(__dirname, "node_modules", pkg)])),
     },
   },
   server: {

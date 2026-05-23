@@ -24,3 +24,5 @@ npm run dev
 ## Deploy
 
 Host the static output of `npm run build` (e.g. Vercel, Netlify, Cloudflare Pages). Set the same `VITE_*` env vars at build time.
+
+**Vercel:** set **Root Directory** to `admin-web` (this folder). Default `npm ci` + `npm run build` is correct. `vite.config.ts` maps scoped packages (e.g. `@tanstack/react-query`) to `admin-web/node_modules/...` so Rollup resolves them even when the install layout is flat or hoisted oddly.
