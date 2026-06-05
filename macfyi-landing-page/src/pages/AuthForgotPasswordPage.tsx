@@ -4,7 +4,7 @@ import { Loader2 } from "lucide-react";
 import { isValidEmail, normalizeEmail } from "../lib/formValidation";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
 import { useToast } from "../components/ToastProvider";
-import { describeAuthEmailFailureHint } from "../lib/authErrors";
+import { describeAuthEmailFailureHint, SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
 
 export function AuthForgotPasswordPage() {
   const toast = useToast();
@@ -16,7 +16,7 @@ export function AuthForgotPasswordPage() {
     e.preventDefault();
     if (submitting) return;
     if (!isSupabaseBrowserConfigured()) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+      toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
     }
     if (!isValidEmail(email)) {
@@ -25,7 +25,7 @@ export function AuthForgotPasswordPage() {
     }
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      toast("Tidak bisa membuka koneksi Supabase.", "error");
+      toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
     }
 

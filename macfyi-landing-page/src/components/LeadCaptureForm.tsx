@@ -95,18 +95,15 @@ export function LeadCaptureForm({
             keepalive: true,
           });
           if (res.ok) {
-            toast("Lead tersimpan lokal dan dikirim ke webhook.", "success");
+            toast("Terima kasih! Pesan Anda telah kami terima.", "success");
           } else {
-            toast(`Tersimpan lokal; webhook mengembalikan ${res.status}.`, "error");
+            toast("Gagal mengirim. Silakan coba lagi.", "error");
           }
         } catch {
-          toast("Tersimpan lokal; webhook gagal (jaringan atau CORS).", "error");
+          toast("Gagal mengirim. Silakan coba lagi.", "error");
         }
       } else {
-        toast(
-          "Lead tersimpan di CRM (browser). Set VITE_LEAD_WEBHOOK_URL untuk kirim ke server.",
-          "success"
-        );
+        toast("Terima kasih! Pesan Anda telah kami terima.", "success");
       }
       setName("");
       setEmail("");
@@ -122,8 +119,7 @@ export function LeadCaptureForm({
       <div className="container mx-auto px-4 max-w-xl">
         <h2 className="text-2xl font-bold mb-2 text-center">Tanya atau minta demo</h2>
         <p className="text-white/45 text-sm text-center mb-8">
-          Data masuk ke pipeline CRM lokal (localStorage). Untuk produksi, arahkan ke Supabase / webhook seperti di{" "}
-          <code className="text-white/60">MARKETING_ECOSYSTEM.md</code>.
+          Isi formulir di bawah. Tim kami akan membalas secepatnya.
         </p>
         <form
           onSubmit={(e) => void submit(e)}

@@ -602,10 +602,7 @@ export function LandingApp() {
       return;
     }
     saveToDraft();
-    toast(
-      'Draft lokal tersimpan. Tambahkan VITE_SUPABASE_URL dan kunci anon, lalu masuk dengan akun admin Supabase untuk publikasi ke server.',
-      'info'
-    );
+    toast('Perubahan disimpan.', 'success');
   };
 
   const openCheckout = useCallback((source?: string) => {
@@ -621,7 +618,7 @@ export function LandingApp() {
   const openMemberArea = useCallback(() => {
     const url = data.settings.loginUrl?.trim();
     if (url) window.open(url, '_blank', 'noopener,noreferrer');
-    else toast('URL area anggota belum diatur di pengaturan.', 'info');
+    else toast('Area anggota belum tersedia.', 'info');
   }, [data.settings.loginUrl, toast]);
 
   /**
@@ -713,27 +710,14 @@ export function LandingApp() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 text-xs">
                 <div className="w-2 h-2 rounded-full bg-amber-500/90" />
-                <span className="text-white/60">
-                  {isSupabaseBrowserConfigured()
-                    ? 'Penyuntingan konten · publikasi ke database'
-                    : 'Penyuntingan konten · draft lokal'}
-                </span>
+                <span className="text-white/60">Mode penyuntingan</span>
               </div>
-              {leadWebhookActive && (
-                <>
-                  <div className="h-4 w-px bg-white/10" />
-                  <div className="flex items-center gap-2 text-xs">
-                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-white/60">Webhook lead: aktif</span>
-                  </div>
-                </>
-              )}
               <div className="h-4 w-px bg-white/10" />
               <div className="text-xs text-white/40">
                 {hasChanges ? (
-                  <span className="text-yellow-500">Unsaved changes</span>
+                  <span className="text-yellow-500">Ada perubahan belum disimpan</span>
                 ) : (
-                  <span>Last saved: {lastSaved || 'No changes yet'}</span>
+                  <span>Terakhir disimpan: {lastSaved || '—'}</span>
                 )}
               </div>
             </div>
@@ -769,7 +753,7 @@ export function LandingApp() {
                 onClick={() => setIsSettingsOpen(true)}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
               >
-                <Settings size={14} /> Settings
+                <Settings size={14} /> Pengaturan
               </button>
               <button 
                 onClick={saveToDraft}

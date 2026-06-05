@@ -1,3 +1,6 @@
+export const SERVICE_UNAVAILABLE_MESSAGE =
+  "Layanan sementara tidak tersedia. Silakan coba lagi nanti.";
+
 /** Supabase / fetch sometimes surface `"{}"` or empty message; never show that to users. */
 export function normalizeUserFacingMessage(message: string): string {
   const t = message.trim();

@@ -28,7 +28,7 @@ export function AdminLoginModal({
       if (isSupabaseBrowserConfigured()) {
         const client = getSupabaseBrowserClient();
         if (!client) {
-          setErr("Klien Supabase tidak tersedia.");
+          setErr("Layanan sementara tidak tersedia.");
           return;
         }
         const { error } = await client.auth.signInWithPassword({
@@ -87,12 +87,7 @@ export function AdminLoginModal({
         >
           <X size={20} />
         </button>
-        <h2 className="text-xl font-bold mb-1">Masuk</h2>
-        <p className="text-white/45 text-sm mb-6">
-          {isSupabaseBrowserConfigured()
-            ? "Akun admin dapat menyunting konten landing di halaman ini. Akun anggota tetap di halaman ini dan dapat membuka aplikasi lewat tombol Member."
-            : "Mode lokal: kredensial diatur lewat variabel lingkungan. Hanya admin yang dapat menyunting; konten disimpan sebagai draft di perangkat ini."}
-        </p>
+        <h2 className="text-xl font-bold mb-6">Masuk</h2>
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Email</label>
         <input
           type="email"

@@ -12,7 +12,7 @@ import {
 import { getMacfyiVisitorId, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
 import { firePixelStep } from "../lib/conversionPixels";
-import { describeApiError, describeAuthEmailFailureHint } from "../lib/authErrors";
+import { describeApiError, describeAuthEmailFailureHint, SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
 import { PasswordInput } from "./PasswordInput";
 import type { SiteSettings } from "../types/content";
 
@@ -77,7 +77,7 @@ export function DemoRequestModal({
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
     const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
     if (!supabaseUrl || !anon) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+      toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
     }
     let bodyName: string | undefined;
@@ -126,12 +126,12 @@ export function DemoRequestModal({
     e.preventDefault();
     if (submitting) return;
     if (!isSupabaseBrowserConfigured()) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+      toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
     }
     const supabase = getSupabaseBrowserClient();
     if (!supabase) {
-      toast("Tidak bisa membuka koneksi Supabase.", "error");
+      toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
     }
 

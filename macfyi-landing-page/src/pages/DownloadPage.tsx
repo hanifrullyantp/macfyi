@@ -4,7 +4,7 @@ import { Copy, ExternalLink, Download, Loader2, LogOut } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
-import { describeApiError } from "../lib/authErrors";
+import { describeApiError, SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
 
 const CARD_BG = "/landing/detail-01-deep-scan.png";
 
@@ -134,7 +134,7 @@ export function DownloadPage() {
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
     const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
     if (!supabaseUrl || !anon) {
-      setAuthErr("Supabase belum dikonfigurasi.");
+      setAuthErr(SERVICE_UNAVAILABLE_MESSAGE);
       return;
     }
     setMintBusy(true);
@@ -186,7 +186,7 @@ export function DownloadPage() {
   const onMacDownloadClick = async () => {
     setAuthErr(null);
     if (!dmgUrl) {
-      setAuthErr("Tautan unduhan belum dikonfigurasi di server.");
+      setAuthErr("Unduhan sementara tidak tersedia. Silakan coba lagi nanti.");
       return;
     }
     if (authLoading) return;
@@ -291,7 +291,7 @@ export function DownloadPage() {
                 </button>
                 {!dmgUrl ? (
                   <p className="text-xs text-amber-200/90 mt-3">
-                    Tautan DMG belum diatur. Konfigurasi unduhan di admin / app_settings.
+                    Unduhan sementara tidak tersedia.
                   </p>
                 ) : null}
               </div>
