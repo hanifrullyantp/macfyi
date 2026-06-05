@@ -3,6 +3,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { Link, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { supabase, supabaseConfigured } from "./supabase";
 import { PasswordField } from "./PasswordField";
+import { describeSignInError } from "./authErrors";
 
 function formatIdr(n: number): string {
   return `Rp ${n.toLocaleString("id-ID")}`;
@@ -80,7 +81,7 @@ function MasukPage() {
     e.preventDefault();
     setErr(null);
     const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (error) setErr(error.message);
+    if (error) setErr(describeSignInError(error.message));
     else nav("/member");
   };
 
@@ -102,7 +103,16 @@ function MasukPage() {
             Lupa kata sandi?
           </Link>
         </p>
-        {err && <p className="text-sm text-red-400">{err}</p>}
+        {err && (
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200 space-y-1">
+            <p>{err}</p>
+            {err.includes("belum") || err.includes("salah") ? (
+              <button type="button" className="text-xs text-amber-400 underline" onClick={() => nav("/member/daftar")}>
+                Belum punya akun? Daftar di sini
+              </button>
+            ) : null}
+          </div>
+        )}
         <button type="submit" className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white">
           Masuk
         </button>

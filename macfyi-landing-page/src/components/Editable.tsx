@@ -126,7 +126,7 @@ export const EditableImage: React.FC<EditableImageProps> = ({
       return;
     }
     if (!isSupabaseBrowserConfigured()) {
-      window.alert('Set VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY untuk upload.');
+      window.alert('Upload gambar sementara tidak tersedia.');
       openUrlPrompt();
       return;
     }

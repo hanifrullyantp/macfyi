@@ -6,7 +6,7 @@ const ALLOWED = new Set(["image/png", "image/jpeg", "image/webp", "image/svg+xml
 
 export async function uploadBrandLogoFromAdmin(file: File): Promise<{ publicUrl: string } | { error: string }> {
   const client = getSupabaseBrowserClient();
-  if (!client) return { error: "Supabase belum dikonfigurasi (VITE_SUPABASE_*)." };
+  if (!client) return { error: "Upload sementara tidak tersedia." };
 
   const { data: sess } = await client.auth.getSession();
   const user = sess.session?.user;

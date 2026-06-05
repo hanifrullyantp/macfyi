@@ -139,7 +139,7 @@ export function AdminSettingsModal({
     if (!open || tab !== "coupons") return;
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      toast("Tidak terhubung ke server.", "info");
       return;
     }
     let cancelled = false;
@@ -192,7 +192,7 @@ export function AdminSettingsModal({
     if (!open || tab !== "promo") return;
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      toast("Tidak terhubung ke server.", "info");
       return;
     }
     let cancelled = false;
@@ -245,7 +245,7 @@ export function AdminSettingsModal({
     if (!open || tab !== "checkout") return;
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "info");
+      toast("Tidak terhubung ke server.", "info");
       return;
     }
     let cancelled = false;
@@ -344,7 +344,7 @@ export function AdminSettingsModal({
   const savePromoPlanToServer = async () => {
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi.", "error");
+      toast("Tidak terhubung ke server.", "error");
       return;
     }
     const { data: sess } = await client.auth.getSession();
@@ -437,7 +437,7 @@ export function AdminSettingsModal({
   const saveCheckoutGatewayToServer = async () => {
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi.", "error");
+      toast("Tidak terhubung ke server.", "error");
       return;
     }
     const { data: sess } = await client.auth.getSession();
@@ -467,7 +467,7 @@ export function AdminSettingsModal({
   const saveCheckoutCouponsToServer = async () => {
     const client = getSupabaseBrowserClient();
     if (!client) {
-      toast("Supabase belum dikonfigurasi.", "error");
+      toast("Tidak terhubung ke server.", "error");
       return;
     }
     const { data: sess } = await client.auth.getSession();
@@ -543,7 +543,7 @@ export function AdminSettingsModal({
     const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
     const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
     if (!supabaseUrl || !anon) {
-      toast("Variabel VITE_SUPABASE_* kurang.", "error");
+      toast("Tidak terhubung ke server.", "error");
       return;
     }
     try {
@@ -705,9 +705,7 @@ export function AdminSettingsModal({
               </div>
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-3">
                 <p className="text-white/50 text-xs leading-relaxed">
-                  <strong className="text-white/80">Harga lifetime (IDR)</strong> disimpan di tabel{" "}
-                  <code className="text-white/70">app_settings</code> — sama dengan nominal di checkout (Midtrans / Lynk.id), nilai di app (public-config),
-                  dan teks harga di halaman ini setelah disimpan.
+                  <strong className="text-white/80">Harga lifetime (IDR)</strong> dipakai di checkout, aplikasi, dan tampilan harga di halaman ini.
                 </p>
                 <Field label="Nominal lifetime (IDR, angka bulat)">
                   <input
@@ -730,7 +728,7 @@ export function AdminSettingsModal({
                   onClick={async () => {
                     const client = getSupabaseBrowserClient();
                     if (!client) {
-                      toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+                      toast("Tidak terhubung ke server.", "error");
                       return;
                     }
                     const { data: sess } = await client.auth.getSession();
@@ -1807,7 +1805,7 @@ LYNK_WEBHOOK_SECRET=
               <Field label="Catatan migrasi / HTML (referensi)">
                 <textarea
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs min-h-[100px] outline-none focus:border-red-500"
-                  placeholder="Potongan dari WordPress / dokumentasi internal..."
+                  placeholder="Catatan internal (opsional)…"
                   value={s.landingNotesHtml}
                   onChange={(e) => patchSettings({ landingNotesHtml: e.target.value })}
                 />
@@ -1894,11 +1892,11 @@ LYNK_WEBHOOK_SECRET=
                 onClick={() => {
                   saveLeads([]);
                   setLeads([]);
-                  toast("Semua lead dihapus (lokal).", "info");
+                  toast("Semua lead dihapus.", "info");
                 }}
                 className="text-xs text-red-400/80 hover:text-red-400"
               >
-                Kosongkan pipeline (lokal)
+                Kosongkan daftar lead
               </button>
 
               <h3 className="font-bold text-white/80 pt-6 border-t border-white/10">Kategori WA</h3>

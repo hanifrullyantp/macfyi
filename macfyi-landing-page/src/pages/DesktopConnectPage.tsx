@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Loader2, KeyRound, Monitor } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
+import { SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
 
 export function DesktopConnectPage() {
   const navigate = useNavigate();
@@ -47,7 +48,7 @@ export function DesktopConnectPage() {
     const base = import.meta.env.VITE_SUPABASE_URL?.trim().replace(/\/$/, "");
     const anon = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim();
     if (!base || !anon) {
-      setErr("Supabase belum dikonfigurasi.");
+      setErr(SERVICE_UNAVAILABLE_MESSAGE);
       return;
     }
     setBusy(true);

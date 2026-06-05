@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import {
@@ -12,8 +11,17 @@ import {
 import { getMacfyiVisitorId, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
 import { firePixelStep } from "../lib/conversionPixels";
-import { describeApiError, describeAuthEmailFailureHint, SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
+import {
+  describeApiError,
+  describeAuthEmailFailureHint,
+  describeSignInError,
+  describeSignUpError,
+  isPostLoginDemoFailure,
+  SERVICE_UNAVAILABLE_MESSAGE,
+  type AuthFormHint,
+} from "../lib/authErrors";
 import { PasswordInput } from "./PasswordInput";
+import { AuthFormFeedback } from "./AuthFormFeedback";
 import type { SiteSettings } from "../types/content";
 
 type AuthTab = "register" | "login";
@@ -39,6 +47,11 @@ export function DemoRequestModal({
   const [phone, setPhone] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [formHint, setFormHint] = useState<AuthFormHint>(null);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
@@ -108,7 +121,13 @@ export function DemoRequestModal({
       message?: string;
     };
     if (!res.ok || !data.ok || !data.download_url) {
-      toast(describeApiError(data.error, data.message), "error");
+      if (isPostLoginDemoFailure(data.error)) {
+        toast("Anda sudah masuk. Mengalihkan ke halaman unduh…", "info");
+        onClose();
+        window.location.href = "/download";
+        return;
+      }
+      setFormError(describeApiError(data.error, data.message));
       return;
     }
     toast("Berhasil! Mengalihkan ke halaman unduhan…", "success");
@@ -122,9 +141,45 @@ export function DemoRequestModal({
     }, 400);
   };
 
+  const sendForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotBusy) return;
+    if (!isValidEmail(email)) {
+      setFormError("Format email tidak valid.");
+      setFormHint(null);
+      return;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setFormError(SERVICE_UNAVAILABLE_MESSAGE);
+      return;
+    }
+    setForgotBusy(true);
+    setFormError("");
+    try {
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo });
+      if (error) {
+        const status =
+          typeof (error as { status?: number }).status === "number"
+            ? (error as { status?: number }).status
+            : undefined;
+        setFormError(describeAuthEmailFailureHint(status, error.message ?? ""));
+        return;
+      }
+      setForgotSent(true);
+      toast("Email reset password telah dikirim. Cek kotak masuk Anda.", "success");
+    } finally {
+      setForgotBusy(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+    setFormError("");
+    setFormHint(null);
     if (!isSupabaseBrowserConfigured()) {
       toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
@@ -187,7 +242,14 @@ export function DemoRequestModal({
             typeof (error as { status?: number }).status === "number"
               ? (error as { status?: number }).status
               : undefined;
-          toast(describeAuthEmailFailureHint(status, error.message ?? ""), "error");
+          const smtpLikely = status === 504 || status === 500;
+          if (smtpLikely) {
+            toast(describeAuthEmailFailureHint(status, error.message ?? ""), "error");
+          } else {
+            const fb = describeSignUpError(error.message ?? "");
+            setFormError(fb.text);
+            if (fb.text.includes("sudah terdaftar")) setAuthTab("login");
+          }
           return;
         }
         const session = data.session;
@@ -205,7 +267,9 @@ export function DemoRequestModal({
           password,
         });
         if (error || !data.session?.access_token) {
-          toast(error?.message?.trim() || "Gagal masuk. Periksa email & password.", "error");
+          const fb = describeSignInError(error?.message ?? "", (error as { status?: number }).status);
+          setFormError(fb.text);
+          setFormHint(fb.hint);
           return;
         }
         await callDemoRequest(data.session.access_token);
@@ -242,7 +306,12 @@ export function DemoRequestModal({
             className={`flex-1 rounded-md py-2 text-sm font-medium ${
               authTab === "register" ? "bg-white/10 text-white" : "text-white/45"
             }`}
-            onClick={() => setAuthTab("register")}
+            onClick={() => {
+              setAuthTab("register");
+              setFormError("");
+              setFormHint(null);
+              setShowForgot(false);
+            }}
           >
             Daftar
           </button>
@@ -251,12 +320,55 @@ export function DemoRequestModal({
             className={`flex-1 rounded-md py-2 text-sm font-medium ${
               authTab === "login" ? "bg-white/10 text-white" : "text-white/45"
             }`}
-            onClick={() => setAuthTab("login")}
+            onClick={() => {
+              setAuthTab("login");
+              setFormError("");
+              setFormHint(null);
+              setShowForgot(false);
+            }}
           >
             Masuk
           </button>
         </div>
 
+        {showForgot ? (
+          <form onSubmit={(e) => void sendForgot(e)} className="space-y-3">
+            <p className="text-sm text-white/55">
+              Masukkan email akun Anda. Kami akan mengirim tautan reset password.
+            </p>
+            <label className="block text-sm">
+              <span className="text-white/50">Email</span>
+              <input
+                className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                type="email"
+              />
+            </label>
+            {formError ? <p className="text-sm text-red-300">{formError}</p> : null}
+            {forgotSent ? <p className="text-sm text-emerald-300">Cek email Anda (termasuk spam).</p> : null}
+            <button
+              type="submit"
+              disabled={forgotBusy}
+              className="w-full rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {forgotBusy ? <Loader2 className="animate-spin" size={18} /> : null}
+              Kirim tautan reset
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowForgot(false);
+                setForgotSent(false);
+                setFormError("");
+              }}
+              className="w-full text-sm text-white/50 hover:text-white underline"
+            >
+              Kembali ke masuk
+            </button>
+          </form>
+        ) : (
         <form onSubmit={(e) => void submit(e)} className="space-y-3">
           {authTab === "register" && (
             <label className="block text-sm">
@@ -286,12 +398,35 @@ export function DemoRequestModal({
               autoComplete={authTab === "register" ? "new-password" : "current-password"}
             />
           </label>
+          {formError ? (
+            <AuthFormFeedback
+              message={formError}
+              hint={formHint}
+              onRegister={() => {
+                setAuthTab("register");
+                setFormError("");
+                setFormHint(null);
+              }}
+              onForgot={() => setShowForgot(true)}
+            />
+          ) : null}
           {authTab === "login" && (
-            <p className="text-right -mt-1">
-              <Link to="/lupa-password" className="text-xs text-white/45 hover:text-white underline">
+            <div className="flex items-center justify-between text-sm -mt-1">
+              <button
+                type="button"
+                onClick={() => setAuthTab("register")}
+                className="text-white/50 hover:text-white underline"
+              >
+                Belum punya akun? Daftar
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowForgot(true)}
+                className="text-red-400 hover:text-red-300 underline font-medium"
+              >
                 Lupa password?
-              </Link>
-            </p>
+              </button>
+            </div>
           )}
           {authTab === "register" && (
             <label className="block text-sm">
@@ -329,6 +464,7 @@ export function DemoRequestModal({
             {authTab === "register" ? "Daftar & lanjut unduhan" : "Masuk & lanjut unduhan"}
           </button>
         </form>
+        )}
       </motion.div>
     </div>
   );

@@ -349,9 +349,6 @@ export function LandingApp() {
 
   const canEdit = sessionOk && !adminPreview;
 
-  const leadWebhookUrl = import.meta.env.VITE_LEAD_WEBHOOK_URL as string | undefined;
-  const leadWebhookActive = Boolean(leadWebhookUrl?.trim());
-
   useEffect(() => {
     if (!isSupabaseBrowserConfigured()) {
       setLegacyAdmin(isValidLegacyAdminSession());
@@ -759,7 +756,7 @@ export function LandingApp() {
                 onClick={saveToDraft}
                 className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded text-sm transition"
               >
-                <Save size={14} /> Simpan draft
+                <Save size={14} /> Simpan
               </button>
               <button 
                 type="button"

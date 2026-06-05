@@ -78,14 +78,85 @@ function isUniqueViolation(err: unknown): boolean {
   );
 }
 
-function isMissingUniqueForUpsert(err: unknown): boolean {
-  const msg = String((err as { message?: string } | null)?.message ?? "");
-  return (
-    msg.includes("no unique") ||
-    msg.includes("no unique constraint") ||
-    msg.includes("no unique or exclusion constraint") ||
-    msg.includes("42P10")
+type CrmClient = ReturnType<typeof createClient>;
+
+async function ensureAuthCrmContact(
+  supabase: CrmClient,
+  userId: string,
+  email: string,
+  name: string,
+  phone: string | null,
+  message: string | null,
+  ip: string,
+  now: string
+): Promise<{ id: string } | { error: unknown }> {
+  const { error: profErr } = await supabase.from("profiles").upsert(
+    { id: userId, display_name: name, updated_at: now },
+    { onConflict: "id" }
   );
+  if (profErr) return { error: profErr };
+
+  const baseFields = {
+    user_id: userId,
+    email,
+    display_name: name,
+    phone,
+    stage: "demo",
+    source: "demo_landing_auth",
+    last_activity_at: now,
+    updated_at: now,
+    metadata: { message: message || null, ip },
+  };
+
+  const { data: byUser, error: byUserErr } = await supabase
+    .from("crm_contacts")
+    .select("id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (byUserErr) return { error: byUserErr };
+  if (byUser?.id) {
+    const { data: upd, error: updErr } = await supabase
+      .from("crm_contacts")
+      .update(baseFields)
+      .eq("id", byUser.id as string)
+      .select("id")
+      .single();
+    if (!updErr && upd?.id) return { id: upd.id as string };
+    if (updErr) return { error: updErr };
+  }
+
+  const { data: byEmail, error: byEmailErr } = await supabase
+    .from("crm_contacts")
+    .select("id")
+    .eq("email", email)
+    .is("user_id", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (byEmailErr) return { error: byEmailErr };
+  if (byEmail?.id) {
+    const { data: linked, error: linkErr } = await supabase
+      .from("crm_contacts")
+      .update(baseFields)
+      .eq("id", byEmail.id as string)
+      .select("id")
+      .single();
+    if (!linkErr && linked?.id) return { id: linked.id as string };
+    if (linkErr) return { error: linkErr };
+  }
+
+  const authVisitor = `auth:${userId}`;
+  for (const visitorId of [authVisitor, null] as const) {
+    const { data: ins, error: insErr } = await supabase
+      .from("crm_contacts")
+      .insert({ ...baseFields, visitor_id: visitorId })
+      .select("id")
+      .single();
+    if (!insErr && ins?.id) return { id: ins.id as string };
+    if (insErr && !isUniqueViolation(insErr)) return { error: insErr };
+  }
+
+  return { error: new Error("crm_contact_unresolved") };
 }
 
 Deno.serve(async (req) => {
@@ -211,113 +282,18 @@ Deno.serve(async (req) => {
   let contactId: string;
 
   if (userId) {
-    // crm_contacts.user_id FK → profiles.id; ensure profile row exists for new auth users.
-    const { error: profErr } = await supabase.from("profiles").upsert(
-      { id: userId, display_name: name, updated_at: now },
-      { onConflict: "id" }
-    );
-    if (profErr) return dbErrorResponse("profile_ensure", profErr);
-
-    const row = {
-      user_id: userId,
-      visitor_id: visitorId,
+    const crm = await ensureAuthCrmContact(
+      supabase,
+      userId,
       email,
-      display_name: name,
-      phone: phone || null,
-      stage: "demo",
-      source: "demo_landing_auth",
-      last_activity_at: now,
-      updated_at: now,
-      metadata: { message: message || null, ip },
-    };
-
-    // Prefer upsert on user_id (requires unique index). If project missed the migration, fallback to select+update/insert.
-    const { data: up, error: upErr } = await supabase
-      .from("crm_contacts")
-      .upsert(row, { onConflict: "user_id" })
-      .select("id")
-      .single();
-
-    if (!upErr && up?.id) {
-      contactId = up.id as string;
-    } else if (upErr && !isMissingUniqueForUpsert(upErr)) {
-      // visitor_id unique clash: link existing anonymous row instead of failing login.
-      if (isUniqueViolation(upErr)) {
-        const { data: byVisitor, error: visErr } = await supabase
-          .from("crm_contacts")
-          .select("id")
-          .eq("visitor_id", visitorId)
-          .maybeSingle();
-        if (!visErr && byVisitor?.id) {
-          const { visitor_id: _skipVisitor, ...linkRow } = row;
-          const { data: linked, error: linkErr } = await supabase
-            .from("crm_contacts")
-            .update(linkRow)
-            .eq("id", byVisitor.id as string)
-            .select("id")
-            .single();
-          if (!linkErr && linked?.id) {
-            contactId = linked.id as string;
-          } else {
-            return dbErrorResponse("crm_link_by_visitor", linkErr);
-          }
-        } else {
-          return dbErrorResponse("crm_upsert_auth", upErr);
-        }
-      } else {
-        return dbErrorResponse("crm_upsert_auth", upErr);
-      }
-    } else {
-      const { data: existing, error: selErr } = await supabase
-        .from("crm_contacts")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-
-      if (selErr) return dbErrorResponse("crm_select_by_user_id", selErr);
-
-      if (existing?.id) {
-        const { data: upd, error: updErr } = await supabase
-          .from("crm_contacts")
-          .update(row)
-          .eq("id", existing.id as string)
-          .select("id")
-          .single();
-        if (updErr || !upd?.id) return dbErrorResponse("crm_update_auth", updErr);
-        contactId = upd.id as string;
-      } else {
-        const { data: ins, error: insErr } = await supabase
-          .from("crm_contacts")
-          .insert(row)
-          .select("id")
-          .single();
-        if (!insErr && ins?.id) {
-          contactId = ins.id as string;
-        } else if (insErr && isUniqueViolation(insErr)) {
-          const { data: byEmail, error: emailErr } = await supabase
-            .from("crm_contacts")
-            .select("id")
-            .eq("email", email)
-            .is("user_id", null)
-            .maybeSingle();
-          if (emailErr) return dbErrorResponse("crm_select_by_email", emailErr);
-          if (byEmail?.id) {
-            const { data: linked, error: linkErr } = await supabase
-              .from("crm_contacts")
-              .update(row)
-              .eq("id", byEmail.id as string)
-              .select("id")
-              .single();
-            if (linkErr || !linked?.id) return dbErrorResponse("crm_link_by_email", linkErr);
-            contactId = linked.id as string;
-          } else {
-            return dbErrorResponse("crm_insert_auth", insErr);
-          }
-        } else {
-          return dbErrorResponse("crm_insert_auth", insErr);
-        }
-      }
-    }
+      name,
+      phone || null,
+      message || null,
+      ip,
+      now
+    );
+    if ("error" in crm) return dbErrorResponse("crm_ensure_auth", crm.error);
+    contactId = crm.id;
   } else {
     const { data: contact, error: cErr } = await supabase
       .from("crm_contacts")
@@ -338,11 +314,12 @@ Deno.serve(async (req) => {
     contactId = contact.id as string;
   }
 
-  await supabase.from("crm_events").insert({
+  const { error: evErr } = await supabase.from("crm_events").insert({
     contact_id: contactId,
     event_type: "lead_submitted",
     payload: { name, email, phone: phone || null, source: userId ? "demo_request_auth" : "demo_request" },
   });
+  if (evErr) console.error("crm_event_insert", evErr);
 
   const plainToken = randomTokenHex(24);
   const tokenHash = await sha256hex(plainToken);

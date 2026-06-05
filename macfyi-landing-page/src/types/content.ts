@@ -305,7 +305,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   checkoutFooterSnap: "Pembayaran diproses melalui Midtrans (metode mengikuti pengaturan merchant).",
   checkoutFooterLynk: "Pembayaran diproses melalui Lynk.id (metode mengikuti pengaturan merchant).",
   checkoutFooterNoGateway:
-    "Tambahkan variabel VITE_SUPABASE_URL dan kunci anon, atau atur Checkout URL di pengaturan.",
+    "Pembayaran sementara tidak tersedia. Silakan coba lagi nanti atau hubungi dukungan.",
 };
 
 export const DEFAULT_LEGAL: ContentData["legal"] = {

@@ -364,7 +364,7 @@ export function CheckoutForm({
           "error"
         );
       } else if (gateway === "midtrans" || gateway === "lynk") {
-        toast("Supabase belum dikonfigurasi (VITE_SUPABASE_*).", "error");
+        toast("Layanan pembayaran sementara tidak tersedia. Silakan coba lagi nanti.", "error");
       }
 
       const outbound = buildCheckoutLink(settings.checkoutUrl, email, nameRes.value, phoneRes.digits);

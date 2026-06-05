@@ -9,9 +9,16 @@ import {
 } from "../lib/formValidation";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
 import { useToast } from "../components/ToastProvider";
-import { describeAuthEmailFailureHint, SERVICE_UNAVAILABLE_MESSAGE } from "../lib/authErrors";
+import {
+  describeAuthEmailFailureHint,
+  describeSignInError,
+  describeSignUpError,
+  SERVICE_UNAVAILABLE_MESSAGE,
+  type AuthFormHint,
+} from "../lib/authErrors";
 import { queueSiteEvent } from "../lib/siteAnalytics";
 import { PasswordInput } from "../components/PasswordInput";
+import { AuthFormFeedback } from "../components/AuthFormFeedback";
 
 type Tab = "login" | "register";
 
@@ -33,13 +40,54 @@ export function AuthLoginPage() {
   const [password, setPassword] = useState("");
   const [password2, setPassword2] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [formHint, setFormHint] = useState<AuthFormHint>(null);
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   const emailRedirectTo =
     typeof window !== "undefined" ? `${window.location.origin}${redirectPath}` : undefined;
 
+  const sendForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (forgotBusy) return;
+    if (!isValidEmail(email)) {
+      setFormError("Format email tidak valid.");
+      setFormHint(null);
+      return;
+    }
+    const supabase = getSupabaseBrowserClient();
+    if (!supabase) {
+      setFormError(SERVICE_UNAVAILABLE_MESSAGE);
+      return;
+    }
+    setForgotBusy(true);
+    setFormError("");
+    try {
+      const redirectTo =
+        typeof window !== "undefined" ? `${window.location.origin}/reset-password` : undefined;
+      const { error } = await supabase.auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo });
+      if (error) {
+        const status =
+          typeof (error as { status?: number }).status === "number"
+            ? (error as { status?: number }).status
+            : undefined;
+        setFormError(describeAuthEmailFailureHint(status, error.message ?? ""));
+        return;
+      }
+      setForgotSent(true);
+      toast("Email reset password telah dikirim. Cek kotak masuk Anda.", "success");
+    } finally {
+      setForgotBusy(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (submitting) return;
+    setFormError("");
+    setFormHint(null);
     if (!isSupabaseBrowserConfigured()) {
       toast(SERVICE_UNAVAILABLE_MESSAGE, "error");
       return;
@@ -92,7 +140,14 @@ export function AuthLoginPage() {
             typeof (error as { status?: number }).status === "number"
               ? (error as { status?: number }).status
               : undefined;
-          toast(describeAuthEmailFailureHint(status, error.message ?? ""), "error");
+          const smtpLikely = status === 504 || status === 500;
+          if (smtpLikely) {
+            toast(describeAuthEmailFailureHint(status, error.message ?? ""), "error");
+          } else {
+            const fb = describeSignUpError(error.message ?? "");
+            setFormError(fb.text);
+            if (fb.text.includes("sudah terdaftar")) setTab("login");
+          }
           return;
         }
         if (!data.session?.access_token) {
@@ -110,7 +165,9 @@ export function AuthLoginPage() {
           password,
         });
         if (error) {
-          toast(error.message?.trim() || "Gagal masuk.", "error");
+          const fb = describeSignInError(error.message ?? "", (error as { status?: number }).status);
+          setFormError(fb.text);
+          setFormHint(fb.hint);
           return;
         }
         toast("Selamat datang kembali.", "success");
@@ -148,7 +205,12 @@ export function AuthLoginPage() {
               className={`flex-1 rounded-md py-2 text-sm font-medium ${
                 tab === "login" ? "bg-white/10 text-white" : "text-white/45"
               }`}
-              onClick={() => setTab("login")}
+              onClick={() => {
+                setTab("login");
+                setFormError("");
+                setFormHint(null);
+                setShowForgot(false);
+              }}
             >
               Masuk
             </button>
@@ -157,12 +219,58 @@ export function AuthLoginPage() {
               className={`flex-1 rounded-md py-2 text-sm font-medium ${
                 tab === "register" ? "bg-white/10 text-white" : "text-white/45"
               }`}
-              onClick={() => setTab("register")}
+              onClick={() => {
+                setTab("register");
+                setFormError("");
+                setFormHint(null);
+                setShowForgot(false);
+              }}
             >
               Daftar
             </button>
           </div>
 
+          {showForgot ? (
+            <form onSubmit={(e) => void sendForgot(e)} className="space-y-3">
+              <p className="text-sm text-white/55 text-center">
+                Masukkan email akun Anda. Kami akan mengirim tautan untuk mengatur ulang password.
+              </p>
+              <label className="block text-sm">
+                <span className="text-white/50">Email</span>
+                <input
+                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  type="email"
+                />
+              </label>
+              {formError ? (
+                <p className="text-sm text-red-300">{formError}</p>
+              ) : forgotSent ? (
+                <p className="text-sm text-emerald-300">Cek email Anda (termasuk folder spam).</p>
+              ) : null}
+              <button
+                type="submit"
+                disabled={forgotBusy}
+                className="w-full rounded-xl bg-red-600 hover:bg-red-500 text-white font-bold py-3 flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {forgotBusy ? <Loader2 className="animate-spin" size={18} /> : null}
+                Kirim tautan reset
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowForgot(false);
+                  setForgotSent(false);
+                  setFormError("");
+                }}
+                className="w-full text-sm text-white/50 hover:text-white underline"
+              >
+                Kembali ke masuk
+              </button>
+            </form>
+          ) : (
           <form onSubmit={(e) => void submit(e)} className="space-y-3">
             {tab === "register" && (
               <label className="block text-sm">
@@ -192,14 +300,38 @@ export function AuthLoginPage() {
                 autoComplete={tab === "register" ? "new-password" : "current-password"}
               />
             </label>
+            {formError ? (
+              <AuthFormFeedback
+                message={formError}
+                hint={formHint}
+                onRegister={() => {
+                  setTab("register");
+                  setFormError("");
+                  setFormHint(null);
+                }}
+                onForgot={() => setShowForgot(true)}
+              />
+            ) : null}
             {tab === "login" && (
-              <p className="text-right -mt-1">
-                <Link to="/lupa-password" className="text-xs text-white/45 hover:text-white underline">
+              <div className="flex items-center justify-between text-sm -mt-1">
+                <button
+                  type="button"
+                  onClick={() => setTab("register")}
+                  className="text-white/50 hover:text-white underline"
+                >
+                  Belum punya akun? Daftar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowForgot(true)}
+                  className="text-red-400 hover:text-red-300 underline font-medium"
+                >
                   Lupa password?
-                </Link>
-              </p>
+                </button>
+              </div>
             )}
             {tab === "register" && (
+              <>
               <label className="block text-sm">
                 <span className="text-white/50">Konfirmasi password</span>
                 <PasswordInput
@@ -208,7 +340,17 @@ export function AuthLoginPage() {
                   autoComplete="new-password"
                 />
               </label>
+              <p className="text-sm text-center text-white/50">
+                Sudah punya akun?{" "}
+                <button type="button" onClick={() => setTab("login")} className="text-red-400 underline">
+                  Masuk di sini
+                </button>
+              </p>
+              </>
             )}
+            {tab === "register" && formError ? (
+              <p className="text-sm text-red-300">{formError}</p>
+            ) : null}
             <button
               type="submit"
               disabled={submitting}
@@ -218,6 +360,7 @@ export function AuthLoginPage() {
               {tab === "register" ? "Daftar" : "Masuk"}
             </button>
           </form>
+          )}
 
           <p className="text-xs text-white/35 mt-6 text-center">
             <Link to="/" className="underline hover:text-white">

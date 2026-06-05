@@ -1,8 +1,11 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import { tryLegacyLogin } from "../config/adminAuth";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured, isSupabaseUserAdmin } from "../lib/supabase";
+import { describeSignInError } from "../lib/authErrors";
+import { PasswordInput } from "./PasswordInput";
 
 export function AdminLoginModal({
   open,
@@ -36,7 +39,7 @@ export function AdminLoginModal({
           password,
         });
         if (error) {
-          setErr(error.message || "Gagal masuk.");
+          setErr(describeSignInError(error.message ?? "", (error as { status?: number }).status).text);
           return;
         }
         const { data: userData } = await client.auth.getUser();
@@ -98,14 +101,23 @@ export function AdminLoginModal({
           className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-4 outline-none focus:border-red-500 disabled:opacity-50"
         />
         <label className="block text-xs font-bold text-white/40 uppercase tracking-wider mb-2">Password</label>
-        <input
-          type="password"
-          autoComplete="current-password"
+        <PasswordInput
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={setPassword}
+          autoComplete="current-password"
           disabled={loading}
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 mb-2 outline-none focus:border-red-500 disabled:opacity-50"
+          className="mb-2"
+          inputClassName="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 pr-10 outline-none focus:border-red-500 disabled:opacity-50"
         />
+        <p className="text-right mb-2">
+          <Link
+            to="/lupa-password"
+            onClick={() => !loading && onClose()}
+            className="text-xs text-red-400 hover:text-red-300 underline font-medium"
+          >
+            Lupa password?
+          </Link>
+        </p>
         {err && <p className="text-red-400 text-sm mb-4">{err}</p>}
         <button
           type="submit"
