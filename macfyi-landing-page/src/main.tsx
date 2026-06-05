@@ -6,6 +6,8 @@ import { ToastProvider } from "./components/ToastProvider";
 import { LandingApp } from "./App";
 import { DownloadPage } from "./pages/DownloadPage";
 import { AuthLoginPage } from "./pages/AuthLoginPage";
+import { AuthForgotPasswordPage } from "./pages/AuthForgotPasswordPage";
+import { AuthResetPasswordPage } from "./pages/AuthResetPasswordPage";
 import { CheckoutSuccessPage } from "./pages/CheckoutSuccessPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import { LegalPage } from "./pages/LegalPage";
@@ -18,6 +20,8 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/download" element={<DownloadPage />} />
           <Route path="/login" element={<AuthLoginPage />} />
+          <Route path="/lupa-password" element={<AuthForgotPasswordPage />} />
+          <Route path="/reset-password" element={<AuthResetPasswordPage />} />
           <Route path="/desktop-connect" element={<DesktopConnectPage />} />
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/checkout/success" element={<CheckoutSuccessPage />} />

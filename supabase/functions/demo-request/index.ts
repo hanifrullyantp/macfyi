@@ -56,6 +56,38 @@ function bearerJwt(req: Request): string {
   return m?.[1]?.trim() ?? "";
 }
 
+function dbErrorResponse(logTag: string, err: unknown): Response {
+  console.error(logTag, err);
+  return new Response(
+    JSON.stringify({
+      error: "db_error",
+      message: "Gagal menyimpan data akun. Silakan coba lagi atau hubungi dukungan jika masalah berlanjut.",
+    }),
+    { status: 500, headers: { ...cors, "Content-Type": "application/json" } }
+  );
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  const msg = String((err as { message?: string } | null)?.message ?? "");
+  const code = String((err as { code?: string } | null)?.code ?? "");
+  return (
+    code === "23505" ||
+    msg.includes("duplicate key") ||
+    msg.includes("unique constraint") ||
+    msg.includes("violates unique")
+  );
+}
+
+function isMissingUniqueForUpsert(err: unknown): boolean {
+  const msg = String((err as { message?: string } | null)?.message ?? "");
+  return (
+    msg.includes("no unique") ||
+    msg.includes("no unique constraint") ||
+    msg.includes("no unique or exclusion constraint") ||
+    msg.includes("42P10")
+  );
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") {
@@ -179,6 +211,13 @@ Deno.serve(async (req) => {
   let contactId: string;
 
   if (userId) {
+    // crm_contacts.user_id FK → profiles.id; ensure profile row exists for new auth users.
+    const { error: profErr } = await supabase.from("profiles").upsert(
+      { id: userId, display_name: name, updated_at: now },
+      { onConflict: "id" }
+    );
+    if (profErr) return dbErrorResponse("profile_ensure", profErr);
+
     const row = {
       user_id: userId,
       visitor_id: visitorId,
@@ -201,35 +240,41 @@ Deno.serve(async (req) => {
 
     if (!upErr && up?.id) {
       contactId = up.id as string;
-    } else {
-      const msg = String((upErr as { message?: string } | null)?.message ?? "");
-      const looksLikeNoUnique =
-        msg.includes("no unique") ||
-        msg.includes("no unique constraint") ||
-        msg.includes("no unique or exclusion constraint") ||
-        msg.includes("42P10");
-
-      if (!looksLikeNoUnique) {
-        console.error("crm_upsert_auth", upErr);
-        return new Response(JSON.stringify({ error: "db_error" }), {
-          status: 500,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
+    } else if (upErr && !isMissingUniqueForUpsert(upErr)) {
+      // visitor_id unique clash: link existing anonymous row instead of failing login.
+      if (isUniqueViolation(upErr)) {
+        const { data: byVisitor, error: visErr } = await supabase
+          .from("crm_contacts")
+          .select("id")
+          .eq("visitor_id", visitorId)
+          .maybeSingle();
+        if (!visErr && byVisitor?.id) {
+          const { visitor_id: _skipVisitor, ...linkRow } = row;
+          const { data: linked, error: linkErr } = await supabase
+            .from("crm_contacts")
+            .update(linkRow)
+            .eq("id", byVisitor.id as string)
+            .select("id")
+            .single();
+          if (!linkErr && linked?.id) {
+            contactId = linked.id as string;
+          } else {
+            return dbErrorResponse("crm_link_by_visitor", linkErr);
+          }
+        } else {
+          return dbErrorResponse("crm_upsert_auth", upErr);
+        }
+      } else {
+        return dbErrorResponse("crm_upsert_auth", upErr);
       }
-
+    } else {
       const { data: existing, error: selErr } = await supabase
         .from("crm_contacts")
         .select("id")
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (selErr) {
-        console.error("crm_select_by_user_id", selErr);
-        return new Response(JSON.stringify({ error: "db_error" }), {
-          status: 500,
-          headers: { ...cors, "Content-Type": "application/json" },
-        });
-      }
+      if (selErr) return dbErrorResponse("crm_select_by_user_id", selErr);
 
       if (existing?.id) {
         const { data: upd, error: updErr } = await supabase
@@ -238,13 +283,7 @@ Deno.serve(async (req) => {
           .eq("id", existing.id as string)
           .select("id")
           .single();
-        if (updErr || !upd?.id) {
-          console.error("crm_update_auth", updErr);
-          return new Response(JSON.stringify({ error: "db_error" }), {
-            status: 500,
-            headers: { ...cors, "Content-Type": "application/json" },
-          });
-        }
+        if (updErr || !upd?.id) return dbErrorResponse("crm_update_auth", updErr);
         contactId = upd.id as string;
       } else {
         const { data: ins, error: insErr } = await supabase
@@ -252,14 +291,31 @@ Deno.serve(async (req) => {
           .insert(row)
           .select("id")
           .single();
-        if (insErr || !ins?.id) {
-          console.error("crm_insert_auth", insErr);
-          return new Response(JSON.stringify({ error: "db_error" }), {
-            status: 500,
-            headers: { ...cors, "Content-Type": "application/json" },
-          });
+        if (!insErr && ins?.id) {
+          contactId = ins.id as string;
+        } else if (insErr && isUniqueViolation(insErr)) {
+          const { data: byEmail, error: emailErr } = await supabase
+            .from("crm_contacts")
+            .select("id")
+            .eq("email", email)
+            .is("user_id", null)
+            .maybeSingle();
+          if (emailErr) return dbErrorResponse("crm_select_by_email", emailErr);
+          if (byEmail?.id) {
+            const { data: linked, error: linkErr } = await supabase
+              .from("crm_contacts")
+              .update(row)
+              .eq("id", byEmail.id as string)
+              .select("id")
+              .single();
+            if (linkErr || !linked?.id) return dbErrorResponse("crm_link_by_email", linkErr);
+            contactId = linked.id as string;
+          } else {
+            return dbErrorResponse("crm_insert_auth", insErr);
+          }
+        } else {
+          return dbErrorResponse("crm_insert_auth", insErr);
         }
-        contactId = ins.id as string;
       }
     }
   } else {
@@ -278,13 +334,7 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
-    if (cErr || !contact) {
-      console.error("crm_insert", cErr);
-      return new Response(JSON.stringify({ error: "db_error" }), {
-        status: 500,
-        headers: { ...cors, "Content-Type": "application/json" },
-      });
-    }
+    if (cErr || !contact) return dbErrorResponse("crm_insert", cErr);
     contactId = contact.id as string;
   }
 

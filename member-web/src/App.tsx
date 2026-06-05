@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import { Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet, Route, Routes, useNavigate } from "react-router-dom";
 import { supabase, supabaseConfigured } from "./supabase";
+import { PasswordField } from "./PasswordField";
 
 function formatIdr(n: number): string {
   return `Rp ${n.toLocaleString("id-ID")}`;
@@ -95,14 +96,12 @@ function MasukPage() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
         />
-        <input
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
-          placeholder="Kata sandi"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
+        <PasswordField value={password} onChange={setPassword} autoComplete="current-password" />
+        <p className="text-right -mt-2">
+          <Link to="/member/lupa-password" className="text-xs text-zinc-500 hover:text-amber-500 underline">
+            Lupa kata sandi?
+          </Link>
+        </p>
         {err && <p className="text-sm text-red-400">{err}</p>}
         <button type="submit" className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white">
           Masuk
@@ -148,13 +147,7 @@ function DaftarPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <input
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
-          placeholder="Kata sandi"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <PasswordField value={password} onChange={setPassword} autoComplete="new-password" />
         {err && <p className="text-sm text-red-400">{err}</p>}
         {msg && <p className="text-sm text-emerald-400">{msg}</p>}
         <button type="submit" className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white">
@@ -163,6 +156,133 @@ function DaftarPage() {
         <p className="text-xs text-zinc-500 text-center">
           <button type="button" className="text-amber-500 underline" onClick={() => nav("/member/masuk")}>Sudah punya akun</button>
         </p>
+      </form>
+    </div>
+  );
+}
+
+function LupaPasswordPage() {
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const nav = useNavigate();
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    setMsg(null);
+    const origin = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: origin ? `${origin}member/reset-password` : undefined,
+    });
+    if (error) setErr(error.message);
+    else setMsg("Email reset kata sandi telah dikirim. Cek kotak masuk Anda.");
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <form onSubmit={(e) => void submit(e)} className="w-full max-w-sm space-y-4 border border-zinc-800 rounded-2xl p-8 bg-zinc-900/50">
+        <h1 className="text-xl font-semibold">Lupa kata sandi</h1>
+        <p className="text-sm text-zinc-500">Masukkan email akun Anda untuk menerima tautan reset.</p>
+        <input
+          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+          placeholder="Email"
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+        {err && <p className="text-sm text-red-400">{err}</p>}
+        {msg && <p className="text-sm text-emerald-400">{msg}</p>}
+        <button type="submit" className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white">
+          Kirim tautan reset
+        </button>
+        <p className="text-xs text-zinc-500 text-center">
+          <button type="button" className="text-amber-500 underline" onClick={() => nav("/member/masuk")}>
+            Kembali ke masuk
+          </button>
+        </p>
+      </form>
+    </div>
+  );
+}
+
+function ResetPasswordPage() {
+  const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const nav = useNavigate();
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "PASSWORD_RECOVERY" || session) setReady(true);
+      setChecking(false);
+    });
+    void supabase.auth.getSession().then(({ data }) => {
+      if (data.session) setReady(true);
+      setChecking(false);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErr(null);
+    if (password.length < 8) {
+      setErr("Kata sandi minimal 8 karakter.");
+      return;
+    }
+    if (password !== password2) {
+      setErr("Konfirmasi kata sandi tidak sama.");
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) setErr(error.message);
+    else {
+      setMsg("Kata sandi berhasil diperbarui.");
+      nav("/member/masuk");
+    }
+  };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 text-zinc-500 text-sm">
+        Memuat…
+      </div>
+    );
+  }
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="w-full max-w-sm space-y-4 border border-zinc-800 rounded-2xl p-8 bg-zinc-900/50 text-center">
+          <p className="text-sm text-zinc-400">Tautan reset tidak valid atau sudah kedaluwarsa.</p>
+          <button
+            type="button"
+            className="text-amber-500 underline text-sm"
+            onClick={() => nav("/member/lupa-password")}
+          >
+            Minta tautan baru
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-6">
+      <form onSubmit={(e) => void submit(e)} className="w-full max-w-sm space-y-4 border border-zinc-800 rounded-2xl p-8 bg-zinc-900/50">
+        <h1 className="text-xl font-semibold">Kata sandi baru</h1>
+        <PasswordField value={password} onChange={setPassword} placeholder="Kata sandi baru" autoComplete="new-password" />
+        <PasswordField value={password2} onChange={setPassword2} placeholder="Konfirmasi kata sandi" autoComplete="new-password" />
+        {err && <p className="text-sm text-red-400">{err}</p>}
+        {msg && <p className="text-sm text-emerald-400">{msg}</p>}
+        <button type="submit" className="w-full rounded-lg bg-amber-600 py-2.5 text-sm font-medium text-white">
+          Simpan kata sandi
+        </button>
       </form>
     </div>
   );
@@ -656,6 +776,8 @@ export function App() {
       <Route path="/" element={<Navigate to="/member" replace />} />
       <Route path="/member/masuk" element={user ? <Navigate to="/member" replace /> : <MasukPage />} />
       <Route path="/member/daftar" element={user ? <Navigate to="/member" replace /> : <DaftarPage />} />
+      <Route path="/member/lupa-password" element={user ? <Navigate to="/member" replace /> : <LupaPasswordPage />} />
+      <Route path="/member/reset-password" element={<ResetPasswordPage />} />
       <Route
         path="/member"
         element={

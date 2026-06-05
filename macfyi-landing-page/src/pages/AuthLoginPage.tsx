@@ -11,6 +11,7 @@ import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/su
 import { useToast } from "../components/ToastProvider";
 import { describeAuthEmailFailureHint } from "../lib/authErrors";
 import { queueSiteEvent } from "../lib/siteAnalytics";
+import { PasswordInput } from "../components/PasswordInput";
 
 type Tab = "login" | "register";
 
@@ -185,22 +186,25 @@ export function AuthLoginPage() {
             </label>
             <label className="block text-sm">
               <span className="text-white/50">Password</span>
-              <input
-                type="password"
-                className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+              <PasswordInput
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={setPassword}
                 autoComplete={tab === "register" ? "new-password" : "current-password"}
               />
             </label>
+            {tab === "login" && (
+              <p className="text-right -mt-1">
+                <Link to="/lupa-password" className="text-xs text-white/45 hover:text-white underline">
+                  Lupa password?
+                </Link>
+              </p>
+            )}
             {tab === "register" && (
               <label className="block text-sm">
                 <span className="text-white/50">Konfirmasi password</span>
-                <input
-                  type="password"
-                  className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+                <PasswordInput
                   value={password2}
-                  onChange={(e) => setPassword2(e.target.value)}
+                  onChange={setPassword2}
                   autoComplete="new-password"
                 />
               </label>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { X, Loader2 } from "lucide-react";
 import {
@@ -11,7 +12,8 @@ import {
 import { getMacfyiVisitorId, queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
 import { firePixelStep } from "../lib/conversionPixels";
-import { describeAuthEmailFailureHint } from "../lib/authErrors";
+import { describeApiError, describeAuthEmailFailureHint } from "../lib/authErrors";
+import { PasswordInput } from "./PasswordInput";
 import type { SiteSettings } from "../types/content";
 
 type AuthTab = "register" | "login";
@@ -106,7 +108,7 @@ export function DemoRequestModal({
       message?: string;
     };
     if (!res.ok || !data.ok || !data.download_url) {
-      toast(data.message ?? data.error ?? "Gagal membuat tautan unduhan.", "error");
+      toast(describeApiError(data.error, data.message), "error");
       return;
     }
     toast("Berhasil! Mengalihkan ke halaman unduhan…", "success");
@@ -278,22 +280,25 @@ export function DemoRequestModal({
           </label>
           <label className="block text-sm">
             <span className="text-white/50">Password</span>
-            <input
-              type="password"
-              className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+            <PasswordInput
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={setPassword}
               autoComplete={authTab === "register" ? "new-password" : "current-password"}
             />
           </label>
+          {authTab === "login" && (
+            <p className="text-right -mt-1">
+              <Link to="/lupa-password" className="text-xs text-white/45 hover:text-white underline">
+                Lupa password?
+              </Link>
+            </p>
+          )}
           {authTab === "register" && (
             <label className="block text-sm">
               <span className="text-white/50">Konfirmasi password</span>
-              <input
-                type="password"
-                className="mt-1 w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-white"
+              <PasswordInput
                 value={password2}
-                onChange={(e) => setPassword2(e.target.value)}
+                onChange={setPassword2}
                 autoComplete="new-password"
               />
             </label>

@@ -4,6 +4,7 @@ import { Copy, ExternalLink, Download, Loader2, LogOut } from "lucide-react";
 import type { Session } from "@supabase/supabase-js";
 import { queueSiteEvent } from "../lib/siteAnalytics";
 import { getSupabaseBrowserClient, isSupabaseBrowserConfigured } from "../lib/supabase";
+import { describeApiError } from "../lib/authErrors";
 
 const CARD_BG = "/landing/detail-01-deep-scan.png";
 
@@ -154,7 +155,7 @@ export function DownloadPage() {
         message?: string;
       };
       if (!res.ok || !data.ok || !data.download_url) {
-        setAuthErr(data.message ?? data.error ?? "Gagal membuat token.");
+        setAuthErr(describeApiError(data.error, data.message));
         return;
       }
       const target = data.download_url.startsWith("http")
