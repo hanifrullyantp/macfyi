@@ -1,5 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "npm ci && npm ci --prefix ../admin-web && npm ci --prefix ../macfyi-admin",
   "rewrites": [
     { "source": "/admin3", "destination": "/admin3/index.html" },
     { "source": "/admin3/", "destination": "/admin3/index.html" },
