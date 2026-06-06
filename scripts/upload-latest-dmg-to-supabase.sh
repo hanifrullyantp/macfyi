@@ -10,13 +10,15 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=scripts/lib/supabase-env.sh
+source "$ROOT/scripts/lib/supabase-env.sh"
 
 if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" || -z "${RELEASE_VERSION:-}" ]]; then
   echo "Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and RELEASE_VERSION." >&2
   exit 1
 fi
 
-SUPABASE_URL="${SUPABASE_URL%/}"
+SUPABASE_URL="$(normalize_supabase_url "$SUPABASE_URL")" || exit 1
 RELEASE_PLATFORM="${RELEASE_PLATFORM:-macos-arm64}"
 
 shopt -s nullglob

@@ -12,7 +12,9 @@ fi
 RELEASE_VERSION="${RELEASE_VERSION:-$(node -e 'const c=require("./src-tauri/tauri.conf.json");process.stdout.write(c.version||"0.2.0")')}"
 RELEASE_PLATFORM="${RELEASE_PLATFORM:-macos-arm64}"
 OBJECT_PATH="staging/macfyi-latest.dmg"
-SUPABASE_URL="${SUPABASE_URL%/}"
+# shellcheck source=scripts/lib/supabase-env.sh
+source "$ROOT/scripts/lib/supabase-env.sh"
+SUPABASE_URL="$(normalize_supabase_url "$SUPABASE_URL")" || exit 1
 
 HEAD_HTTP="$(curl -sS -o /dev/null -w "%{http_code}" -I \
   "${SUPABASE_URL}/storage/v1/object/releases/${OBJECT_PATH}" \

@@ -1,5 +1,7 @@
 # Build macOS DMG and upload to staging object only.
-# Set GitHub secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+# GitHub secrets (Settings → Secrets → Actions):
+#   SUPABASE_URL = https://sgpjracvhokkmjkujabf.supabase.co   (TANPA /rest/v1)
+#   SUPABASE_SERVICE_ROLE_KEY = eyJ... (service_role dari Dashboard → API)
 # Optional: set UPDATE_APP_SETTINGS secret to "true" to PATCH download_base_url after upload (or edit workflow env below).
 
 name: Upload DMG to Supabase
@@ -36,11 +38,19 @@ jobs:
 
       - name: Build DMG (Tauri + icons + sign)
         env:
+          SKIP_MACOS_SIGN: "1"
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-        run: npm run tauri:build:dmg
+        run: |
+          bash scripts/generate-tauri-icons.sh
+          npx tauri build --bundles app dmg
+          if [[ -z "${APPLE_SIGNING_IDENTITY:-}" ]]; then
+            echo "No APPLE_SIGNING_IDENTITY — skip codesign on CI."
+          else
+            bash scripts/sign-macos-release.sh
+          fi
 
       - name: Resolve release version
         id: release_version
@@ -54,13 +64,28 @@ jobs:
           fi
           echo "value=$RAW" >> "$GITHUB_OUTPUT"
 
-      - name: Upload DMG to Supabase Storage
+      - name: Verify Supabase secrets (normalize URL)
+        id: supabase_env
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/verify-supabase-upload-env.sh
+
+      - name: Upload DMG to Supabase Storage
+        env:
+          SUPABASE_URL: ${{ steps.supabase_env.outputs.normalized_url }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
           RELEASE_PLATFORM: macos-arm64
         run: bash scripts/upload-latest-dmg-to-supabase.sh
+
+      - name: Upload DMG artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macfyi-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: warn
 
       - name: Upload bundle artifact (debug)
         if: failure()

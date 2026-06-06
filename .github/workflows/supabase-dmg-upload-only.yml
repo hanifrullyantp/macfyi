@@ -1,0 +1,54 @@
+# Upload an existing DMG artifact to Supabase (skip Tauri build).
+# Use when build succeeded locally or a prior workflow artifact exists.
+name: Upload DMG only (Supabase)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  upload-only:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download DMG artifact (optional)
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: macfyi-dmg
+          path: artifact-dmg
+
+      - name: Place DMG into bundle path
+        run: |
+          mkdir -p src-tauri/target/release/bundle/dmg
+          if compgen -G "artifact-dmg/*.dmg" > /dev/null; then
+            cp artifact-dmg/*.dmg src-tauri/target/release/bundle/dmg/
+            echo "Using artifact DMG"
+          elif compgen -G "src-tauri/target/release/bundle/dmg/*.dmg" > /dev/null; then
+            echo "Using repo-local DMG"
+          else
+            echo "No DMG found. Upload macfyi-dmg artifact first or commit a built .dmg." >&2
+            exit 1
+          fi
+          ls -la src-tauri/target/release/bundle/dmg/
+
+      - name: Verify Supabase secrets
+        id: supabase_env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/verify-supabase-upload-env.sh
+
+      - name: Resolve release version
+        id: release_version
+        run: |
+          RAW="$(node -e 'const c=require("./src-tauri/tauri.conf.json");process.stdout.write(c.version||"0.2.0")')"
+          echo "value=$RAW" >> "$GITHUB_OUTPUT"
+
+      - name: Upload to Supabase
+        env:
+          SUPABASE_URL: ${{ steps.supabase_env.outputs.normalized_url }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
+          RELEASE_PLATFORM: macos-arm64
+        run: bash scripts/upload-latest-dmg-to-supabase.sh
