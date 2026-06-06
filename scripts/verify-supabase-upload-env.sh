@@ -32,17 +32,21 @@ if [[ "$HTTP" != "200" ]]; then
   exit 1
 fi
 
-# release_state table
-HTTP2="$(curl -sS -o /tmp/macfyi-rs-check.json -w "%{http_code}" \
-  "${SUPABASE_URL}/rest/v1/release_state?select=id&limit=1" \
-  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
+# release_state table (optional when uploading DMG before migration)
+if [[ "${SKIP_RELEASE_STATE_CHECK:-}" != "1" ]]; then
+  HTTP2="$(curl -sS -o /tmp/macfyi-rs-check.json -w "%{http_code}" \
+    "${SUPABASE_URL}/rest/v1/release_state?select=id&limit=1" \
+    -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
 
-if [[ "$HTTP2" != "200" ]]; then
-  echo "Tabel release_state tidak dapat diakses (HTTP $HTTP2)." >&2
-  echo "Jalankan migrasi Supabase (supabase db push / SQL migration)." >&2
-  cat /tmp/macfyi-rs-check.json >&2 || true
-  exit 1
+  if [[ "$HTTP2" != "200" ]]; then
+    echo "Tabel release_state tidak dapat diakses (HTTP $HTTP2)." >&2
+    echo "Jalankan migrasi Supabase (supabase db push / SQL migration)." >&2
+    cat /tmp/macfyi-rs-check.json >&2 || true
+    exit 1
+  fi
+else
+  echo "SKIP_RELEASE_STATE_CHECK=1 — lewati cek tabel release_state."
 fi
 
 echo "Supabase credentials verified."

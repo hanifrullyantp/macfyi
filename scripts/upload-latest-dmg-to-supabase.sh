@@ -60,23 +60,26 @@ echo "OK — public URL: $PUBLIC_URL"
 echo "Checksum: $CHECKSUM"
 echo "Size bytes: $FILE_SIZE"
 
-DEL_OUT="$(mktemp)"
-DEL_HTTP="$(curl -sS -o "$DEL_OUT" -w "%{http_code}" -X DELETE \
-  "${SUPABASE_URL}/rest/v1/release_state?environment=eq.staging&platform=eq.${RELEASE_PLATFORM}" \
-  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -H "Prefer: return=minimal")"
-if [[ "$DEL_HTTP" != "204" && "$DEL_HTTP" != "200" ]]; then
-  echo "Failed deleting prior staging row HTTP $DEL_HTTP" >&2
-  cat "$DEL_OUT" >&2
+if [[ "${SKIP_RELEASE_STATE_ROW:-}" == "1" ]]; then
+  echo "SKIP_RELEASE_STATE_ROW=1 — DMG uploaded; jalankan migrasi lalu register-staging-release."
+else
+  DEL_OUT="$(mktemp)"
+  DEL_HTTP="$(curl -sS -o "$DEL_OUT" -w "%{http_code}" -X DELETE \
+    "${SUPABASE_URL}/rest/v1/release_state?environment=eq.staging&platform=eq.${RELEASE_PLATFORM}" \
+    -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Prefer: return=minimal")"
+  if [[ "$DEL_HTTP" != "204" && "$DEL_HTTP" != "200" ]]; then
+    echo "Failed deleting prior staging row HTTP $DEL_HTTP" >&2
+    cat "$DEL_OUT" >&2
+    rm -f "$DEL_OUT"
+    exit 1
+  fi
   rm -f "$DEL_OUT"
-  exit 1
-fi
-rm -f "$DEL_OUT"
 
-INS_OUT="$(mktemp)"
-INS_PAYLOAD="$(mktemp)"
-cat > "$INS_PAYLOAD" <<EOF
+  INS_OUT="$(mktemp)"
+  INS_PAYLOAD="$(mktemp)"
+  cat > "$INS_PAYLOAD" <<EOF
 {
   "environment": "staging",
   "version": "${RELEASE_VERSION}",
@@ -86,18 +89,19 @@ cat > "$INS_PAYLOAD" <<EOF
   "checksum": "${CHECKSUM}"
 }
 EOF
-INS_HTTP="$(curl -sS -o "$INS_OUT" -w "%{http_code}" -X POST \
-  "${SUPABASE_URL}/rest/v1/release_state" \
-  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-  -H "Content-Type: application/json" \
-  -H "Prefer: return=minimal" \
-  --data-binary "@${INS_PAYLOAD}")"
-if [[ "$INS_HTTP" != "201" && "$INS_HTTP" != "200" && "$INS_HTTP" != "204" ]]; then
-  echo "Failed inserting staging row HTTP $INS_HTTP" >&2
-  cat "$INS_OUT" >&2
+  INS_HTTP="$(curl -sS -o "$INS_OUT" -w "%{http_code}" -X POST \
+    "${SUPABASE_URL}/rest/v1/release_state" \
+    -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+    -H "Content-Type: application/json" \
+    -H "Prefer: return=minimal" \
+    --data-binary "@${INS_PAYLOAD}")"
+  if [[ "$INS_HTTP" != "201" && "$INS_HTTP" != "200" && "$INS_HTTP" != "204" ]]; then
+    echo "Failed inserting staging row HTTP $INS_HTTP" >&2
+    cat "$INS_OUT" >&2
+    rm -f "$INS_OUT" "$INS_PAYLOAD"
+    exit 1
+  fi
   rm -f "$INS_OUT" "$INS_PAYLOAD"
-  exit 1
+  echo "Staging row upserted in release_state."
 fi
-rm -f "$INS_OUT" "$INS_PAYLOAD"
-echo "Staging row upserted in release_state."

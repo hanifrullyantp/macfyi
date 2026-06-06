@@ -58,6 +58,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SKIP_RELEASE_STATE_CHECK: "1"
         run: bash scripts/verify-supabase-upload-env.sh
 
       - name: Resolve release version
@@ -72,4 +73,5 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
           RELEASE_PLATFORM: macos-arm64
+          SKIP_RELEASE_STATE_ROW: "1"
         run: bash scripts/upload-latest-dmg-to-supabase.sh
