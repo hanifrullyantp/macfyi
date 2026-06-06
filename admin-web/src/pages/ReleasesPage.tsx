@@ -7,10 +7,15 @@ import {
   rejectStaging,
   rollbackRelease,
   scheduleRelease,
+  syncStagingFromStorage,
   type ReleaseStateRow,
 } from "../lib/releasesClient";
 
-const PLATFORMS = ["macos-arm64", "macos-intel"] as const;
+const PLATFORMS = [
+  { id: "macos-arm64" as const, label: "macOS Apple Silicon (M1/M2/M3/M4)", active: true },
+  { id: "macos-intel" as const, label: "macOS Intel (belum ada build)", active: false },
+];
+type PlatformId = (typeof PLATFORMS)[number]["id"];
 
 function fmtBytes(n: number | null): string {
   if (!n || n <= 0) return "—";
@@ -20,11 +25,13 @@ function fmtBytes(n: number | null): string {
 
 export default function ReleasesPage() {
   const qc = useQueryClient();
-  const [platform, setPlatform] = useState<(typeof PLATFORMS)[number]>("macos-arm64");
+  const [platform, setPlatform] = useState<PlatformId>("macos-arm64");
   const [notes, setNotes] = useState("");
   const [mandatory, setMandatory] = useState(false);
   const [scheduleAt, setScheduleAt] = useState("");
-  const [busy, setBusy] = useState<null | "publish" | "schedule" | "reject" | string>(null);
+  const [busy, setBusy] = useState<null | "publish" | "schedule" | "reject" | "sync" | string>(null);
+
+  const platformMeta = PLATFORMS.find((p) => p.id === platform)!;
 
   const query = useQuery({
     queryKey: ["release-state", platform],
@@ -93,6 +100,20 @@ export default function ReleasesPage() {
     }
   }
 
+  async function onSyncStaging() {
+    setBusy("sync");
+    try {
+      const res = await syncStagingFromStorage(platform);
+      if (!res.ok) throw new Error(res.message ?? res.error ?? "Sync failed");
+      toast.success("Staging disinkronkan dari Storage");
+      await refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal sinkronkan staging");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function onRollback(version: string) {
     setBusy(`rb-${version}`);
     try {
@@ -111,25 +132,53 @@ export default function ReleasesPage() {
       <div className="flex items-end justify-between gap-3">
         <div>
           <h1 className="text-4xl font-black text-white tracking-tight">Releases</h1>
-          <p className="text-white/40 font-medium">2-bucket control: staging overwrite + 5 live history.</p>
+          <p className="text-white/40 font-medium">Staging → publish ke live (maks. 5 riwayat).</p>
         </div>
         <select
           value={platform}
-          onChange={(e) => setPlatform(e.target.value as (typeof PLATFORMS)[number])}
-          className="rounded-xl border border-white/10 bg-[#16161C] px-3 py-2 text-sm text-white"
+          onChange={(e) => setPlatform(e.target.value as PlatformId)}
+          className="rounded-xl border border-white/10 bg-[#16161C] px-3 py-2 text-sm text-white max-w-xs"
         >
           {PLATFORMS.map((p) => (
-            <option key={p} value={p}>
-              {p}
+            <option key={p.id} value={p.id}>
+              {p.label}
             </option>
           ))}
         </select>
       </div>
 
+      {!platformMeta.active ? (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Build CI belum tersedia untuk Mac Intel. Pilih <strong>macOS Apple Silicon</strong> di dropdown — DMG saat ini
+          hanya di-build untuk chip M1/M2/M3/M4.
+        </div>
+      ) : null}
+
       <section className="rounded-3xl border border-white/5 bg-[#16161C] p-6 space-y-4">
         <h2 className="text-xl font-black text-white">Staging</h2>
         {!staging ? (
-          <p className="text-sm text-white/45">No staging build for this platform.</p>
+          <div className="space-y-3 text-sm text-white/55">
+            <p>Belum ada build staging untuk platform ini.</p>
+            {platformMeta.active ? (
+              <>
+                <p className="text-white/45">Langkah membuat staging:</p>
+                <ol className="list-decimal list-inside space-y-1 text-white/50">
+                  <li>GitHub → Actions → <strong className="text-white/70">Upload DMG to Supabase</strong> → Run workflow</li>
+                  <li>Pastikan secrets <code className="text-white/60">SUPABASE_URL</code> dan{" "}
+                    <code className="text-white/60">SUPABASE_SERVICE_ROLE_KEY</code> sudah diisi</li>
+                  <li>Kembali ke halaman ini, pilih <strong className="text-white/70">macOS Apple Silicon</strong>, lalu refresh</li>
+                </ol>
+                <button
+                  type="button"
+                  onClick={() => void onSyncStaging()}
+                  disabled={busy !== null}
+                  className="rounded-xl border border-white/15 px-3 py-2 text-sm text-white hover:bg-white/10 disabled:opacity-60"
+                >
+                  Sinkronkan dari Storage (jika DMG sudah ter-upload)
+                </button>
+              </>
+            ) : null}
+          </div>
         ) : (
           <>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 text-sm">
@@ -219,7 +268,7 @@ export default function ReleasesPage() {
               {live.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="py-4 text-sm text-white/45">
-                    No live releases yet.
+                    Belum ada rilis live. Publish staging terlebih dahulu.
                   </td>
                 </tr>
               ) : null}

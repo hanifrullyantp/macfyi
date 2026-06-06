@@ -76,3 +76,10 @@ export function rejectStaging(platform: string) {
 export function rollbackRelease(platform: string, version: string) {
   return invokeEdge("release-rollback", "POST", { platform, version });
 }
+
+export function syncStagingFromStorage(platform: string, version?: string) {
+  return invokeEdge<{ ok?: boolean; error?: string; message?: string }>("release-sync-staging", "POST", {
+    platform,
+    version,
+  });
+}
