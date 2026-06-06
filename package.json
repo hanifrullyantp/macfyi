@@ -14,7 +14,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "tauri:build:dmg": "tauri build --bundles app dmg"
+    "tauri:icons": "bash scripts/generate-tauri-icons.sh",
+    "tauri:build:dmg": "bash scripts/generate-tauri-icons.sh && tauri build --bundles app dmg && bash scripts/sign-macos-release.sh"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.23",

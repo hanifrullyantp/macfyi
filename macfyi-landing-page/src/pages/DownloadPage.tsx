@@ -306,6 +306,24 @@ export function DownloadPage() {
 
           {authErr ? <p className="text-sm text-red-300/95 mt-4 text-center px-2">{authErr}</p> : null}
 
+          <div className="mt-8 rounded-2xl border border-white/10 bg-[#0B1220]/60 p-5 sm:p-6">
+            <h3 className="text-sm font-semibold text-white/90 mb-3">Cara install di Mac</h3>
+            <ol className="text-sm text-white/55 space-y-2 list-decimal list-inside leading-relaxed">
+              <li>Unduh file <strong className="text-white/75">.dmg</strong>, lalu buka image disk-nya.</li>
+              <li>Drag ikon <strong className="text-white/75">Macfyi</strong> ke folder <strong className="text-white/75">Applications</strong>.</li>
+              <li>
+                Jika macOS menampilkan peringatan &quot;pengembang tidak dapat diverifikasi&quot;, jangan pindahkan ke Tong Sampah.
+                Buka <strong className="text-white/75">Applications</strong>, klik kanan <strong className="text-white/75">Macfyi</strong> →{" "}
+                <strong className="text-white/75">Open</strong> → pilih <strong className="text-white/75">Open</strong> sekali lagi.
+              </li>
+              <li>Atau buka <strong className="text-white/75">System Settings → Privacy &amp; Security</strong> dan pilih{" "}
+                <strong className="text-white/75">Open Anyway</strong> untuk Macfyi.</li>
+            </ol>
+            <p className="text-xs text-white/35 mt-4">
+              Peringatan ini normal untuk aplikasi di luar Mac App Store yang belum dinotarisasi Apple. Setelah dibuka sekali, Macfyi akan berjalan seperti biasa.
+            </p>
+          </div>
+
           <div className="mt-10 rounded-2xl border border-white/10 bg-[#0B1220]/80 p-5 sm:p-6 space-y-4">
             <h3 className="text-sm font-semibold text-white/90">Token &amp; aplikasi</h3>
             {token ? (

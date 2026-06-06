@@ -14,11 +14,13 @@ Source of truth for the **square master** in this repo:
 
 - [`src-tauri/icons/logo box macfyi.png`](../src-tauri/icons/logo%20box%20macfyi.png) (file name contains a space — quote the path in the shell).
 
-From the **repository root**, regenerate all bundle icons (overwrites files under `src-tauri/icons/`):
+From the **repository root**, regenerate all bundle icons from [`public/macfyi-mark-square.png`](../public/macfyi-mark-square.png):
 
 ```bash
-npx tauri icon "src-tauri/icons/logo box macfyi.png"
+npm run tauri:icons
 ```
+
+`npm run tauri:build:dmg` runs this automatically before bundling.
 
 Then rebuild (`npm run tauri:build`). More context on in-app vs Dock branding: [`docs/BRANDING_ASSETS.md`](BRANDING_ASSETS.md).
 
@@ -75,6 +77,14 @@ export SUPABASE_URL="https://xxxx.supabase.co"
 export SUPABASE_SERVICE_ROLE_KEY="..."
 UPDATE_APP_SETTINGS=true ./scripts/upload-latest-dmg-to-supabase.sh
 ```
+
+## Gatekeeper (“pengembang tidak dapat diverifikasi”)
+
+DMG yang **belum dinotarisasi** akan memunculkan peringatan macOS. Ini normal untuk distribusi di luar Mac App Store.
+
+**Cara buka (user):** Applications → klik kanan **Macfyi** → **Open** → **Open** lagi. Jangan pilih “Move to Trash”.
+
+Build CI menjalankan [`scripts/sign-macos-release.sh`](../scripts/sign-macos-release.sh) (ad-hoc sign bila tidak ada Developer ID). Untuk menghilangkan peringatan sepenuhnya, isi GitHub secrets `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_SPECIFIC_PASSWORD` (lihat di bawah).
 
 ## Sign the app (overview)
 

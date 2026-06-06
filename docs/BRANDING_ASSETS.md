@@ -19,11 +19,13 @@ Dokumen ini merangkum **aset statis** (gambar, ikon) dan **konfigurasi teks/warn
 
 Daftar file yang dipakai Tauri ada di [`src-tauri/tauri.conf.json`](../src-tauri/tauri.conf.json) (`bundle.icon`).
 
-**Cara mengganti (disarankan):** siapkan **satu PNG persegi** (mis. 1024×1024). Di repo ini ada master contoh: [`src-tauri/icons/logo box macfyi.png`](../src-tauri/icons/logo%20box%20macfyi.png) (nama berisi spasi — pakai tanda kutip di terminal). Dari root repo:
+**Cara mengganti (disarankan):** sumber resmi ikon Dock = [`public/macfyi-mark-square.png`](../public/macfyi-mark-square.png). Dari root repo:
 
 ```bash
-npx tauri icon "src-tauri/icons/logo box macfyi.png"
+npm run tauri:icons
 ```
+
+Perintah di atas menjalankan [`scripts/generate-tauri-icons.sh`](../scripts/generate-tauri-icons.sh) (resize 1024×1024 + `tauri icon`).
 
 Ini menimpa banyak file di `src-tauri/icons/`. Setelah itu jalankan build ulang (`npm run tauri:build`). Detail rilis: [`docs/RELEASE_MACOS.md`](RELEASE_MACOS.md) § *App icons*.
 
