@@ -107,7 +107,17 @@ export async function requireAdminUser(req: Request, admin: SupabaseClient): Pro
 
 async function storageCopy(admin: SupabaseClient, from: string, to: string): Promise<void> {
   const { error } = await admin.storage.from("releases").copy(from, to);
-  if (error) throw new Error(`storage_copy_failed:${error.message}`);
+  if (!error) return;
+
+  // Fallback when Storage copy rejects JWT (e.g. key rotation): download then upload.
+  const { data, error: dlErr } = await admin.storage.from("releases").download(from);
+  if (dlErr || !data) throw new Error(`storage_copy_failed:${error.message}; download:${dlErr?.message ?? "empty"}`);
+
+  const { error: upErr } = await admin.storage.from("releases").upload(to, data, {
+    upsert: true,
+    contentType: "application/x-apple-diskimage",
+  });
+  if (upErr) throw new Error(`storage_copy_failed:${error.message}; upload:${upErr.message}`);
 }
 
 export async function storageDelete(admin: SupabaseClient, objectPath: string): Promise<void> {
