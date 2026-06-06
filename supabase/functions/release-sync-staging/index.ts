@@ -32,9 +32,10 @@ Deno.serve(async (req) => {
 
     const version = String(body.version ?? "0.2.0").trim() || "0.2.0";
 
+    const key = serviceRole.trim();
     const head = await fetch(`${url}/storage/v1/object/releases/${STAGING_OBJECT}`, {
       method: "HEAD",
-      headers: { Authorization: `Bearer ${serviceRole}` },
+      headers: { Authorization: `Bearer ${key}`, apikey: key },
     });
     if (head.status === 404) {
       return jsonResponse(

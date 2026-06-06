@@ -15,7 +15,6 @@ Deno.serve(async (req) => {
     const { url, admin } = await bootstrapClients();
     const auth = await requireAdminUser(req, admin);
     if (!auth.ok) return jsonResponse({ error: auth.error }, auth.status);
-    const serviceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const body = (await req.json().catch(() => ({}))) as { platform?: string; version?: string };
     const platform = typeof body.platform === "string" ? body.platform.trim() : "";
@@ -34,7 +33,7 @@ Deno.serve(async (req) => {
     if (error) return jsonResponse({ error: "query_failed" }, 500);
     if (!row) return jsonResponse({ error: "live_version_not_found" }, 404);
 
-    await writePointer(url, serviceRole, platform, {
+    await writePointer(admin, platform, {
       version: row.version,
       platform: row.platform,
       download_url: toPublicDownloadUrl(url, row.storage_path),

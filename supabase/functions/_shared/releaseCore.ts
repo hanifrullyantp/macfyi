@@ -105,56 +105,30 @@ export async function requireAdminUser(req: Request, admin: SupabaseClient): Pro
   return { ok: true };
 }
 
-async function storageCopy(url: string, serviceRole: string, from: string, to: string): Promise<void> {
-  const res = await fetch(`${url}/storage/v1/object/copy`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceRole}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      bucketId: "releases",
-      sourceKey: from,
-      destinationKey: to,
-      destinationBucket: "releases",
-    }),
-  });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`storage_copy_failed:${res.status}:${txt}`);
-  }
+async function storageCopy(admin: SupabaseClient, from: string, to: string): Promise<void> {
+  const { error } = await admin.storage.from("releases").copy(from, to);
+  if (error) throw new Error(`storage_copy_failed:${error.message}`);
 }
 
-export async function storageDelete(url: string, serviceRole: string, objectPath: string): Promise<void> {
-  const res = await fetch(`${url}/storage/v1/object/releases/${objectPath}`, {
-    method: "DELETE",
-    headers: { Authorization: `Bearer ${serviceRole}` },
-  });
-  if (!res.ok && res.status !== 404) {
-    const txt = await res.text();
-    throw new Error(`storage_delete_failed:${res.status}:${txt}`);
+export async function storageDelete(admin: SupabaseClient, objectPath: string): Promise<void> {
+  const { error } = await admin.storage.from("releases").remove([objectPath]);
+  if (error && !/not found/i.test(error.message)) {
+    throw new Error(`storage_delete_failed:${error.message}`);
   }
 }
 
 export async function writePointer(
-  url: string,
-  serviceRole: string,
+  admin: SupabaseClient,
   platform: string,
   payload: ReleasePointer
 ): Promise<void> {
   const path = pointerPathFor(platform);
-  const res = await fetch(`${url}/storage/v1/object/releases/${path}?upsert=true`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceRole}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
+  const body = new Blob([JSON.stringify(payload)], { type: "application/json" });
+  const { error } = await admin.storage.from("releases").upload(path, body, {
+    upsert: true,
+    contentType: "application/json",
   });
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`pointer_write_failed:${res.status}:${txt}`);
-  }
+  if (error) throw new Error(`pointer_write_failed:${error.message}`);
 }
 
 export async function readPointer(url: string, platform: string): Promise<ReleasePointer | null> {
@@ -191,7 +165,7 @@ export async function publishStagingToLive(params: {
   const liveObject = `live/${stage.version}/macfyi-${arch}.dmg`;
   const liveStoragePath = `releases/${liveObject}`;
 
-  await storageCopy(url, serviceRole, sourceObject, liveObject);
+  await storageCopy(admin, sourceObject, liveObject);
 
   const { error: insertErr } = await admin.from("release_state").insert({
     environment: "live",
@@ -214,7 +188,7 @@ export async function publishStagingToLive(params: {
     is_mandatory: params.mandatory ?? stage.is_mandatory,
     published_at: nowIso,
   };
-  await writePointer(url, serviceRole, platform, pointerPayload);
+  await writePointer(admin, platform, pointerPayload);
 
   const { error: delStageErr } = await admin
     .from("release_state")
@@ -233,7 +207,7 @@ export async function publishStagingToLive(params: {
   if (liveErr) throw new Error(`load_live_failed:${liveErr.message}`);
   const extra = (liveRows ?? []).slice(5) as Array<{ id: string; storage_path: string }>;
   for (const row of extra) {
-    await storageDelete(url, serviceRole, storageObjectPathFromReleasePath(row.storage_path));
+    await storageDelete(admin, storageObjectPathFromReleasePath(row.storage_path));
     const { error: delErr } = await admin.from("release_state").delete().eq("id", row.id);
     if (delErr) throw new Error(`prune_row_failed:${delErr.message}`);
   }
