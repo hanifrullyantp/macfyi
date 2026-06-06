@@ -52,6 +52,13 @@ jobs:
             bash scripts/sign-macos-release.sh
           fi
 
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macfyi-dmg
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+
       - name: Resolve release version
         id: release_version
         run: |
@@ -78,14 +85,6 @@ jobs:
           RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
           RELEASE_PLATFORM: macos-arm64
         run: bash scripts/upload-latest-dmg-to-supabase.sh
-
-      - name: Upload DMG artifact
-        if: success()
-        uses: actions/upload-artifact@v4
-        with:
-          name: macfyi-dmg
-          path: src-tauri/target/release/bundle/dmg/*.dmg
-          if-no-files-found: warn
 
       - name: Upload bundle artifact (debug)
         if: failure()
