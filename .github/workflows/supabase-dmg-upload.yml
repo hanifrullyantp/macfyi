@@ -44,11 +44,11 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
         run: |
+          # Empty signing identity breaks codesign on GHA; use ad-hoc (-) unless Developer ID is set.
+          export APPLE_SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:--}"
           bash scripts/generate-tauri-icons.sh
           npx tauri build --bundles app dmg
-          if [[ -z "${APPLE_SIGNING_IDENTITY:-}" ]]; then
-            echo "No APPLE_SIGNING_IDENTITY — skip codesign on CI."
-          else
+          if [[ "${APPLE_SIGNING_IDENTITY}" != "-" ]]; then
             bash scripts/sign-macos-release.sh
           fi
 

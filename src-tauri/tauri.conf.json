@@ -59,7 +59,7 @@
       "exceptionDomain": "",
       "frameworks": [],
       "minimumSystemVersion": "11.0",
-      "signingIdentity": null
+      "signingIdentity": "-"
     },
     "resources": []
   }
