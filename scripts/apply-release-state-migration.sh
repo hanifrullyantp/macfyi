@@ -12,14 +12,17 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECT_REF="${SUPABASE_PROJECT_REF:-sgpjracvhokkmjkujabf}"
-MIGRATION="$ROOT/supabase/migrations/20260505161000_release_state_2_bucket.sql"
+MIGRATIONS=(
+  "$ROOT/supabase/migrations/20260505161000_release_state_2_bucket.sql"
+  "$ROOT/supabase/migrations/20260606120000_release_state_admin_rls.sql"
+)
 
-if [[ -f "$MIGRATION" ]]; then
-  :
-else
-  echo "Migration file not found: $MIGRATION" >&2
-  exit 1
-fi
+for MIGRATION in "${MIGRATIONS[@]}"; do
+  if [[ ! -f "$MIGRATION" ]]; then
+    echo "Migration file not found: $MIGRATION" >&2
+    exit 1
+  fi
+done
 
 if command -v supabase >/dev/null 2>&1 && supabase projects list >/dev/null 2>&1; then
   echo "Applying migrations via supabase db push..."
@@ -35,26 +38,26 @@ if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
   echo "" >&2
   echo "Pilih salah satu:" >&2
   echo "  1) supabase login && bash $0" >&2
-  echo "  2) Dashboard → SQL Editor → paste isi:" >&2
-  echo "     $MIGRATION" >&2
+  echo "  2) Dashboard → SQL Editor → jalankan kedua file di supabase/migrations/:" >&2
+  echo "     20260505161000_release_state_2_bucket.sql" >&2
+  echo "     20260606120000_release_state_admin_rls.sql" >&2
   echo "  3) export SUPABASE_ACCESS_TOKEN=... && bash $0" >&2
   exit 1
 fi
 
-SQL="$(cat "$MIGRATION")"
-PAYLOAD="$(node -e 'const fs=require("fs");const q=fs.readFileSync(process.argv[1],"utf8");process.stdout.write(JSON.stringify({query:q}))' "$MIGRATION")"
+for MIGRATION in "${MIGRATIONS[@]}"; do
+  echo "Applying $(basename "$MIGRATION")..."
+  PAYLOAD="$(node -e 'const fs=require("fs");const q=fs.readFileSync(process.argv[1],"utf8");process.stdout.write(JSON.stringify({query:q}))' "$MIGRATION")"
+  HTTP="$(curl -sS -o /tmp/macfyi-migration-out.json -w "%{http_code}" \
+    -X POST "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
+    -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+    -H "Content-Type: application/json" \
+    -d "$PAYLOAD")"
+  if [[ "$HTTP" != "200" && "$HTTP" != "201" ]]; then
+    echo "Migration failed (HTTP $HTTP): $(basename "$MIGRATION")" >&2
+    cat /tmp/macfyi-migration-out.json >&2
+    exit 1
+  fi
+done
 
-HTTP="$(curl -sS -o /tmp/macfyi-migration-out.json -w "%{http_code}" \
-  -X POST "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
-  -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-  -H "Content-Type: application/json" \
-  -d "$PAYLOAD")"
-
-if [[ "$HTTP" != "200" && "$HTTP" != "201" ]]; then
-  echo "Migration failed (HTTP $HTTP):" >&2
-  cat /tmp/macfyi-migration-out.json >&2
-  exit 1
-fi
-
-echo "release_state migration applied."
-cat /tmp/macfyi-migration-out.json
+echo "release_state migrations applied."

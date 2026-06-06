@@ -1,0 +1,30 @@
+# Register staging row when DMG already exists in Storage (no Tauri build).
+name: Register staging release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  register:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Verify Supabase env
+        id: supabase_env
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/verify-supabase-upload-env.sh
+
+      - name: Register staging from Storage
+        env:
+          SUPABASE_URL: ${{ steps.supabase_env.outputs.normalized_url }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          RELEASE_PLATFORM: macos-arm64
+        run: bash scripts/register-staging-release.sh

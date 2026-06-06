@@ -44,6 +44,7 @@ FUNCS_NO_JWT=(
   scheduled-ops
   check-update
   release-state
+  release-sync-staging
   release-publish
   release-rollback
   release-track-download

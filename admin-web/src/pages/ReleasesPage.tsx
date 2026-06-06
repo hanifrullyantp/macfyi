@@ -154,6 +154,12 @@ export default function ReleasesPage() {
         </div>
       ) : null}
 
+      {query.isError ? (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">
+          {query.error instanceof Error ? query.error.message : "Gagal memuat data release"}
+        </div>
+      ) : null}
+
       <section className="rounded-3xl border border-white/5 bg-[#16161C] p-6 space-y-4">
         <h2 className="text-xl font-black text-white">Staging</h2>
         {!staging ? (
@@ -163,10 +169,11 @@ export default function ReleasesPage() {
               <>
                 <p className="text-white/45">Langkah membuat staging:</p>
                 <ol className="list-decimal list-inside space-y-1 text-white/50">
+                  <li>Jalankan migrasi SQL <code className="text-white/60">release_state</code> di Supabase Dashboard (lihat{" "}
+                    <code className="text-white/60">supabase/migrations/20260505161000_release_state_2_bucket.sql</code>)
+                  </li>
                   <li>GitHub → Actions → <strong className="text-white/70">Upload DMG to Supabase</strong> → Run workflow</li>
-                  <li>Pastikan secrets <code className="text-white/60">SUPABASE_URL</code> dan{" "}
-                    <code className="text-white/60">SUPABASE_SERVICE_ROLE_KEY</code> sudah diisi</li>
-                  <li>Kembali ke halaman ini, pilih <strong className="text-white/70">macOS Apple Silicon</strong>, lalu refresh</li>
+                  <li>Pilih <strong className="text-white/70">macOS Apple Silicon</strong> di dropdown, lalu klik sinkronkan atau refresh</li>
                 </ol>
                 <button
                   type="button"
