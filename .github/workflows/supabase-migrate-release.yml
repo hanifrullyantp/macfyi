@@ -1,0 +1,24 @@
+# Apply release_state migrations via Supabase Management API.
+# Secret: SUPABASE_ACCESS_TOKEN (Dashboard → Account → Access Tokens)
+name: Apply Supabase release migrations
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Apply release_state migrations
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: sgpjracvhokkmjkujabf
+        run: bash scripts/apply-release-state-migration.sh
+
+      - name: Verify release_state table
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/verify-supabase-upload-env.sh
