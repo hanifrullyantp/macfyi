@@ -5,18 +5,39 @@ name: Upload DMG only (Supabase)
 on:
   workflow_dispatch:
 
+permissions:
+  actions: read
+  contents: read
+
 jobs:
   upload-only:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download DMG artifact (optional)
-        uses: actions/download-artifact@v4
-        continue-on-error: true
-        with:
-          name: macfyi-dmg
-          path: artifact-dmg
+      - name: Find latest macfyi-dmg artifact
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ART_JSON="$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100&name=macfyi-dmg")"
+          ART_ID="$(echo "$ART_JSON" | node -e '
+            const j=JSON.parse(require("fs").readFileSync(0,"utf8"));
+            const row=(j.artifacts||[]).find(a=>a.name==="macfyi-dmg" && !a.expired);
+            if(!row){process.exit(1)}
+            process.stdout.write(String(row.id));
+          ')"
+          echo "artifact_id=$ART_ID" >> "$GITHUB_OUTPUT"
+          echo "Using artifact id=$ART_ID"
+
+      - name: Download DMG artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/artifacts/${{ steps.artifact.outputs.artifact_id }}/zip" > /tmp/macfyi-dmg.zip
+          mkdir -p artifact-dmg
+          unzip -o /tmp/macfyi-dmg.zip -d artifact-dmg
+          ls -la artifact-dmg/
 
       - name: Place DMG into bundle path
         run: |

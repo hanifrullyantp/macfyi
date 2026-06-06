@@ -24,6 +24,30 @@ for MIGRATION in "${MIGRATIONS[@]}"; do
   fi
 done
 
+if [[ -n "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
+  for MIGRATION in "${MIGRATIONS[@]}"; do
+    echo "Applying $(basename "$MIGRATION") via Management API..."
+    PAYLOAD="$(node -e 'const fs=require("fs");const q=fs.readFileSync(process.argv[1],"utf8");process.stdout.write(JSON.stringify({query:q}))' "$MIGRATION")"
+    HTTP="$(curl -sS -o /tmp/macfyi-migration-out.json -w "%{http_code}" \
+      -X POST "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
+      -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
+      -H "Content-Type: application/json" \
+      -d "$PAYLOAD")"
+    if [[ "$HTTP" != "200" && "$HTTP" != "201" ]]; then
+      echo "Management API failed (HTTP $HTTP) for $(basename "$MIGRATION"):" >&2
+      cat /tmp/macfyi-migration-out.json >&2
+      if [[ "$HTTP" == "403" ]]; then
+        echo "Token tidak punya akses ke proyek ${PROJECT_REF}. Gunakan:" >&2
+        echo "  - Token dari akun pemilik proyek macfyi, atau" >&2
+        echo "  - SUPABASE_DB_PASSWORD + bash scripts/apply-release-state-via-pg.sh" >&2
+      fi
+      exit 1
+    fi
+  done
+  echo "release_state migrations applied."
+  exit 0
+fi
+
 if command -v supabase >/dev/null 2>&1 && supabase projects list >/dev/null 2>&1; then
   echo "Applying migrations via supabase db push..."
   cd "$ROOT"
@@ -44,20 +68,3 @@ if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]]; then
   echo "  3) export SUPABASE_ACCESS_TOKEN=... && bash $0" >&2
   exit 1
 fi
-
-for MIGRATION in "${MIGRATIONS[@]}"; do
-  echo "Applying $(basename "$MIGRATION")..."
-  PAYLOAD="$(node -e 'const fs=require("fs");const q=fs.readFileSync(process.argv[1],"utf8");process.stdout.write(JSON.stringify({query:q}))' "$MIGRATION")"
-  HTTP="$(curl -sS -o /tmp/macfyi-migration-out.json -w "%{http_code}" \
-    -X POST "https://api.supabase.com/v1/projects/${PROJECT_REF}/database/query" \
-    -H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "$PAYLOAD")"
-  if [[ "$HTTP" != "200" && "$HTTP" != "201" ]]; then
-    echo "Migration failed (HTTP $HTTP): $(basename "$MIGRATION")" >&2
-    cat /tmp/macfyi-migration-out.json >&2
-    exit 1
-  fi
-done
-
-echo "release_state migrations applied."

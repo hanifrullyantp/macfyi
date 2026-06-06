@@ -1,0 +1,27 @@
+# Apply release_state migrations via PostgreSQL (when Management API token lacks project access).
+# Secret: SUPABASE_DB_PASSWORD (Dashboard → Project sgpjracvhokkmjkujabf → Settings → Database)
+name: Apply release migrations (PostgreSQL)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply migrations
+        env:
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          SUPABASE_PROJECT_REF: sgpjracvhokkmjkujabf
+        run: bash scripts/apply-release-state-via-pg.sh
+
+      - name: Verify release_state table
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: bash scripts/verify-supabase-upload-env.sh
