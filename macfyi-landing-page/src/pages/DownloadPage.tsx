@@ -8,6 +8,32 @@ import { describeApiError, isPostLoginDemoFailure, SERVICE_UNAVAILABLE_MESSAGE }
 
 const CARD_BG = "/landing/detail-01-deep-scan.png";
 
+type MacChip = "arm64" | "intel";
+
+type DownloadUrls = {
+  arm64: string | null;
+  intel: string | null;
+};
+
+async function detectMacChip(): Promise<MacChip> {
+  const ua = navigator.userAgent.toLowerCase();
+  if (ua.includes("arm64") || ua.includes("aarch64")) return "arm64";
+  const nav = navigator as Navigator & {
+    userAgentData?: { getHighEntropyValues: (hints: string[]) => Promise<Record<string, string>> };
+  };
+  if (nav.userAgentData?.getHighEntropyValues) {
+    try {
+      const v = await nav.userAgentData.getHighEntropyValues(["architecture"]);
+      if (v.architecture === "arm") return "arm64";
+      if (v.architecture === "x86") return "intel";
+    } catch {
+      /* ignore */
+    }
+  }
+  if (ua.includes("intel")) return "intel";
+  return "arm64";
+}
+
 function AppleGlyph({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -21,7 +47,8 @@ export function DownloadPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const token = useMemo(() => params.get("token")?.trim() ?? "", [params]);
-  const [dmgUrl, setDmgUrl] = useState<string | null>(null);
+  const [downloadUrls, setDownloadUrls] = useState<DownloadUrls>({ arm64: null, intel: null });
+  const [selectedChip, setSelectedChip] = useState<MacChip>("arm64");
   const [copyOk, setCopyOk] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -48,8 +75,16 @@ export function DownloadPage() {
         const res = await fetch(`${supabaseUrl}/functions/v1/public-config`, {
           headers: { apikey: anon, Authorization: `Bearer ${anon}` },
         });
-        const j = (await res.json()) as { download_url?: string | null };
-        if (j.download_url) setDmgUrl(j.download_url);
+        const j = (await res.json()) as {
+          download_url?: string | null;
+          download_url_arm64?: string | null;
+          download_url_intel?: string | null;
+        };
+        const arm64 = j.download_url_arm64 ?? j.download_url ?? null;
+        const intel = j.download_url_intel ?? null;
+        setDownloadUrls({ arm64, intel });
+        const detected = await detectMacChip();
+        setSelectedChip(detected);
       } catch {
         /* ignore */
       }
@@ -183,16 +218,25 @@ export function DownloadPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.access_token, token, mintBusy]);
 
+  const activeDmgUrl = selectedChip === "intel" ? downloadUrls.intel : downloadUrls.arm64;
+
   const startDmgDownload = useCallback(() => {
-    if (!dmgUrl) return;
-    queueSiteEvent("download_dmg_started", { has_token: Boolean(token) });
-    window.location.href = dmgUrl;
-  }, [dmgUrl, token]);
+    if (!activeDmgUrl) return;
+    queueSiteEvent("download_dmg_started", {
+      has_token: Boolean(token),
+      chip: selectedChip,
+    });
+    window.location.href = activeDmgUrl;
+  }, [activeDmgUrl, selectedChip, token]);
 
   const onMacDownloadClick = async () => {
     setAuthErr(null);
-    if (!dmgUrl) {
-      setAuthErr("Unduhan sementara tidak tersedia. Silakan coba lagi nanti.");
+    if (!activeDmgUrl) {
+      setAuthErr(
+        selectedChip === "intel"
+          ? "Installer Intel belum tersedia. Pilih Apple Silicon atau coba lagi nanti."
+          : "Unduhan sementara tidak tersedia. Silakan coba lagi nanti."
+      );
       return;
     }
     if (authLoading) return;
@@ -282,23 +326,48 @@ export function DownloadPage() {
                 <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3">
                   Desktop <span className="text-white">macOS</span>
                 </h2>
-                <p className="text-sm text-white/65 leading-relaxed mb-6 max-w-md">
-                  Dioptimalkan untuk Mac—berjalan di Apple silicon maupun Intel. Unduh installer, lalu tempel token demo di
-                  aplikasi saat diminta.
+                <p className="text-sm text-white/65 leading-relaxed mb-4 max-w-md">
+                  Pilih chip Mac Anda, lalu unduh installer. Tempel token demo di aplikasi saat diminta.
                 </p>
+                <div className="flex flex-wrap gap-2 mb-5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChip("arm64")}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors ${
+                      selectedChip === "arm64"
+                        ? "border-red-400/60 bg-red-500/20 text-white"
+                        : "border-white/15 bg-black/30 text-white/70 hover:border-white/30"
+                    }`}
+                  >
+                    Apple Silicon (M1/M2/M3/M4)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedChip("intel")}
+                    disabled={!downloadUrls.intel}
+                    className={`rounded-xl border px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-40 ${
+                      selectedChip === "intel"
+                        ? "border-red-400/60 bg-red-500/20 text-white"
+                        : "border-white/15 bg-black/30 text-white/70 hover:border-white/30"
+                    }`}
+                  >
+                    Intel Mac
+                  </button>
+                </div>
                 <button
                   type="button"
                   onClick={() => void onMacDownloadClick()}
-                  disabled={downloadBusy || authLoading || mintBusy || !dmgUrl}
+                  disabled={downloadBusy || authLoading || mintBusy || !activeDmgUrl}
                   className="inline-flex items-center justify-center gap-2.5 w-full sm:w-auto rounded-2xl bg-[#EF4444] hover:bg-red-500 text-white font-bold text-base px-8 py-3.5 shadow-lg shadow-red-900/30 disabled:opacity-45 disabled:pointer-events-none transition-colors"
                 >
                   {downloadBusy ? <Loader2 className="animate-spin" size={22} /> : <AppleGlyph className="h-6 w-6" />}
-                  Unduh untuk macOS
+                  {selectedChip === "intel" ? "Unduh untuk Mac Intel" : "Unduh untuk Apple Silicon"}
                 </button>
-                {!dmgUrl ? (
-                  <p className="text-xs text-amber-200/90 mt-3">
-                    Unduhan sementara tidak tersedia.
-                  </p>
+                {!downloadUrls.arm64 && !downloadUrls.intel ? (
+                  <p className="text-xs text-amber-200/90 mt-3">Unduhan sementara tidak tersedia.</p>
+                ) : null}
+                {downloadUrls.arm64 && !downloadUrls.intel ? (
+                  <p className="text-xs text-white/40 mt-3">Installer Intel akan tersedia setelah build CI selesai.</p>
                 ) : null}
               </div>
             </div>

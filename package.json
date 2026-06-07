@@ -15,7 +15,8 @@
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
     "tauri:icons": "bash scripts/generate-tauri-icons.sh",
-    "tauri:build:dmg": "bash scripts/generate-tauri-icons.sh && tauri build --bundles app dmg && bash scripts/sign-macos-release.sh"
+    "tauri:build:dmg": "bash scripts/generate-tauri-icons.sh && tauri build --bundles app dmg && bash scripts/sign-macos-release.sh",
+    "tauri:build:dmg:intel": "bash scripts/generate-tauri-icons.sh && rustup target add x86_64-apple-darwin && tauri build --target x86_64-apple-darwin --bundles app dmg && TAURI_TARGET=x86_64-apple-darwin RELEASE_PLATFORM=macos-intel bash scripts/upload-latest-dmg-to-supabase.sh"
   },
   "dependencies": {
     "@tanstack/react-virtual": "^3.13.23",

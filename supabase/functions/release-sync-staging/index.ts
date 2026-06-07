@@ -1,7 +1,21 @@
-// Admin: register staging row from existing Storage object (releases/staging/macfyi-latest.dmg).
+// Admin: register staging row from existing Storage object.
 import { bootstrapClients, jsonResponse, releaseCors, requireAdminUser } from "../_shared/releaseCore.ts";
+import {
+  stagingObjectFallbackForPlatform,
+  stagingObjectForPlatform,
+} from "../_shared/releasePlatform.ts";
 
-const STAGING_OBJECT = "staging/macfyi-latest.dmg";
+async function headStagingObject(
+  url: string,
+  serviceRole: string,
+  objectPath: string
+): Promise<Response> {
+  const key = serviceRole.trim();
+  return fetch(`${url}/storage/v1/object/releases/${objectPath}`, {
+    method: "HEAD",
+    headers: { Authorization: `Bearer ${key}`, apikey: key },
+  });
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: releaseCors });
@@ -20,28 +34,26 @@ Deno.serve(async (req) => {
     }
 
     const platform = String(body.platform ?? "macos-arm64").trim() || "macos-arm64";
-    if (platform !== "macos-arm64") {
-      return jsonResponse(
-        {
-          error: "platform_not_supported",
-          message: "Saat ini hanya macos-arm64 yang didukung build CI.",
-        },
-        400
-      );
+    if (platform !== "macos-arm64" && platform !== "macos-intel") {
+      return jsonResponse({ error: "invalid_platform" }, 400);
     }
 
     const version = String(body.version ?? "0.2.0").trim() || "0.2.0";
 
-    const key = serviceRole.trim();
-    const head = await fetch(`${url}/storage/v1/object/releases/${STAGING_OBJECT}`, {
-      method: "HEAD",
-      headers: { Authorization: `Bearer ${key}`, apikey: key },
-    });
+    let objectPath = stagingObjectForPlatform(platform);
+    let head = await headStagingObject(url, serviceRole, objectPath);
+    if (head.status === 404) {
+      const fallback = stagingObjectFallbackForPlatform(platform);
+      if (fallback) {
+        objectPath = fallback;
+        head = await headStagingObject(url, serviceRole, objectPath);
+      }
+    }
     if (head.status === 404) {
       return jsonResponse(
         {
           error: "staging_file_missing",
-          message: `File tidak ditemukan di Storage: releases/${STAGING_OBJECT}. Jalankan workflow GitHub "Upload DMG to Supabase" dulu.`,
+          message: `File tidak ditemukan di Storage: releases/${stagingObjectForPlatform(platform)}. Jalankan workflow GitHub "Upload DMG to Supabase" untuk platform ini.`,
         },
         404
       );
@@ -58,7 +70,7 @@ Deno.serve(async (req) => {
       environment: "staging",
       version,
       platform,
-      storage_path: `releases/${STAGING_OBJECT}`,
+      storage_path: `releases/${objectPath}`,
       file_size: fileSize,
       checksum: null,
       release_notes: null,
@@ -71,7 +83,7 @@ Deno.serve(async (req) => {
       ok: true,
       platform,
       version,
-      storage_path: `releases/${STAGING_OBJECT}`,
+      storage_path: `releases/${objectPath}`,
       file_size: fileSize,
     });
   } catch (e) {

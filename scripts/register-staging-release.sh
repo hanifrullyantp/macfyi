@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Register staging release_state if releases/staging/macfyi-latest.dmg exists in Storage (no local DMG needed).
+# Register staging release_state if platform DMG exists in Storage (no local DMG needed).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -11,14 +11,26 @@ fi
 
 RELEASE_VERSION="${RELEASE_VERSION:-$(node -e 'const c=require("./src-tauri/tauri.conf.json");process.stdout.write(c.version||"0.2.0")')}"
 RELEASE_PLATFORM="${RELEASE_PLATFORM:-macos-arm64}"
-OBJECT_PATH="staging/macfyi-latest.dmg"
 # shellcheck source=scripts/lib/supabase-env.sh
 source "$ROOT/scripts/lib/supabase-env.sh"
+# shellcheck source=scripts/lib/release-platform.sh
+source "$ROOT/scripts/lib/release-platform.sh"
 SUPABASE_URL="$(normalize_supabase_url "$SUPABASE_URL")" || exit 1
 
+OBJECT_PATH="$(staging_object_path "$RELEASE_PLATFORM")"
 HEAD_HTTP="$(curl -sS -o /dev/null -w "%{http_code}" -I \
   "${SUPABASE_URL}/storage/v1/object/releases/${OBJECT_PATH}" \
   -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
+
+if [[ "$HEAD_HTTP" != "200" ]]; then
+  FALLBACK="$(staging_object_fallback_path "$RELEASE_PLATFORM")"
+  if [[ -n "$FALLBACK" ]]; then
+    OBJECT_PATH="$FALLBACK"
+    HEAD_HTTP="$(curl -sS -o /dev/null -w "%{http_code}" -I \
+      "${SUPABASE_URL}/storage/v1/object/releases/${OBJECT_PATH}" \
+      -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}")"
+  fi
+fi
 
 if [[ "$HEAD_HTTP" != "200" ]]; then
   echo "DMG not found in Storage (HTTP $HEAD_HTTP)." >&2

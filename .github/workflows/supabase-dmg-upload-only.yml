@@ -1,9 +1,17 @@
 # Upload an existing DMG artifact to Supabase (skip Tauri build).
-# Use when build succeeded locally or a prior workflow artifact exists.
 name: Upload DMG only (Supabase)
 
 on:
   workflow_dispatch:
+    inputs:
+      platform:
+        description: "macos-arm64 or macos-intel"
+        required: true
+        default: macos-arm64
+        type: choice
+        options:
+          - macos-arm64
+          - macos-intel
 
 permissions:
   actions: read
@@ -15,20 +23,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Find latest macfyi-dmg artifact
+      - name: Resolve artifact name
+        id: meta
+        run: |
+          case "${{ inputs.platform }}" in
+            macos-intel)
+              echo "artifact_name=macfyi-dmg-intel" >> "$GITHUB_OUTPUT"
+              echo "tauri_target=x86_64-apple-darwin" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "artifact_name=macfyi-dmg-arm64" >> "$GITHUB_OUTPUT"
+              echo "tauri_target=" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: Find latest DMG artifact
         id: artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          ART_JSON="$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100&name=macfyi-dmg")"
+          NAME="${{ steps.meta.outputs.artifact_name }}"
+          ART_JSON="$(gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100")"
           ART_ID="$(echo "$ART_JSON" | node -e '
+            const name=process.argv[1];
             const j=JSON.parse(require("fs").readFileSync(0,"utf8"));
-            const row=(j.artifacts||[]).find(a=>a.name==="macfyi-dmg" && !a.expired);
-            if(!row){process.exit(1)}
-            process.stdout.write(String(row.id));
-          ')"
+            const rows=(j.artifacts||[]).filter(a=>!a.expired && (a.name===name || (name==="macfyi-dmg-arm64" && a.name==="macfyi-dmg")));
+            if(!rows.length) process.exit(1);
+            rows.sort((a,b)=>Date.parse(b.created_at)-Date.parse(a.created_at));
+            process.stdout.write(String(rows[0].id));
+          ' "$NAME")"
           echo "artifact_id=$ART_ID" >> "$GITHUB_OUTPUT"
-          echo "Using artifact id=$ART_ID"
 
       - name: Download DMG artifact
         env:
@@ -40,18 +64,16 @@ jobs:
           ls -la artifact-dmg/
 
       - name: Place DMG into bundle path
+        env:
+          TAURI_TARGET: ${{ steps.meta.outputs.tauri_target }}
         run: |
-          mkdir -p src-tauri/target/release/bundle/dmg
-          if compgen -G "artifact-dmg/*.dmg" > /dev/null; then
-            cp artifact-dmg/*.dmg src-tauri/target/release/bundle/dmg/
-            echo "Using artifact DMG"
-          elif compgen -G "src-tauri/target/release/bundle/dmg/*.dmg" > /dev/null; then
-            echo "Using repo-local DMG"
+          if [[ -n "${TAURI_TARGET}" ]]; then
+            mkdir -p "src-tauri/target/${TAURI_TARGET}/release/bundle/dmg"
+            cp artifact-dmg/*.dmg "src-tauri/target/${TAURI_TARGET}/release/bundle/dmg/"
           else
-            echo "No DMG found. Upload macfyi-dmg artifact first or commit a built .dmg." >&2
-            exit 1
+            mkdir -p src-tauri/target/release/bundle/dmg
+            cp artifact-dmg/*.dmg src-tauri/target/release/bundle/dmg/
           fi
-          ls -la src-tauri/target/release/bundle/dmg/
 
       - name: Verify Supabase secrets
         id: supabase_env
@@ -72,6 +94,7 @@ jobs:
           SUPABASE_URL: ${{ steps.supabase_env.outputs.normalized_url }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
-          RELEASE_PLATFORM: macos-arm64
+          RELEASE_PLATFORM: ${{ inputs.platform }}
+          TAURI_TARGET: ${{ steps.meta.outputs.tauri_target }}
           SKIP_RELEASE_STATE_ROW: "1"
         run: bash scripts/upload-latest-dmg-to-supabase.sh

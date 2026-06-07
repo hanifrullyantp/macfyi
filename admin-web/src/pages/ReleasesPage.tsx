@@ -13,7 +13,7 @@ import {
 
 const PLATFORMS = [
   { id: "macos-arm64" as const, label: "macOS Apple Silicon (M1/M2/M3/M4)", active: true },
-  { id: "macos-intel" as const, label: "macOS Intel (belum ada build)", active: false },
+  { id: "macos-intel" as const, label: "macOS Intel (x86_64)", active: true },
 ];
 type PlatformId = (typeof PLATFORMS)[number]["id"];
 

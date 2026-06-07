@@ -12,6 +12,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 # shellcheck source=scripts/lib/supabase-env.sh
 source "$ROOT/scripts/lib/supabase-env.sh"
+# shellcheck source=scripts/lib/release-platform.sh
+source "$ROOT/scripts/lib/release-platform.sh"
 
 if [[ -z "${SUPABASE_URL:-}" || -z "${SUPABASE_SERVICE_ROLE_KEY:-}" || -z "${RELEASE_VERSION:-}" ]]; then
   echo "Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and RELEASE_VERSION." >&2
@@ -22,10 +24,10 @@ SUPABASE_URL="$(normalize_supabase_url "$SUPABASE_URL")" || exit 1
 RELEASE_PLATFORM="${RELEASE_PLATFORM:-macos-arm64}"
 
 shopt -s nullglob
-DMGS=(src-tauri/target/release/bundle/dmg/*.dmg)
-if [[ ${#DMGS[@]} -eq 0 ]]; then
-  DMGS=(src-tauri/target/release/bundle/macos/*.dmg)
-fi
+DMGS=()
+while IFS= read -r dir; do
+  DMGS+=("${dir}"/*.dmg)
+done < <(tauri_dmg_search_dirs)
 if [[ ${#DMGS[@]} -eq 0 ]]; then
   echo "No .dmg found. Run from repo root: npm run tauri:build:dmg" >&2
   exit 1
@@ -36,7 +38,7 @@ DMG="$(ls -t "${DMGS[@]}" | head -1)"
 echo "Uploading: $DMG"
 
 BUCKET="releases"
-OBJECT_PATH="staging/macfyi-latest.dmg"
+OBJECT_PATH="$(staging_object_path "$RELEASE_PLATFORM")"
 PUBLIC_URL="${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${OBJECT_PATH}"
 FILE_SIZE="$(wc -c < "$DMG" | tr -d '[:space:]')"
 CHECKSUM="$(shasum -a 256 "$DMG" | awk '{print $1}')"

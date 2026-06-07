@@ -182,6 +182,26 @@ Deno.serve(async (req) => {
     },
   };
 
+  async function liveDownloadUrl(platform: string): Promise<string | null> {
+    try {
+      const res = await fetch(`${url}/storage/v1/object/public/releases/live/current.${platform}.json`);
+      if (!res.ok) return null;
+      const j = (await res.json()) as { download_url?: string };
+      const u = typeof j.download_url === "string" ? j.download_url.trim() : "";
+      return u.length > 0 ? u : null;
+    } catch {
+      return null;
+    }
+  }
+
+  const [arm64LiveUrl, intelLiveUrl] = await Promise.all([
+    liveDownloadUrl("macos-arm64"),
+    liveDownloadUrl("macos-intel"),
+  ]);
+  const legacyDownload = String(app?.download_base_url ?? "").trim() || null;
+  const download_url_arm64 = arm64LiveUrl ?? legacyDownload;
+  const download_url_intel = intelLiveUrl;
+
   const body = {
     version: cfgVersion,
     server_time: serverNow.toISOString(),
@@ -202,7 +222,9 @@ Deno.serve(async (req) => {
       block_checkout_when_slots_zero: promoResolved.block_checkout_when_slots_zero,
     },
     checkout,
-    download_url: String(app?.download_base_url ?? "").trim() || null,
+    download_url: download_url_arm64,
+    download_url_arm64,
+    download_url_intel,
     checkout_success_base_url: String(app?.checkout_success_base_url ?? "").trim() || null,
     terms_url: app?.terms_url ?? null,
     privacy_url: app?.privacy_url ?? null,

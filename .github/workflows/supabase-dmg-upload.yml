@@ -1,9 +1,4 @@
-# Build macOS DMG and upload to staging object only.
-# GitHub secrets (Settings → Secrets → Actions):
-#   SUPABASE_URL = https://sgpjracvhokkmjkujabf.supabase.co   (TANPA /rest/v1)
-#   SUPABASE_SERVICE_ROLE_KEY = eyJ... (service_role dari Dashboard → API)
-# Optional: set UPDATE_APP_SETTINGS secret to "true" to PATCH download_base_url after upload (or edit workflow env below).
-
+# Build macOS DMG (Apple Silicon + Intel) and upload to staging.
 name: Upload DMG to Supabase
 
 on:
@@ -14,6 +9,16 @@ on:
 
 jobs:
   build-and-upload:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - release_platform: macos-arm64
+            tauri_target: ""
+            artifact_name: macfyi-dmg-arm64
+          - release_platform: macos-intel
+            tauri_target: x86_64-apple-darwin
+            artifact_name: macfyi-dmg-intel
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,6 +32,10 @@ jobs:
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Rust target (Intel)
+        if: matrix.tauri_target != ''
+        run: rustup target add ${{ matrix.tauri_target }}
 
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
@@ -43,11 +52,15 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          TAURI_TARGET: ${{ matrix.tauri_target }}
         run: |
-          # Empty signing identity breaks codesign on GHA; use ad-hoc (-) unless Developer ID is set.
           export APPLE_SIGNING_IDENTITY="${APPLE_SIGNING_IDENTITY:--}"
           bash scripts/generate-tauri-icons.sh
-          npx tauri build --bundles app dmg
+          if [[ -n "${TAURI_TARGET}" ]]; then
+            npx tauri build --target "${TAURI_TARGET}" --bundles app dmg
+          else
+            npx tauri build --bundles app dmg
+          fi
           if [[ "${APPLE_SIGNING_IDENTITY}" != "-" ]]; then
             bash scripts/sign-macos-release.sh
           fi
@@ -55,8 +68,10 @@ jobs:
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macfyi-dmg
-          path: src-tauri/target/release/bundle/dmg/*.dmg
+          name: ${{ matrix.artifact_name }}
+          path: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+            src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           if-no-files-found: error
 
       - name: Resolve release version
@@ -83,12 +98,13 @@ jobs:
           SUPABASE_URL: ${{ steps.supabase_env.outputs.normalized_url }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           RELEASE_VERSION: ${{ steps.release_version.outputs.value }}
-          RELEASE_PLATFORM: macos-arm64
+          RELEASE_PLATFORM: ${{ matrix.release_platform }}
+          TAURI_TARGET: ${{ matrix.tauri_target }}
         run: bash scripts/upload-latest-dmg-to-supabase.sh
 
       - name: Upload bundle artifact (debug)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: macfyi-bundle-on-failure
-          path: src-tauri/target/release/bundle/
+          name: macfyi-bundle-on-failure-${{ matrix.release_platform }}
+          path: src-tauri/target/**/bundle/
