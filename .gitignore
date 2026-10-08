@@ -8,6 +8,8 @@ macfyi-local.env
 
 # Dependencies & build
 node_modules/
+moleculab/.next/
+moleculab/out/
 dist/
 src-tauri/target/
 *.log

@@ -1,0 +1,216 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   THEME TOKENS — VSEPR Molecular Lab
+   Semua warna disimpan sebagai triplet "R G B" agar bisa
+   dipakai dengan rgb(var(--x) / <alpha>) dari Tailwind v4.
+   ============================================================ */
+:root {
+  --background: 248 250 252;
+  --foreground: 15 23 42;
+  --surface: 255 255 255;
+  --surface-hover: 241 245 249;
+  --border: 226 232 240;
+  --primary: 8 145 178;
+  --primary-foreground: 255 255 255;
+  --secondary: 124 58 237;
+  --accent: 14 165 233;
+  --lonepair: 217 119 6;
+  --muted: 100 116 139;
+  --success: 22 163 74;
+  --warning: 217 119 6;
+  --danger: 220 38 38;
+  --force-vector: 234 88 12;
+  --electron-central: 8 145 178;
+  --electron-ligand: 124 58 237;
+  --pei-outline: 22 163 74;
+  --peb-outline: 217 119 6;
+  --canvas-bg-start: 226 232 240;
+  --canvas-bg-end: 248 250 252;
+
+  /* kategori unsur */
+  --cat-alkali: 220 38 38;
+  --cat-alkaline-earth: 234 88 12;
+  --cat-metalloid: 13 148 136;
+  --cat-nonmetal: 8 145 178;
+  --cat-halogen: 124 58 237;
+  --cat-noble-gas: 219 39 119;
+  --cat-post-transition-metal: 100 116 139;
+  --cat-transition-metal: 148 163 184;
+  --cat-other: 90 100 120;
+}
+
+.dark {
+  --background: 11 18 32;
+  --foreground: 241 245 249;
+  --surface: 17 26 45;
+  --surface-hover: 30 41 59;
+  --border: 51 65 85;
+  --primary: 34 211 238;
+  --primary-foreground: 11 18 32;
+  --secondary: 139 92 246;
+  --accent: 56 189 248;
+  --lonepair: 253 230 138;
+  --muted: 148 163 184;
+  --success: 74 222 128;
+  --warning: 250 204 21;
+  --danger: 248 113 113;
+  --force-vector: 251 146 60;
+  --electron-central: 34 211 238;
+  --electron-ligand: 167 139 250;
+  --pei-outline: 74 222 128;
+  --peb-outline: 250 204 21;
+  --canvas-bg-start: 11 18 32;
+  --canvas-bg-end: 30 41 59;
+}
+
+@theme inline {
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-surface: rgb(var(--surface));
+  --color-surface-hover: rgb(var(--surface-hover));
+  --color-border: rgb(var(--border));
+  --color-primary: rgb(var(--primary));
+  --color-primary-foreground: rgb(var(--primary-foreground));
+  --color-secondary: rgb(var(--secondary));
+  --color-accent: rgb(var(--accent));
+  --color-lonepair: rgb(var(--lonepair));
+  --color-muted: rgb(var(--muted));
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-danger: rgb(var(--danger));
+  --color-force: rgb(var(--force-vector));
+  --color-electron-central: rgb(var(--electron-central));
+  --color-electron-ligand: rgb(var(--electron-ligand));
+  --color-pei: rgb(var(--pei-outline));
+  --color-peb: rgb(var(--peb-outline));
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Custom layout constraints */
+.no-scroll {
+  overflow: hidden !important;
+  height: 100dvh;
+}
+
+@keyframes equalizer {
+  0% { height: 4px; }
+  50% { height: 14px; }
+  100% { height: 4px; }
+}
+.eq-bar {
+  animation: equalizer 0.6s ease-in-out infinite;
+}
+.eq-bar-1 { animation-delay: 0s; }
+.eq-bar-2 { animation-delay: 0.2s; }
+.eq-bar-3 { animation-delay: 0.4s; }
+
+
+/* ============================================================ */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+
+::selection {
+  background: rgb(var(--primary) / 0.25);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--border)) transparent;
+}
+*::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--border));
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* Canvas background gradient (theme-aware) */
+.canvas-bg {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgb(var(--canvas-bg-end)) 0%, rgb(var(--canvas-bg-start)) 100%);
+}
+
+/* kategori unsur — dipakai sel tabel periodik */
+.cat-alkali { --cat: var(--cat-alkali); }
+.cat-alkaline-earth { --cat: var(--cat-alkaline-earth); }
+.cat-metalloid { --cat: var(--cat-metalloid); }
+.cat-nonmetal { --cat: var(--cat-nonmetal); }
+.cat-halogen { --cat: var(--cat-halogen); }
+.cat-noble-gas { --cat: var(--cat-noble-gas); }
+.cat-post-transition-metal { --cat: var(--cat-post-transition-metal); }
+.cat-transition-metal { --cat: var(--cat-transition-metal); }
+.cat-other { --cat: var(--cat-other); }
+
+.element-cell {
+  background: rgb(var(--cat) / 0.14);
+  border: 1px solid rgb(var(--cat) / 0.45);
+}
+.element-cell:hover {
+  background: rgb(var(--cat) / 0.28);
+}
+.element-chip {
+  background: rgb(var(--cat) / 0.2);
+  color: rgb(var(--foreground));
+  border: 1px solid rgb(var(--cat) / 0.55);
+}
+.cat-dot {
+  background: rgb(var(--cat));
+}
+.cat-text { color: rgb(var(--cat)); }
+
+/* glass panel */
+.glass {
+  background: rgb(var(--surface) / 0.82);
+  backdrop-filter: blur(14px);
+  border: 1px solid rgb(var(--border));
+}
+
+/* glow display untuk highlight tabel periodik dari Molecular Lab */
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgb(var(--primary) / 0.9), 0 0 18px rgb(var(--primary) / 0.55); }
+  50% { box-shadow: 0 0 0 3px rgb(var(--primary)), 0 0 30px rgb(var(--primary) / 0.85); }
+}
+.element-highlight {
+  animation: glowPulse 1.6s ease-in-out infinite;
+  z-index: 10;
+}
+
+/* caption fade-in */
+@keyframes captionIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.caption-in { animation: captionIn 0.45s ease both; }
+
+/* animated dashed ring slow spin (untuk orbit dekoratif) */
+@keyframes spinSlow { to { transform: rotate(360deg); } }
+.spin-slow { animation: spinSlow 24s linear infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .element-highlight, .caption-in, .spin-slow { animation: none !important; }
+}

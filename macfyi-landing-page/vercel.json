@@ -1,7 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm ci && npm ci --prefix ../admin-web && npm ci --prefix ../macfyi-admin",
+  "installCommand": "npm ci && npm ci --prefix ../admin-web && npm ci --prefix ../macfyi-admin && npm install --prefix ../moleculab",
   "rewrites": [
+    { "source": "/moleculab", "destination": "/moleculab/index.html" },
+    { "source": "/moleculab/", "destination": "/moleculab/index.html" },
     { "source": "/admin3", "destination": "/admin3/index.html" },
     { "source": "/admin3/", "destination": "/admin3/index.html" },
     { "source": "/admin3/:path*", "destination": "/admin3/index.html" },

@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && npm run build:admin && npm run build:admin3",
+    "build": "vite build && npm run build:admin && npm run build:admin3 && npm run build:moleculab",
     "build:admin": "npm --prefix ../admin-web ci && npm --prefix ../macfyi-admin ci && VITE_USE_ADMIN_SUBPATH=1 npm --prefix ../macfyi-admin run build",
     "build:admin3": "VITE_USE_ADMIN_SUBPATH=1 VITE_ADMIN_PATH_SEGMENT=admin3 npm --prefix ../macfyi-admin run build",
+    "build:moleculab": "npm --prefix ../moleculab install && npm --prefix ../moleculab run build:macfyi && rm -rf dist/moleculab && mkdir -p dist && cp -R ../moleculab/out dist/moleculab",
     "build:landing-only": "vite build",
     "preview": "vite preview"
   },
