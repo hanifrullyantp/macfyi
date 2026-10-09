@@ -54,11 +54,18 @@ export function ElementCell({
   onPick: (symbol: string) => void;
   mini?: boolean;
 }) {
-  // Lanthanides and Actinides have specific row positioning in the full grid
-  const rowOffset = el.isLanthanide ? 9 : el.isActinide ? 10 : el.period;
-  const colOffset = (el.isLanthanide || el.isActinide) 
-    ? (el.atomicNumber - (el.isLanthanide ? 57 : 89)) + 3 
-    : el.group;
+  // Posisi grid untuk elemen utama (bukan Lantanida/Aktinida)
+  // Shift period + 1 untuk memberi ruang bagi label header IA-VIIIA di Baris 1
+  const style: React.CSSProperties = mini ? {} : {
+    gridColumn: el.group,
+    gridRow: el.period + 1,
+  };
+
+  // Override posisi untuk deret Lantanida/Aktinida jika di render dalam konteks tabel penuh
+  if (!mini && (el.isLanthanide || el.isActinide)) {
+    style.gridRow = el.isLanthanide ? 1 : 2; 
+    style.gridColumn = (el.atomicNumber - (el.isLanthanide ? 57 : 89)) + 1; 
+  }
 
   return (
     <button
@@ -73,8 +80,7 @@ export function ElementCell({
         !dimmed && "hover:scale-105 hover:shadow-md",
       )}
       style={{ 
-        gridColumn: colOffset, 
-        gridRow: rowOffset,
+        ...style,
         opacity: dimmed ? 0.7 : 1 
       }}
     >
@@ -241,56 +247,67 @@ export function PeriodicTableApp({ highlightSymbols }: { highlightSymbols: strin
 
       {/* grid tabel */}
       <div className="rounded-2xl border border-border bg-surface p-4 shadow-inner">
-        <div className="flex items-center justify-between mb-4 px-2">
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60">Golongan (Grup)</p>
-          <p className="text-[11px] font-medium text-muted hidden sm:block">
-            ← Geser secara horizontal untuk navigasi penuh →
-          </p>
-        </div>
-        
         <div className="overflow-x-auto pb-4 custom-scrollbar rounded-xl">
-          <div
-            className="grid min-w-[1100px] gap-1"
-            style={{ 
-              gridTemplateColumns: "40px repeat(18, minmax(52px, 1fr))", 
-              gridTemplateRows: "32px repeat(7, 64px) 32px 64px 64px" 
-            }}
-            role="grid" aria-label="Tabel periodik unsur"
-          >
-            {/* Legend Samping */}
-            <div className="grid-row-1 grid-col-1 flex items-center justify-center text-[9px] font-black text-primary/40 uppercase vertical-text">Periode</div>
+          <div className="min-w-[1000px] space-y-8">
             
-            {/* Header Golongan */}
-            {groupLabels.map((label, i) => (
-              <div key={i} className="flex items-center justify-center text-[10px] font-bold text-primary" style={{ gridColumn: i + 2, gridRow: 1 }}>
-                {label}
+            {/* TABEL UTAMA (18 Kolom) */}
+            <div
+              className="grid gap-1"
+              style={{ 
+                gridTemplateColumns: "repeat(18, minmax(50px, 1fr))", 
+                gridTemplateRows: "32px repeat(7, 60px)" 
+              }}
+              role="grid" aria-label="Tabel utama"
+            >
+              {/* Header IA - VIIIA */}
+              {groupLabels.map((label, i) => (
+                <div key={i} className="flex items-center justify-center text-[10px] font-black text-primary/60 uppercase tracking-tighter" style={{ gridColumn: i + 1, gridRow: 1 }}>
+                  {label}
+                </div>
+              ))}
+
+              {/* Sel Unsur Utama */}
+              {ELEMENTS.filter(e => !e.isLanthanide && !e.isActinide).map((el) => (
+                <ElementCell
+                  key={el.symbol}
+                  el={el}
+                  onPick={setPicked}
+                  highlight={highlight.has(el.symbol)}
+                  dimmed={anyFilter ? !matches(el) : !el.usedInApp}
+                />
+              ))}
+            </div>
+
+            {/* DERET LANTANIDA & AKTINIDA (Terpisah) */}
+            <div className="pt-4 border-t border-border/40 flex gap-4">
+              <div className="w-24 shrink-0 flex flex-col justify-center gap-1 text-[9px] font-bold text-muted uppercase italic tracking-wider text-right pr-4 border-r border-border/40">
+                <div className="h-[60px] flex items-center justify-end">Lantanida</div>
+                <div className="h-[60px] flex items-center justify-end">Aktinida</div>
               </div>
-            ))}
-
-            {/* Label Periode */}
-            {[1, 2, 3, 4, 5, 6, 7].map((p) => (
-              <div key={p} className="flex items-center justify-center text-sm font-bold text-muted" style={{ gridColumn: 1, gridRow: p + 1 }}>
-                {p}
+              <div 
+                className="grid flex-1 gap-1"
+                style={{ 
+                  gridTemplateColumns: "repeat(18, minmax(50px, 1fr))",
+                  gridTemplateRows: "repeat(2, 60px)"
+                }}
+              >
+                {ELEMENTS.filter(e => e.isLanthanide || e.isActinide).map((el) => (
+                  <ElementCell
+                    key={el.symbol}
+                    el={el}
+                    onPick={setPicked}
+                    highlight={highlight.has(el.symbol)}
+                    dimmed={anyFilter ? !matches(el) : !el.usedInApp}
+                  />
+                ))}
               </div>
-            ))}
+            </div>
 
-            {/* Sel Unsur */}
-            {ELEMENTS.map((el) => (
-              <ElementCell
-                key={el.symbol}
-                el={el}
-                onPick={setPicked}
-                highlight={highlight.has(el.symbol)}
-                dimmed={anyFilter ? !matches(el) : !el.usedInApp}
-              />
-            ))}
-
-            {/* Jembatan Lantanida/Aktinida */}
-            <div className="border-l-2 border-dashed border-border/60" style={{ gridColumn: 4, gridRow: "9 / 12", marginLeft: "10%" }} />
-            <div className="flex items-center justify-end px-3 text-[9px] font-bold text-muted uppercase italic tracking-wider" style={{ gridColumn: "1 / 4", gridRow: 10 }}>Lantanida</div>
-            <div className="flex items-center justify-end px-3 text-[9px] font-bold text-muted uppercase italic tracking-wider" style={{ gridColumn: "1 / 4", gridRow: 11 }}>Aktinida</div>
           </div>
         </div>
+        <p className="mt-4 text-center text-[11px] font-medium text-muted sm:hidden">
+          ← Geser secara horizontal untuk navigasi penuh →
+        </p>
       </div>
 
       <ElementDetailModal symbol={picked} onClose={() => setPicked(null)} />
