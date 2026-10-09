@@ -5,11 +5,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Pause, Play, RotateCcw, Volume2, VolumeX,
   Languages, Rotate3d, Triangle, Eye, EyeOff, Ghost, Gauge, Boxes, Orbit, AudioLines,
-  X, Info, MoreHorizontal, Settings2,
+  X, Info, MoreHorizontal, Settings2, Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STAGE_GROUPS, StageDef } from "@/store/lab";
 import { useAppStore } from "@/store/app";
+import { useAuth } from "@/features/auth/useAuth";
+import { useEditableContent, useUpdateContent } from "@/lib/useEditableContent";
 
 /* ================= Timeline (6 phase-group + sub-stage dots) ================= */
 
@@ -230,10 +232,21 @@ export function ControlToolbar({
 /* ================= CaptionBar (teks narasi) ================= */
 
 export function CaptionBar({
-  group, title, stepLabel, text, speaking, show, onToggle
+  group, title, stepLabel, text, speaking, show, onToggle, cmsKey
 }: {
   group: string; title: string; stepLabel: string; text: string; speaking: boolean; show: boolean; onToggle: () => void;
+  cmsKey?: string;
 }) {
+  const { data: user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const { data: remoteValue } = useEditableContent(cmsKey || "", "");
+  const updateMutation = useUpdateContent();
+  const [isCmsEditing, setIsCmsEditing] = useState(false);
+  const [cmsValue, setCmsValue] = useState("");
+
+  useEffect(() => {
+    if (remoteValue) setCmsValue(remoteValue);
+  }, [remoteValue]);
   const [showDetail, setShowDetail] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -302,16 +315,48 @@ export function CaptionBar({
           )}
         </div>
         
-        <p className="font-display text-sm font-bold leading-snug pr-8">{title}</p>
-        
-        <div className="mt-1">
-          <button 
-            onClick={() => setShowDetail(!showDetail)}
-            className="text-[10px] font-bold text-primary hover:underline"
-          >
-            {showDetail ? "Sembunyikan detail ▲" : "Baca penjelasan lengkap ▼"}
-          </button>
+        <div className="flex items-center gap-2 pr-8">
+          <p className="font-display text-sm font-bold leading-snug">{title}</p>
+          {isAdmin && (
+            <button 
+              onClick={() => setIsCmsEditing(true)}
+              className="p-1 text-primary hover:bg-primary/10 rounded"
+              title="Edit Template Narasi (Admin)"
+            >
+              <Pencil className="h-3 w-3" />
+            </button>
+          )}
         </div>
+
+        {isCmsEditing ? (
+          <div className="mt-2 space-y-2 animate-in slide-in-from-top-1">
+            <textarea 
+              value={cmsValue}
+              onChange={(e) => setCmsValue(e.target.value)}
+              className="w-full bg-surface border border-primary p-2 rounded-xl text-xs min-h-[80px] focus:outline-none"
+              placeholder="Gunakan variabel: {molecule.name}, {centralAtom.name}, dst."
+            />
+            <div className="flex justify-between items-center">
+              <p className="text-[9px] text-muted">Variabel: molecule.name, centralAtom.valence, steric, pei, peb, angle</p>
+              <div className="flex gap-2">
+                <button onClick={async () => {
+                  await updateMutation.mutateAsync({ key: cmsKey!, value: cmsValue });
+                  setIsCmsEditing(false);
+                }} className="px-2 py-1 bg-primary text-white text-[10px] font-bold rounded-lg">Simpan</button>
+                <button onClick={() => setIsCmsEditing(false)} className="px-2 py-1 bg-surface-hover text-muted text-[10px] font-bold rounded-lg">Batal</button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1">
+            <button 
+              onClick={() => setShowDetail(!showDetail)}
+              className="text-[10px] font-bold text-primary hover:underline"
+            >
+              {showDetail ? "Sembunyikan detail ▲" : "Baca penjelasan lengkap ▼"}
+            </button>
+          </div>
+        )}
 
         <AnimatePresence>
           {showDetail && (

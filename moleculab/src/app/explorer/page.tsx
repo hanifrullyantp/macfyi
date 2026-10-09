@@ -8,7 +8,8 @@ import { MOLECULES } from "@/data/molecules";
 import { formatFormula, formatAXE, cn, parseAngle } from "@/lib/utils";
 import { getElement } from "@/data/periodic-table";
 import { atomStyle } from "@/lib/cpk";
-import { Badge, EmptyState } from "@/components/ui";
+import { Badge, Button, EmptyState } from "@/components/ui";
+import { BookOpen } from "lucide-react";
 
 const GEO_GROUPS = ["Semua", "Linear", "Bengkok (V)", "Trigonal Planar", "Trigonal Piramidal", "Tetrahedral", "Trigonal Bipiramidal", "Jungkat-jungkit (Seesaw)", "Bentuk T", "Oktahedral", "Segiempat Planar"];
 
@@ -56,12 +57,15 @@ export default function ExplorerPage() {
         <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-secondary/12 text-secondary">
           <Compass className="h-6 w-6" />
         </span>
-        <div>
+        <div className="flex-1">
           <h1 className="font-display text-2xl font-bold sm:text-3xl">Eksplorasi Molekul</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
             25 molekul dari berbagai kelompok bentuk — saring berdasarkan geometri dan temukan polanya.
           </p>
         </div>
+        <Button href="/glossary" variant="outline" size="sm" className="hidden sm:flex">
+          <BookOpen className="h-4 w-4" /> Kamus Istilah
+        </Button>
       </div>
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">

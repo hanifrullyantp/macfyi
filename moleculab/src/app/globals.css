@@ -8,6 +8,8 @@
    dipakai dengan rgb(var(--x) / <alpha>) dari Tailwind v4.
    ============================================================ */
 :root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 80px;
   --background: 248 250 252;
   --foreground: 15 23 42;
   --surface: 255 255 255;
@@ -213,4 +215,21 @@ body {
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   .element-highlight, .caption-in, .spin-slow { animation: none !important; }
+}
+
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  transform: rotate(180deg);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgb(var(--primary) / 0.3);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--primary) / 0.5);
 }

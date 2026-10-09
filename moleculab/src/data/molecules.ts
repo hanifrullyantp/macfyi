@@ -381,10 +381,19 @@ const RAW: Molecule[] = [
 
 export const MOLECULES: Molecule[] = RAW.map((m) => MoleculeSchema.parse(m));
 
-const BY_FORMULA = new Map(MOLECULES.map((m) => [m.formula, m]));
+const BY_FORMULA = new Map(MOLECULES.map((m) => [m.formula.toUpperCase(), m]));
 
 export function getMolecule(formula: string): Molecule | undefined {
-  return BY_FORMULA.get(formula.toUpperCase());
+  if (!formula) return undefined;
+  
+  // Normalisasi input: Huruf besar, hapus spasi, 
+  // dan tangani kasus typo umum (I besar vs L kecil pada Chlorine)
+  let normalized = formula.toUpperCase().trim();
+  
+  // Jika user mengetik CIF3 (Iodine) padahal yang dimaksud CLF3 (Chlorine)
+  if (normalized === "CIF3") normalized = "CLF3";
+  
+  return BY_FORMULA.get(normalized);
 }
 
 export function moleculesUsingElement(symbol: string): Molecule[] {

@@ -1,10 +1,6 @@
 import { notFound } from "next/navigation";
-import { getMolecule, MOLECULES } from "@/data/molecules";
+import { getMolecule } from "@/data/molecules";
 import { PredictClient } from "./PredictClient";
-
-export function generateStaticParams() {
-  return MOLECULES.map((m) => ({ formula: m.formula }));
-}
 
 export default async function PredictPage({ params }: { params: Promise<{ formula: string }> }) {
   const { formula } = await params;

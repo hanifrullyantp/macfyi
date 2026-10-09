@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppShell } from "@/components/AppShell";
 import { ThemeApplier } from "@/components/theme";
 import { BRAND } from "@/config/brand";
+import { Providers } from "@/components/Providers";
 
 /** Skrip anti-FOUC: terapkan tema tersimpan sebelum hydration. */
 const THEME_INIT = `try{var s=localStorage.getItem('vsepr-app-v1');var t=s?JSON.parse(s).state.theme:'dark';if(t==='dark')document.documentElement.classList.add('dark')}catch(e){document.documentElement.classList.add('dark')}`;
@@ -12,7 +13,6 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://macfyi.com/moleculab"),
   title: {
     default: BRAND.appFullName,
     template: `%s — ${BRAND.appName}`,
@@ -41,8 +41,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>
       <body className={`${inter.variable} ${grotesk.variable}`}>
-        <ThemeApplier />
-        <AppShell>{children}</AppShell>
+        <Providers>
+          <ThemeApplier />
+          <AppShell>{children}</AppShell>
+        </Providers>
       </body>
     </html>
   );

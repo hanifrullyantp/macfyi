@@ -13,12 +13,13 @@ function useInView(options: any) {
 }
 import {
   ArrowRight, Atom, AudioLines, Accessibility, Compass, FlaskRound, Grid3X3,
-  Layers, MousePointer2, PlayCircle, Scale, Sparkles, Target, X, Check, GraduationCap, BookOpen,
+  Layers, MousePointer2, PlayCircle, Scale, Sparkles, Target, X, Check, GraduationCap, BookOpen, User
 } from "lucide-react";
 import { MOLECULES, getMolecule } from "@/data/molecules";
 import { useAppStore } from "@/store/app";
 import { formatFormula } from "@/lib/utils";
 import { Badge, Button } from "@/components/ui";
+import { EditableText } from "@/components/ui/EditableText";
 import { BRAND } from "@/config/brand";
 
 const MoleculeCanvas = dynamic(() => import("@/three/MoleculeCanvas"), { ssr: false });
@@ -154,7 +155,11 @@ export default function LandingPage() {
             transition={{ delay: 0.05 }}
             className="font-display text-4xl font-bold leading-[1.05] sm:text-5xl lg:text-[3.6rem]"
           >
-            {BRAND.appTagline}
+            <EditableText 
+              contentKey="landing.hero.title" 
+              defaultValue={BRAND.appTagline} 
+              className="block"
+            />
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 18 }}
@@ -162,7 +167,12 @@ export default function LandingPage() {
             transition={{ delay: 0.12 }}
             className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base"
           >
-            <b>{BRAND.appName}</b> merupakan platform laboratorium virtual yang dirancang untuk memvisualisasikan pembentukan ikatan kovalen dan geometri molekul secara bertahap. Melalui pendekatan berbasis data periodik, platform ini menyajikan proses kimia yang akurat sesuai prinsip pedagogi.
+            <EditableText 
+              as="span" 
+              contentKey="landing.hero.body" 
+              defaultValue={`${BRAND.appName} merupakan platform laboratorium virtual yang dirancang untuk memvisualisasikan pembentukan ikatan kovalen dan geometri molekul secara bertahap. Melalui pendekatan berbasis data periodik, platform ini menyajikan proses kimia yang akurat sesuai prinsip pedagogi.`} 
+              multiline
+            />
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -181,13 +191,12 @@ export default function LandingPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="mt-8 flex flex-wrap gap-x-6 gap-y-2"
+            className="mt-8 flex items-center gap-2 text-sm font-medium text-muted"
           >
-            {["Akses Terbuka", "Narasi Pedagogis Indonesia", "Optimasi Visual Tema"].map((t) => (
-              <span key={t} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted">
-                <Check className="h-3.5 w-3.5 text-success" /> {t}
-              </span>
-            ))}
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <User className="h-4 w-4" />
+            </div>
+            {BRAND.developerCredit}
           </motion.div>
         </div>
         <motion.div

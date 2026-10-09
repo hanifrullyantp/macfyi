@@ -23,52 +23,37 @@ export function LogoMark({ size = "md", className, animate = true }: LogoMarkPro
       xmlns="http://www.w3.org/2000/svg"
       className={cn(sizes[size], className)}
     >
+      <defs>
+        <path id="orbitPath" d="M 5,50 A 45,15 0 1 0 95,50 A 45,15 0 1 0 5,50" />
+      </defs>
+
       {/* Orbit 1 */}
-      <ellipse
-        cx="50"
-        cy="50"
-        rx="45"
-        ry="18"
-        transform="rotate(-45 50 50)"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="text-secondary opacity-30"
-      />
+      <g transform="rotate(-45 50 50)">
+        <use href="#orbitPath" stroke="currentColor" strokeWidth="2.5" className="text-secondary opacity-20" fill="none" />
+        {animate && (
+          <circle r="4" className="fill-secondary shadow-lg">
+            <animateMotion dur="3s" repeatCount="indefinite" rotate="auto">
+              <mpath href="#orbitPath" />
+            </animateMotion>
+          </circle>
+        )}
+      </g>
+
       {/* Orbit 2 */}
-      <ellipse
-        cx="50"
-        cy="50"
-        rx="45"
-        ry="18"
-        transform="rotate(45 50 50)"
-        stroke="currentColor"
-        strokeWidth="2"
-        className="text-secondary opacity-30"
-      />
-
-      {/* Elektron 1 pada Orbit 1 */}
-      <circle r="4" className={cn("fill-secondary", animate && "animate-pulse")}>
-        <animateMotion
-          dur="3s"
-          repeatCount="indefinite"
-          path="M50,32 a45,18 -45 1,0 0.1,0"
-          rotate="auto"
-        />
-      </circle>
-
-      {/* Elektron 2 pada Orbit 2 */}
-      <circle r="4" className={cn("fill-secondary", animate && "animate-bounce")}>
-        <animateMotion
-          dur="2.5s"
-          repeatCount="indefinite"
-          path="M50,32 a45,18 45 1,0 0.1,0"
-          rotate="auto"
-        />
-      </circle>
+      <g transform="rotate(45 50 50)">
+        <use href="#orbitPath" stroke="currentColor" strokeWidth="2.5" className="text-secondary opacity-20" fill="none" />
+        {animate && (
+          <circle r="4" className="fill-secondary shadow-lg">
+            <animateMotion dur="2.2s" repeatCount="indefinite" rotate="auto">
+              <mpath href="#orbitPath" />
+            </animateMotion>
+          </circle>
+        )}
+      </g>
 
       {/* Atom Pusat */}
-      <circle cx="50" cy="50" r="16" className="fill-primary" />
-      <circle cx="45" cy="45" r="5" fill="white" fillOpacity="0.3" />
+      <circle cx="50" cy="50" r="16" className="fill-primary shadow-xl" />
+      <circle cx="44" cy="44" r="5" fill="white" fillOpacity="0.4" />
     </svg>
   );
 }

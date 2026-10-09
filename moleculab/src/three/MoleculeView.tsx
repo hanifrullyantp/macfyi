@@ -14,6 +14,7 @@ import {
   AtomBall, AtomLabel, BondAngleArc, DomainMarker, ElectronDot,
   ForceArrow, LonePairLobe, PairOutline, PulseShells, VisualHandle,
 } from "./primitives";
+import { DissolvingLonePair } from "./core/DissolvingLonePair";
 
 /* ============================================================
    MoleculeView — koreografi 10-stage. Semua posisi/opacity/scale
@@ -134,6 +135,7 @@ interface FrameCtx {
   mol: Molecule;
   plan: LewisPlan;
   geo: GeoPlan;
+  stageId: StageId;
   stageNum: number;
   t: number;
   live: { current: LiveCtx };
@@ -275,7 +277,7 @@ function DotItem({ dot, ctx }: { dot: LewisDot; ctx: FrameCtx }) {
           ctx.onPopup({
             kind: "electron",
             ownerSymbol: dot.ownerSymbol,
-            valence: getElement(dot.ownerSymbol).valenceElectrons,
+            valence: getElement(dot.ownerSymbol).valenceElectrons ?? 0,
           })
         }
       />
@@ -517,28 +519,29 @@ function BondItem({ i, ctx }: { i: number; ctx: FrameCtx }) {
 /* ================= PEB pusat -> lobe ================= */
 
 function LobeItem({ dir, ctx }: { dir: THREE.Vector3; ctx: FrameCtx }) {
-  const handle = useRef<VisualHandle>(null);
-  const st = useRef({ op: 0, sc: 0.001 });
-  useFrame((_, rawDt) => {
-    const dt = minDt(rawDt);
-    let op = 0;
-    let sc = 1;
-    if (ctx.stageNum >= STAGE_ORDER.indexOf("domain-repulsion")) {
-      op = 0.95;
-      sc = 1;
-      if (ctx.stageNum >= STAGE_ORDER.indexOf("molecular-shape-3d") && ctx.hideLonePairs) {
-        op = 0.1;
-        sc = 0.65;
-      }
-    }
-    st.current.op = THREE.MathUtils.damp(st.current.op, op, ctx.reduced ? 30 : 5.5, dt);
-    st.current.sc = THREE.MathUtils.damp(st.current.sc, sc, ctx.reduced ? 30 : 5.5, dt);
-    handle.current?.setVisual({ opacity: st.current.op, scale: st.current.sc });
-  });
+  const isConclusion = ctx.stageId === "conclusion";
+  
+  // Logic visibilitas sesuai spesifikasi revisi 1
+  // Terlihat mulai stage domain-repulsion
+  // Di stage conclusion, visible = false memicu "Dissolve Animation" di DissolvingLonePair
+  let visible = ctx.stageNum >= STAGE_ORDER.indexOf("domain-repulsion");
+  
+  // Jika conclusion, otomatis sembunyikan kecuali user force via toggle 'hideLonePairs' (👁)
+  if (isConclusion && ctx.hideLonePairs) {
+    visible = false;
+  }
+  
+  // Jika stage molecular-shape-3d (9), default sembunyikan PEB
+  if (ctx.stageId === "molecular-shape-3d" && ctx.hideLonePairs) {
+    visible = false;
+  }
+
   return (
-    <group position={dir.clone().multiplyScalar(0.32)}>
-      <LonePairLobe ref={handle} dir={dir} color={ctx.palette.lobe} />
-    </group>
+    <DissolvingLonePair 
+      dir={dir} 
+      color={ctx.palette.lobe} 
+      visible={visible} 
+    />
   );
 }
 
@@ -582,11 +585,11 @@ export function MoleculeView({
 
   const ctx: FrameCtx = useMemo(
     () => ({
-      mol: molecule, plan, geo, stageNum, t: 0, live,
+      mol: molecule, plan, geo, stageId, stageNum, t: 0, live,
       showLigandElectrons, hideLonePairs, showAngles, viewMode,
       reduced: reducedMotion, palette, onPopup,
     }),
-    [molecule, plan, geo, stageNum, showLigandElectrons, hideLonePairs, showAngles, viewMode, reducedMotion, palette, onPopup],
+    [molecule, plan, geo, stageId, stageNum, showLigandElectrons, hideLonePairs, showAngles, viewMode, reducedMotion, palette, onPopup],
   );
 
   const isRepulsion = stageNum === STAGE_ORDER.indexOf("domain-repulsion");

@@ -9,6 +9,7 @@ export const BRAND = {
   appSubtitle: "Laboratorium Virtual Konfigurasi Atom",
   appShortName: "Moleculab",
   domain: "macfyi.space",
+  developerCredit: "Oleh Inez, S.Pd., C.PS",
   platformCredit: "macFYI: Molecular Atom Configuration",
   platformCreditTooltip: "Sistem identifikasi konfigurasi atom",
 } as const;

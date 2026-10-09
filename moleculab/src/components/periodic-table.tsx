@@ -16,15 +16,16 @@ import { formatFormula } from "@/lib/utils";
 /* ---------- pratinjau titik elektron valensi di sekitar simbol ---------- */
 
 export function ElectronDotPreview({
-  valence, size = 92, color = "rgb(var(--primary))",
+  valence = 0, size = 92, color = "rgb(var(--primary))",
 }: {
-  valence: number; size?: number; color?: string;
+  valence?: number; size?: number; color?: string;
 }) {
   const dots = useMemo(() => {
+    const v = valence || 0;
     const out: { x: number; y: number }[] = [];
     const r = size * 0.42;
-    for (let i = 0; i < valence; i++) {
-      const a = (i / Math.max(valence, 1)) * Math.PI * 2 - Math.PI / 2;
+    for (let i = 0; i < v; i++) {
+      const a = (i / Math.max(v, 1)) * Math.PI * 2 - Math.PI / 2;
       out.push({ x: size / 2 + Math.cos(a) * r, y: size / 2 + Math.sin(a) * r });
     }
     return out;
@@ -53,19 +54,29 @@ export function ElementCell({
   onPick: (symbol: string) => void;
   mini?: boolean;
 }) {
+  // Lanthanides and Actinides have specific row positioning in the full grid
+  const rowOffset = el.isLanthanide ? 9 : el.isActinide ? 10 : el.period;
+  const colOffset = (el.isLanthanide || el.isActinide) 
+    ? (el.atomicNumber - (el.isLanthanide ? 57 : 89)) + 3 
+    : el.group;
+
   return (
     <button
       onClick={() => onPick(el.symbol)}
-      aria-label={`${el.name}, nomor atom ${el.atomicNumber}, golongan ${groupLabel(el.group)}, ${el.usedInApp ? `${el.valenceElectrons} elektron valensi` : "di luar cakupan materi"}`}
+      aria-label={`${el.name}, nomor atom ${el.atomicNumber}, golongan ${el.groupLabel}, ${el.usedInApp ? `${el.valenceElectrons} elektron valensi` : "di luar cakupan materi"}`}
       className={cn(
         "element-cell group relative flex flex-col items-center justify-center rounded-md transition-all focus:outline-none focus:ring-2 focus:ring-primary",
         `cat-${el.category}`,
         mini ? "h-10 w-10" : "h-[52px] w-full sm:h-[58px]",
-        dimmed && "opacity-40",
+        dimmed && "opacity-70",
         highlight && "element-highlight",
-        !dimmed && "hover:scale-110 hover:shadow-lg",
+        !dimmed && "hover:scale-105 hover:shadow-md",
       )}
-      style={{ gridColumn: el.group, gridRow: el.period }}
+      style={{ 
+        gridColumn: colOffset, 
+        gridRow: rowOffset,
+        opacity: dimmed ? 0.7 : 1 
+      }}
     >
       <span className={cn("font-semibold leading-none text-muted", mini ? "text-[8px]" : "text-[9px]")}>{el.atomicNumber}</span>
       <span className={cn("font-display font-bold leading-tight", mini ? "text-sm" : "text-lg")}>{el.symbol}</span>
@@ -118,13 +129,13 @@ export function ElementDetailModal({
           )}
           <div className="flex items-center gap-4 rounded-2xl border border-primary/30 bg-primary/5 p-4">
             <div className="text-center">
-              <p className="font-display text-3xl font-bold text-primary">{el.usedInApp || el.valenceElectrons > 0 ? el.valenceElectrons : "—"}</p>
+              <p className="font-display text-3xl font-bold text-primary">{el.valenceElectrons ?? "—"}</p>
               <p className="text-[10px] font-bold uppercase tracking-wider text-muted">elektron valensi</p>
             </div>
             <p className="flex-1 text-[13px] text-foreground/85">
-              {el.category === "transition-metal"
-                ? "Unsur transisi tidak mengikuti pola golongan utama."
-                : <>Setiap atom {el.name} punya <Term id="elektron-valensi">elektron valensi</Term> sebanyak {el.valenceElectrons} — lihat titik-titik di sekitar simbolnya. Inilah modalnya untuk berikatan.</>}
+              {el.valenceElectrons === undefined
+                ? "Unsur deret transisi atau deret dalam tidak memiliki jumlah elektron valensi sederhana yang umum diajarkan di VSEPR SMA."
+                : <>Setiap atom {el.name} punya <Term id="elektron-valensi">elektron valensi</Term> sebanyak {el.valenceElectrons} (Golongan {el.groupLabel}) — lihat titik-titik di sekitar simbolnya. Inilah modal pembentukan ikatan.</>}
             </p>
           </div>
           <p className="text-foreground/90">{el.simpleExplanation}</p>
@@ -187,6 +198,9 @@ export function PeriodicTableApp({ highlightSymbols }: { highlightSymbols: strin
   const categories = Object.entries(CATEGORY_LABEL);
   const anyFilter = query.trim() !== "" || category !== "all";
 
+  // Groups and Periods labels
+  const groupLabels = ["IA", "IIA", "IIIB", "IVB", "VB", "VIB", "VIIB", "VIIIB", "VIIIB", "VIIIB", "IB", "IIB", "IIIA", "IVA", "VA", "VIA", "VIIA", "VIIIA"];
+
   return (
     <div className="space-y-4">
       {/* kontrol */}
@@ -215,35 +229,66 @@ export function PeriodicTableApp({ highlightSymbols }: { highlightSymbols: strin
       </div>
 
       {/* legenda kategori */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5" aria-label="Legenda kategori">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 bg-surface p-4 rounded-2xl border border-border shadow-sm" aria-label="Legenda kategori">
+        <p className="w-full text-[10px] font-bold uppercase tracking-wider text-muted mb-1">Klasifikasi Unsur</p>
         {categories.map(([k, label]) => (
-          <span key={k} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted">
-            <span className={cn("cat-dot cat-text h-2.5 w-2.5 rounded-sm", `cat-${k}`)} style={{ background: "rgb(var(--cat))" }} />
+          <span key={k} className="inline-flex items-center gap-2 text-[11px] font-semibold text-muted">
+            <span className={cn("h-3 w-3 rounded-full", `cat-${k}`)} style={{ background: "rgb(var(--cat))" }} />
             {label}
           </span>
         ))}
       </div>
 
       {/* grid tabel */}
-      <div className="rounded-2xl border border-border bg-surface p-3">
-        <p className="mb-2 text-[11px] font-medium text-muted sm:hidden">
-          Geser ke samping untuk melihat seluruh tabel →
-        </p>
-        <div className="overflow-x-auto pb-2">
+      <div className="rounded-2xl border border-border bg-surface p-4 shadow-inner">
+        <div className="flex items-center justify-between mb-4 px-2">
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary/60">Golongan (Grup)</p>
+          <p className="text-[11px] font-medium text-muted hidden sm:block">
+            ← Geser secara horizontal untuk navigasi penuh →
+          </p>
+        </div>
+        
+        <div className="overflow-x-auto pb-4 custom-scrollbar rounded-xl">
           <div
-            className="grid min-w-[900px] gap-[3px]"
-            style={{ gridTemplateColumns: "repeat(18, minmax(44px, 1fr))", gridTemplateRows: "repeat(5, auto)" }}
+            className="grid min-w-[1100px] gap-1"
+            style={{ 
+              gridTemplateColumns: "40px repeat(18, minmax(52px, 1fr))", 
+              gridTemplateRows: "32px repeat(7, 64px) 32px 64px 64px" 
+            }}
             role="grid" aria-label="Tabel periodik unsur"
           >
+            {/* Legend Samping */}
+            <div className="grid-row-1 grid-col-1 flex items-center justify-center text-[9px] font-black text-primary/40 uppercase vertical-text">Periode</div>
+            
+            {/* Header Golongan */}
+            {groupLabels.map((label, i) => (
+              <div key={i} className="flex items-center justify-center text-[10px] font-bold text-primary" style={{ gridColumn: i + 2, gridRow: 1 }}>
+                {label}
+              </div>
+            ))}
+
+            {/* Label Periode */}
+            {[1, 2, 3, 4, 5, 6, 7].map((p) => (
+              <div key={p} className="flex items-center justify-center text-sm font-bold text-muted" style={{ gridColumn: 1, gridRow: p + 1 }}>
+                {p}
+              </div>
+            ))}
+
+            {/* Sel Unsur */}
             {ELEMENTS.map((el) => (
               <ElementCell
                 key={el.symbol}
                 el={el}
                 onPick={setPicked}
                 highlight={highlight.has(el.symbol)}
-                dimmed={anyFilter ? !matches(el) : el.category === "transition-metal"}
+                dimmed={anyFilter ? !matches(el) : !el.usedInApp}
               />
             ))}
+
+            {/* Jembatan Lantanida/Aktinida */}
+            <div className="border-l-2 border-dashed border-border/60" style={{ gridColumn: 4, gridRow: "9 / 12", marginLeft: "10%" }} />
+            <div className="flex items-center justify-end px-3 text-[9px] font-bold text-muted uppercase italic tracking-wider" style={{ gridColumn: "1 / 4", gridRow: 10 }}>Lantanida</div>
+            <div className="flex items-center justify-end px-3 text-[9px] font-bold text-muted uppercase italic tracking-wider" style={{ gridColumn: "1 / 4", gridRow: 11 }}>Aktinida</div>
           </div>
         </div>
       </div>

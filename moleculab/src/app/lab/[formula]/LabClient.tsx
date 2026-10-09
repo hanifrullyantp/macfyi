@@ -16,6 +16,7 @@ import { stageSequence, useLabStore } from "@/store/lab";
 import { useAppStore } from "@/store/app";
 import { getNarration } from "@/engine/narration";
 import { getElement } from "@/data/periodic-table";
+import { toSpeechFriendly } from "@/lib/chemNotationToSpeech";
 import { formatFormula, formatAXE } from "@/lib/utils";
 import { MOLECULES, DIFFICULTY_LABEL } from "@/data/molecules";
 import { Badge } from "@/components/ui";
@@ -32,6 +33,7 @@ import { MoreControlsSheet } from "@/features/molecular-lab/components/MoreContr
 import { OnboardingTour } from "@/features/molecular-lab/components/OnboardingTour";
 import { LabInfoModal } from "@/components/lab-panels";
 import { useHydrated } from "@/components/theme";
+import { LogoMark } from "@/components/ui/LogoMark";
 
 const MoleculeCanvas = dynamic(() => import("@/three/MoleculeCanvas"), {
   ssr: false,
@@ -47,6 +49,7 @@ function LabInner({ molecule }: { molecule: Molecule }) {
   const params = useSearchParams();
   const seq = useMemo(() => stageSequence(molecule), [molecule]);
   
+  const [showConclusion, setShowConclusion] = useState(false);
   const stageIndex = useLabStore((s) => s.stageIndex);
   const playing = useLabStore((s) => s.playing);
   const setPlaying = useLabStore((s) => s.setPlaying);
@@ -126,9 +129,18 @@ function LabInner({ molecule }: { molecule: Molecule }) {
     const synth = window.speechSynthesis;
     synth.cancel();
     if (!caption) return;
-    const u = new SpeechSynthesisUtterance(caption);
+
+    // Gunakan teks ramah TTS untuk audio, tetap tampilkan teks asli di UI
+    const audioText = toSpeechFriendly(caption);
+    const u = new SpeechSynthesisUtterance(audioText);
     u.lang = "id-ID";
     u.rate = rate;
+
+    const voices = synth.getVoices();
+    const idVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("id") && v.name.toLowerCase().includes("google"))
+      ?? voices.find((v) => v.lang?.toLowerCase().startsWith("id"));
+    if (idVoice) u.voice = idVoice;
+
     u.onstart = () => setSpeaking(true);
     u.onend = () => {
       setSpeaking(false);
@@ -142,35 +154,37 @@ function LabInner({ molecule }: { molecule: Molecule }) {
   if (!hydrated) return <div className="flex h-screen items-center justify-center bg-background"><Spinner className="h-8 w-8 animate-spin" /></div>;
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden bg-background no-scroll">
+    <div className="fixed inset-0 flex flex-col overflow-hidden bg-background">
       <OnboardingTour />
       
       {/* Header - Fixed Height */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6">
-        <div className="flex items-center gap-3">
+      <header className="relative flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface px-4 sm:px-6 z-50">
+        <div className="flex items-center w-12 sm:w-24">
           <button
             onClick={() => router.push("/lab")}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover text-muted transition-colors hover:text-foreground"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-hover text-muted transition-colors hover:text-foreground shadow-sm"
             aria-label="Kembali"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
-          <div className="min-w-0">
-            <h1 className="truncate font-display text-[15px] font-bold tracking-tight">
-              {molecule.name} <span className="text-primary">{formatFormula(molecule.formula)}</span>
-            </h1>
-          </div>
         </div>
 
-        <select
-          value={molecule.formula}
-          onChange={(e) => router.push(`/lab/${e.target.value}`)}
-          className="h-9 rounded-full border border-border bg-background px-3 text-[11px] font-bold outline-none focus:ring-2 focus:ring-primary"
-        >
-          {MOLECULES.map((m) => (
-            <option key={m.formula} value={m.formula}>{formatFormula(m.formula)}</option>
-          ))}
-        </select>
+        <div className="flex items-center gap-2">
+           <LogoMark size="sm" />
+           <span className="font-display font-bold text-sm tracking-tight">Molecu<span className="text-primary">lab</span></span>
+        </div>
+
+        <div className="flex items-center justify-end w-12 sm:w-24">
+          <select
+            value={molecule.formula}
+            onChange={(e) => router.push(`/lab/${e.target.value}`)}
+            className="h-8 rounded-full border border-border bg-background px-2 text-[9px] font-black outline-none focus:ring-1 focus:ring-primary w-16"
+          >
+            {MOLECULES.map((m) => (
+              <option key={m.formula} value={m.formula}>{formatFormula(m.formula)}</option>
+            ))}
+          </select>
+        </div>
       </header>
 
       {/* Viewport - Minimal 50dvh, flex-grow */}
@@ -180,9 +194,14 @@ function LabInner({ molecule }: { molecule: Molecule }) {
             <PeriodicTableChip molecule={molecule} onClick={() => setShowElementInfo(true)} />
             
             {stageId === "conclusion" && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pointer-events-auto rounded-2xl glass p-3 text-[10px] font-bold uppercase tracking-widest text-primary">
-                Selesai ✓
-              </motion.div>
+              <motion.button 
+                initial={{ opacity: 0, scale: 0.9 }} 
+                animate={{ opacity: 1, scale: 1 }} 
+                onClick={() => setShowMore(true)}
+                className="pointer-events-auto rounded-2xl glass p-3 text-[10px] font-bold uppercase tracking-widest text-primary border border-primary/20 shadow-lg shadow-primary/10"
+              >
+                Hasil Akhir ✓
+              </motion.button>
             )}
           </div>
         }
@@ -216,7 +235,8 @@ function LabInner({ molecule }: { molecule: Molecule }) {
         <CompactPhaseStepper 
           stages={seq} 
           currentIndex={safeIndex} 
-          onClick={() => setShowStepper(true)} 
+          onJump={(i) => { setStage(i, seq.length); setPlaying(false); }}
+          onShowFullStepper={() => setShowStepper(true)} 
         />
         
         {/* Sticky Control Bar */}

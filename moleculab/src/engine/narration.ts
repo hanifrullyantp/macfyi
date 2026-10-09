@@ -26,7 +26,7 @@ function ligandParts(mol: Molecule, mode: LangMode): string {
     .map((a) => {
       const el = getElement(a.symbol);
       const word = mode === "simple" ? "elektron terluar" : "elektron valensi";
-      return `${el.name} (${a.symbol}) di golongan ${groupLabel(el.group)} dengan ${num(el.valenceElectrons)} ${word}`;
+      return `${el.name} (${a.symbol}) di golongan ${el.groupLabel} dengan ${num(el.valenceElectrons ?? 0)} ${word}`;
     })
     .join("; ");
 }
@@ -42,6 +42,24 @@ function bondDescriptor(mol: Molecule): string {
   return "ikatan campuran tunggal dan rangkap";
 }
 
+// Helper untuk interpolasi variabel di template string (misal: "Halo {name}" -> "Halo Karbon")
+function interpolate(template: string, vars: Record<string, any>): string {
+  return template.replace(/\{(\w+(?:\.\w+)*)\}/g, (match, key) => {
+    const parts = key.split('.');
+    let val: any = vars;
+    for (const part of parts) {
+      val = val?.[part];
+    }
+    return val !== undefined ? String(val) : match;
+  });
+}
+
+/** Cache lokal untuk narasi dinamis dari CMS. Dipanggil secara asinkron di LabClient. */
+export let CMS_TEMPLATES: Record<string, string> = {};
+export function setCmsTemplates(templates: Record<string, string>) {
+  CMS_TEMPLATES = templates;
+}
+
 export function getNarration(stageId: string, mol: Molecule, mode: LangMode): string {
   const central = getElement(mol.centralAtom);
   const plan = buildLewisPlan(mol);
@@ -49,11 +67,25 @@ export function getNarration(stageId: string, mol: Molecule, mode: LangMode): st
   const formulaSpoken = spokenFormula(mol.formula);
   const simple = mode === "simple";
 
+  // Cek override CMS terlebih dahulu
+  const cmsKey = `narration.${stageId}.${mode}`;
+  if (CMS_TEMPLATES[cmsKey]) {
+    return interpolate(CMS_TEMPLATES[cmsKey], {
+      molecule: { name, formula: mol.formula, spoken: formulaSpoken },
+      centralAtom: { name: central.name, symbol: mol.centralAtom, valence: central.valenceElectrons ?? 0 },
+      steric: mol.stericNumber,
+      pei: mol.bondingPairs,
+      peb: mol.lonePairs,
+      geometry: { electron: mol.electronGeometry, molecular: mol.molecularGeometry },
+      angle: mol.bondAngle
+    });
+  }
+
   switch (stageId) {
     case "periodic-table": {
       const lig = ligandParts(mol, mode);
       const ve = simple ? "elektron terluar" : "elektron valensi";
-      const base = `Mari kenali atom-atom penyusun ${name}, ${formulaSpoken}. Atom pusatnya, ${central.name} (${mol.centralAtom}), berada di golongan ${groupLabel(central.group)}, yang berarti punya ${num(central.valenceElectrons)} ${ve}. Sedangkan ${lig}.`;
+      const base = `Mari kenali atom-atom penyusun ${name}, ${formulaSpoken}. Atom pusatnya, ${central.name} (${mol.centralAtom}), berada di golongan ${central.groupLabel}, yang berarti punya ${num(central.valenceElectrons ?? 0)} ${ve}. Sedangkan ${lig}.`;
       const extra = simple
         ? " Klik atomnya kalau mau tahu lebih banyak. Siap? Ayo kita mulai!"
         : " Elektron valensi inilah yang menentukan bagaimana atom-atom ini berikatan.";
@@ -125,7 +157,11 @@ export function getNarration(stageId: string, mol: Molecule, mode: LangMode): st
     }
 
     case "conclusion": {
-      return `Jadi, ${name}, dengan rumus ${formatFormula(mol.formula)}, memiliki atom pusat ${central.name} dengan ${num(mol.bondingPairs)} pasangan elektron ikatan dan ${num(mol.lonePairs)} pasangan elektron bebas, menghasilkan bentuk molekul ${mol.molecularGeometry} dengan sudut ikatan sekitar ${mol.bondAngle.replace("°", " derajat")}. Hebat — kamu sudah menempuh seluruh proses dari elektron valensi sampai bentuk molekul!`;
+      const intro = simple 
+        ? "Pasangan elektron bebas sekarang kita sembunyikan agar bentuk molekul terlihat lebih jelas. "
+        : "Untuk visualisasi geometri molekul akhir, pasangan elektron bebas kini dieliminasi dari tampilan. ";
+      
+      return `${intro}Jadi, ${name}, dengan rumus ${formatFormula(mol.formula)}, memiliki atom pusat ${central.name} dengan ${num(mol.bondingPairs)} pasangan elektron ikatan dan ${num(mol.lonePairs)} pasangan elektron bebas, menghasilkan bentuk molekul ${mol.molecularGeometry} dengan sudut ikatan sekitar ${mol.bondAngle.replace("°", " derajat")}.`;
     }
 
     default:

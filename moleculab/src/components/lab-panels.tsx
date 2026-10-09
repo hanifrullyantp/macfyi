@@ -4,10 +4,11 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import {
   Atom, CircleDot, GitCommitHorizontal, Link2, RotateCcw, Compass, Scale, Target,
-  Sparkles, Globe, Lightbulb,
+  Sparkles, Globe, Lightbulb, ArrowRight,
 } from "lucide-react";
 import { BOND_LABEL, BOND_ORDER, LabPopup, Molecule } from "@/lib/types";
 import { getElement } from "@/data/periodic-table";
+import { MOLECULES } from "@/data/molecules";
 import { buildLewisPlan } from "@/engine/lewis";
 import { formatFormula, formatAXE, groupLabel } from "@/lib/utils";
 import { Badge, Button, Modal, Term } from "@/components/ui";
@@ -32,14 +33,14 @@ export function LabInfoModal({
     title = (
       <div className="flex items-center gap-3.5">
         <span className="relative flex h-[72px] w-[72px] items-center justify-center">
-          <ElectronDotPreview valence={el.valenceElectrons} size={72} />
+          <ElectronDotPreview valence={el.valenceElectrons ?? 0} size={72} />
           <span className="absolute font-display text-xl font-bold">{el.symbol}</span>
         </span>
         <div>
           <p className="font-display text-lg font-bold">{el.name}</p>
           <div className="mt-1 flex flex-wrap gap-1.5">
             <Badge tone="primary">No. {el.atomicNumber}</Badge>
-            <Badge>{groupLabel(el.group)}</Badge>
+            <Badge>Gol. {el.groupLabel}</Badge>
           </div>
         </div>
       </div>
@@ -47,7 +48,11 @@ export function LabInfoModal({
     body = (
       <div className="space-y-3 text-sm leading-relaxed">
         <p className="rounded-xl bg-primary/8 p-3 text-[13px]">
-          Punya <b className="text-primary">{el.valenceElectrons} <Term id="elektron-valensi">elektron valensi</Term></b> — titik-titik di sekeliling simbolnya.
+          {el.valenceElectrons !== undefined ? (
+            <>Punya <b className="text-primary">{el.valenceElectrons} <Term id="elektron-valensi">elektron valensi</Term></b> — titik-titik di sekeliling simbolnya.</>
+          ) : (
+            <>Unsur ini berada di deret {el.period === 6 ? "Lantanida" : "Aktinium"} atau Logam Transisi dengan konfigurasi elektron kompleks.</>
+          )}
         </p>
         <p className="text-foreground/90">{el.simpleExplanation}</p>
         {el.whyItBonds && <p className="text-foreground/80">{el.whyItBonds}</p>}
@@ -272,11 +277,20 @@ export function ConclusionPanel({ molecule, onRestart }: { molecule: Molecule; o
       )}
 
       <div className="grid grid-cols-2 gap-2 pt-1">
-        <Button onClick={onRestart} variant="outline" size="sm"><RotateCcw className="h-3.5 w-3.5" /> Ulangi dari Awal</Button>
-        <Button href="/explorer" variant="outline" size="sm"><Compass className="h-3.5 w-3.5" /> Molekul Lain</Button>
+        <Button onClick={onRestart} variant="outline" size="sm"><RotateCcw className="h-3.5 w-3.5" /> Ulangi Awal</Button>
+        <Button href="/lab" variant="outline" size="sm"><Compass className="h-3.5 w-3.5" /> Pilih Lain</Button>
         <Button href={`/compare?a=${molecule.formula}`} variant="outline" size="sm"><Scale className="h-3.5 w-3.5" /> Bandingkan</Button>
         <Button href={`/predict/${molecule.formula}`} size="sm"><Target className="h-3.5 w-3.5" /> Uji Pemahaman</Button>
       </div>
+      {(() => {
+        const idx = MOLECULES.findIndex(m => m.formula === molecule.formula);
+        const nextMol = MOLECULES[(idx + 1) % MOLECULES.length];
+        return (
+          <Button href={`/lab/${nextMol.formula}`} className="w-full mt-1 bg-secondary hover:bg-secondary/90">
+            Lanjut ke {nextMol.name} ({formatFormula(nextMol.formula)}) <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        );
+      })()}
     </motion.div>
   );
 }

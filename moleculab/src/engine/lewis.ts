@@ -150,7 +150,7 @@ export function buildLewisPlan(mol: Molecule): LewisPlan {
   const dotCountByOwner: LewisPlan["dotCountByOwner"] = [];
   const pushOwner = (owner: DotOwner, key: string, symbol: string) => {
     const arr = groups.get(key) ?? [];
-    const valence = getElement(symbol).valenceElectrons;
+    const valence = getElement(symbol).valenceElectrons ?? 0;
     arr.forEach((d, i) => (d.orbitIndex = i));
     dotCountByOwner.push({ owner, symbol, count: arr.length, valence });
   };

@@ -182,7 +182,7 @@ export function PredictClient({ molecule }: { molecule: Molecule }) {
             <Button onClick={resetQuiz} variant="outline">Ulangi Kuis</Button>
           </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2">
-            <Button href={`/predict/CO2`} variant="ghost" size="sm">Molekul lain →</Button>
+            <Button href={`/lab`} variant="ghost" size="sm">Molekul lain →</Button>
             <Button href={`/compare?a=${molecule.formula}`} variant="ghost" size="sm">Bandingkan</Button>
           </div>
         </motion.div>

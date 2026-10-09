@@ -11,6 +11,8 @@ export const ElementCategorySchema = z.enum([
   "noble-gas",
   "post-transition-metal",
   "transition-metal",
+  "lanthanide",
+  "actinide",
   "other",
 ]);
 export type ElementCategory = z.infer<typeof ElementCategorySchema>;
@@ -20,14 +22,17 @@ export const ElementDataSchema = z.object({
   name: z.string(),
   atomicNumber: z.number().int().positive(),
   group: z.number().int().min(1).max(18),
+  groupLabel: z.string(), // e.g., "IA", "VIIIB"
   period: z.number().int().min(1).max(7),
-  valenceElectrons: z.number().int().min(0).max(8),
+  valenceElectrons: z.number().int().min(0).max(8).optional(),
   category: ElementCategorySchema,
   electronegativity: z.number().optional(),
   simpleExplanation: z.string(),
   whyItBonds: z.string().optional(),
   funFact: z.string().optional(),
   usedInApp: z.boolean(),
+  isLanthanide: z.boolean().optional(),
+  isActinide: z.boolean().optional(),
 });
 export type ElementData = z.infer<typeof ElementDataSchema>;
 

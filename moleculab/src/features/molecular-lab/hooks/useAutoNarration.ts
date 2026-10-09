@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useAppStore } from "@/store/app";
+import { toSpeechFriendly } from "@/lib/chemNotationToSpeech";
 
 /**
  * useAutoNarration Hook
@@ -11,19 +12,24 @@ import { useAppStore } from "@/store/app";
 export function useAutoNarration() {
   const { rate, muted } = useAppStore();
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [resumeQueue, setResumeQueue] = useState<string | null>(null);
 
   const speak = useCallback((text: string, onComplete?: () => void) => {
     if (muted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
 
     const synth = window.speechSynthesis;
-    
-    // Pause main narration if any
     synth.cancel();
 
-    const u = new SpeechSynthesisUtterance(text);
+    // Proses teks menjadi ramah audio (kimia aware)
+    const speechFriendlyText = toSpeechFriendly(text);
+
+    const u = new SpeechSynthesisUtterance(speechFriendlyText);
     u.lang = "id-ID";
     u.rate = rate;
+
+    const voices = synth.getVoices();
+    const idVoice = voices.find((v) => v.lang?.toLowerCase().startsWith("id") && v.name.toLowerCase().includes("google"))
+      ?? voices.find((v) => v.lang?.toLowerCase().startsWith("id"));
+    if (idVoice) u.voice = idVoice;
 
     u.onstart = () => setIsSpeaking(true);
     u.onend = () => {

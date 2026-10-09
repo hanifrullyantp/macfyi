@@ -6,6 +6,7 @@ import { BookOpen, Search, Languages } from "lucide-react";
 import { GLOSSARY } from "@/data/glossary";
 import { useAppStore } from "@/store/app";
 import { Badge } from "@/components/ui";
+import { EditableText } from "@/components/ui/EditableText";
 import { cn } from "@/lib/utils";
 
 export default function GlossaryPage() {
@@ -64,17 +65,22 @@ export default function GlossaryPage() {
           >
             <h2 className="font-display text-[15px] font-bold text-primary">{t.term}</h2>
             <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90">
-              {langMode === "simple" ? t.simple : t.technical}
+              <EditableText 
+                contentKey={`glossary.${t.id}.${langMode}`} 
+                defaultValue={langMode === "simple" ? t.simple : t.technical}
+                multiline
+              />
             </p>
-            {langMode === "simple" ? (
-              <p className="mt-2 rounded-xl bg-surface-hover p-2.5 text-[11.5px] leading-relaxed text-muted">
-                <Badge tone="secondary" className="mr-1.5">teknis</Badge>{t.technical}
-              </p>
-            ) : (
-              <p className="mt-2 rounded-xl bg-surface-hover p-2.5 text-[11.5px] leading-relaxed text-muted">
-                <Badge tone="secondary" className="mr-1.5">sederhana</Badge>{t.simple}
-              </p>
-            )}
+            <div className="mt-2 rounded-xl bg-surface-hover p-2.5 text-[11.5px] leading-relaxed text-muted">
+              <Badge tone="secondary" className="mr-1.5">
+                {langMode === "simple" ? "teknis" : "sederhana"}
+              </Badge>
+              <EditableText 
+                contentKey={`glossary.${t.id}.${langMode === "simple" ? "technical" : "simple"}`} 
+                defaultValue={langMode === "simple" ? t.technical : t.simple}
+                multiline
+              />
+            </div>
           </motion.article>
         ))}
       </div>
