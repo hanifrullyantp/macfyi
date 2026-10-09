@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:macfyi": "MOLECULAB_STATIC=1 next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"

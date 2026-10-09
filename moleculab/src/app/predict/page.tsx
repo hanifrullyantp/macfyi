@@ -1,5 +1,12 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function PredictIndex() {
-  redirect("/predict/H2O");
+  const router = useRouter();
+  useEffect(() => {
+    router.replace("/predict/H2O");
+  }, [router]);
+  return null;
 }

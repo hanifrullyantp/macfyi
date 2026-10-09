@@ -13,6 +13,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const grotesk = Space_Grotesk({ subsets: ["latin"], variable: "--font-space-grotesk" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://macfyi.com/moleculab"),
   title: {
     default: BRAND.appFullName,
     template: `%s — ${BRAND.appName}`,
